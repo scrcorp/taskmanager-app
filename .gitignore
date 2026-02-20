@@ -1,0 +1,22 @@
+# Flutter
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/
+.metadata
+
+# Environment
+.env
+.env.*
+
+# Platform folders (ios, web만 유지)
+android/
+linux/
+macos/
+windows/
+
+# OS
+.DS_Store
