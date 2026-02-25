@@ -206,8 +206,6 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
     final unread = ref.watch(notificationProvider).unreadCount;
-    final uploadedCount = _documents.length;
-
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
@@ -267,40 +265,70 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
           ),
           const SizedBox(height: 24),
 
-          // ── Documents Section ──
-          Row(
+          // ── Documents Section (Coming Soon) ──
+          Stack(
             children: [
-              const Text('Documents', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: uploadedCount == _documentTypes.length ? AppColors.successBg : AppColors.accentBg,
-                  borderRadius: BorderRadius.circular(10),
+              IgnorePointer(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Text('Documents', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(color: AppColors.accentBg, borderRadius: BorderRadius.circular(10)),
+                          child: Text('0/${_documentTypes.length}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.accent)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    const Text('Upload required documents for employment verification', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                    const SizedBox(height: 12),
+                    ...List.generate(_documentTypes.length, (i) {
+                      final doc = _documentTypes[i];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: _DocumentCard(
+                          docType: doc, isUploaded: false,
+                          onUpload: () {},
+                          onPreview: () {},
+                        ),
+                      );
+                    }),
+                  ],
                 ),
-                child: Text(
-                  '$uploadedCount/${_documentTypes.length}',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: uploadedCount == _documentTypes.length ? AppColors.success : AppColors.accent),
+              ),
+              Positioned.fill(
+                child: AbsorbPointer(
+                  absorbing: true,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.white.withValues(alpha: 0.7),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 52, height: 52,
+                            decoration: BoxDecoration(color: AppColors.accentBg, borderRadius: BorderRadius.circular(14)),
+                            child: const Icon(Icons.construction_rounded, size: 26, color: AppColors.accent),
+                          ),
+                          const SizedBox(height: 10),
+                          const Text('Coming Soon', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
+                          const SizedBox(height: 4),
+                          const Text('This feature is under development', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          const Text('Upload required documents for employment verification', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
-          const SizedBox(height: 12),
-          ...List.generate(_documentTypes.length, (i) {
-            final doc = _documentTypes[i];
-            final isUploaded = _documents.containsKey(doc.key);
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _DocumentCard(
-                docType: doc, isUploaded: isUploaded, uploadedAt: _uploadedAt[doc.key],
-                imageBytes: _documents[doc.key],
-                onUpload: () => _pickDocument(doc.key),
-                onPreview: () => _previewDocument(doc.key, doc.title),
-              ),
-            );
-          }),
           const SizedBox(height: 8),
 
           // ── Menu ──
