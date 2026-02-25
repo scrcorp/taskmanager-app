@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
+import '../../models/checklist.dart';
 import '../../providers/assignment_provider.dart';
 import '../../widgets/app_header.dart';
 
@@ -18,6 +19,15 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
   void initState() {
     super.initState();
     Future.microtask(() => ref.read(assignmentProvider.notifier).loadAssignment(widget.id));
+  }
+
+  void _onItemTap(ChecklistItem item) {
+    if (item.isCompleted) return;
+
+    // Simple toggle for non-verification items
+    ref.read(assignmentProvider.notifier).toggleChecklistItem(
+      widget.id, item.index, !item.isCompleted,
+    );
   }
 
   @override
@@ -43,7 +53,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('${assignment.shift.name} · ${assignment.position.name}',
-                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                   const SizedBox(height: 10),
                   Row(
                     children: [
@@ -61,7 +71,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                       const SizedBox(width: 12),
                       Text(
                         '${assignment.checklistSnapshot?.completedItems ?? 0}/${assignment.checklistSnapshot?.totalItems ?? 0}',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.text),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.text),
                       ),
                     ],
                   ),
@@ -72,7 +82,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
             // Checklist items
             Expanded(
               child: assignment.checklistSnapshot == null || assignment.checklistSnapshot!.items.isEmpty
-                  ? const Center(child: Text('No checklist items'))
+                  ? const Center(child: Text('No checklist items', style: TextStyle(color: AppColors.textMuted)))
                   : ListView.separated(
                       padding: const EdgeInsets.all(16),
                       itemCount: assignment.checklistSnapshot!.items.length,
@@ -80,11 +90,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                       itemBuilder: (_, i) {
                         final item = assignment.checklistSnapshot!.items[i];
                         return GestureDetector(
-                          onTap: () async {
-                            await ref.read(assignmentProvider.notifier).toggleChecklistItem(
-                              widget.id, item.index, !item.isCompleted,
-                            );
-                          },
+                          onTap: () => _onItemTap(item),
                           child: Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
@@ -93,15 +99,23 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                               border: Border.all(color: item.isCompleted ? AppColors.success.withValues(alpha: 0.3) : AppColors.border),
                             ),
                             child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Container(
-                                  width: 26, height: 26,
-                                  decoration: BoxDecoration(
-                                    color: item.isCompleted ? AppColors.success : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(7),
-                                    border: Border.all(color: item.isCompleted ? AppColors.success : AppColors.textMuted, width: 2),
+                                // Checkbox
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Container(
+                                    width: 22, height: 22,
+                                    decoration: BoxDecoration(
+                                      color: item.isCompleted ? AppColors.success : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: item.isCompleted ? AppColors.success : AppColors.border,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: item.isCompleted ? const Icon(Icons.check, size: 14, color: Colors.white) : null,
                                   ),
-                                  child: item.isCompleted ? const Icon(Icons.check, size: 16, color: Colors.white) : null,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
@@ -111,26 +125,41 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                                       Text(
                                         item.title,
                                         style: TextStyle(
-                                          fontSize: 14, fontWeight: FontWeight.w600,
+                                          fontSize: 14, fontWeight: FontWeight.w500,
                                           color: item.isCompleted ? AppColors.textMuted : AppColors.text,
-                                          decoration: item.isCompleted ? TextDecoration.lineThrough : null,
+                                          decoration: item.isCompleted ? TextDecoration.lineThrough : TextDecoration.none,
                                         ),
                                       ),
-                                      if (item.description != null && item.description!.isNotEmpty)
-                                        Padding(
-                                          padding: const EdgeInsets.only(top: 2),
-                                          child: Text(item.description!, style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                                      if (item.description != null && item.description!.isNotEmpty) ...[
+                                        const SizedBox(height: 3),
+                                        Text(item.description!, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                                      ],
+                                      if (item.isCompleted && item.completedAtDisplay != null) ...[
+                                        const SizedBox(height: 3),
+                                        Text(
+                                          'Done ${item.completedAtDisplay}${item.completedBy != null ? ' · ${item.completedBy}' : ''}',
+                                          style: const TextStyle(fontSize: 11, color: AppColors.success),
                                         ),
-                                      if (item.completedAtDisplay != null)
-                                        Padding(
-                                          padding: const EdgeInsets.only(top: 3),
-                                          child: Text(item.completedAtDisplay!, style: TextStyle(fontSize: 11, color: AppColors.success)),
-                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
-                                if (item.requiresPhoto)
-                                  Icon(Icons.camera_alt_outlined, size: 16, color: AppColors.textMuted),
+                                // Verification type icons
+                                if (item.requiresVerification && !item.isCompleted) ...[
+                                  const SizedBox(width: 8),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (item.requiresPhoto)
+                                        Padding(
+                                          padding: const EdgeInsets.only(right: 4),
+                                          child: Icon(Icons.camera_alt_outlined, size: 16, color: AppColors.accent.withValues(alpha: 0.7)),
+                                        ),
+                                      if (item.requiresComment)
+                                        Icon(Icons.edit_note, size: 18, color: AppColors.accent.withValues(alpha: 0.7)),
+                                    ],
+                                  ),
+                                ],
                               ],
                             ),
                           ),
