@@ -11,74 +11,136 @@ class NoticeDetailScreen extends ConsumerStatefulWidget {
   const NoticeDetailScreen({super.key, required this.id});
 
   @override
-  ConsumerState<NoticeDetailScreen> createState() => _NoticeDetailScreenState();
+  ConsumerState<NoticeDetailScreen> createState() =>
+      _NoticeDetailScreenState();
 }
 
 class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(announcementProvider.notifier).loadAnnouncement(widget.id));
+    Future.microtask(() =>
+        ref.read(announcementProvider.notifier).loadAnnouncement(widget.id));
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(announcementProvider);
-    final notice = state.selected;
+    final announcement = state.selected;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: Column(
         children: [
           AppHeader(title: 'Notice', isDetail: true, onBack: () => context.pop()),
-          if (state.isLoading && notice == null)
+          if (state.isLoading && announcement == null)
             const Expanded(child: Center(child: CircularProgressIndicator()))
-          else if (notice == null)
-            const Expanded(child: Center(child: Text('Notice not found')))
+          else if (announcement == null)
+            Expanded(
+              child: Center(
+                child: Text(state.error ?? 'Notice not found',
+                    style: const TextStyle(color: AppColors.textMuted)),
+              ),
+            )
           else
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(notice.title, style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.text)),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          if (notice.createdByName != null) ...[
-                            Icon(Icons.person, size: 14, color: AppColors.textMuted),
-                            const SizedBox(width: 4),
-                            Text(notice.createdByName!, style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                            const SizedBox(width: 12),
-                          ],
-                          if (notice.createdAt != null) ...[
-                            Icon(Icons.schedule, size: 14, color: AppColors.textMuted),
-                            const SizedBox(width: 4),
-                            Text(DateFormat('MMM d, yyyy').format(notice.createdAt!), style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                          ],
-                        ],
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title
+                    Text(announcement.title,
+                        style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.text)),
+                    const SizedBox(height: 12),
+
+                    // Scope + Author + Date row
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        // Scope badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: announcement.store != null
+                                ? AppColors.accentBg
+                                : AppColors.bg,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: announcement.store != null
+                                  ? AppColors.accent.withValues(alpha: 0.3)
+                                  : AppColors.border,
+                            ),
+                          ),
+                          child: Text(announcement.scope,
+                              style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: announcement.store != null
+                                      ? AppColors.accent
+                                      : AppColors.textSecondary)),
+                        ),
+
+                        // Author
+                        if (announcement.createdByName != null)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.person_outline,
+                                  size: 14, color: AppColors.textMuted),
+                              const SizedBox(width: 4),
+                              Text(announcement.createdByName!,
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.textSecondary)),
+                            ],
+                          ),
+
+                        // Date
+                        if (announcement.createdAt != null)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.calendar_today,
+                                  size: 13, color: AppColors.textMuted),
+                              const SizedBox(width: 4),
+                              Text(
+                                  DateFormat('MMM d, yyyy').format(announcement.createdAt!),
+                                  style: const TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.textSecondary)),
+                            ],
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Divider
+                    const Divider(color: AppColors.border, height: 1),
+                    const SizedBox(height: 20),
+
+                    // Content body
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppColors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.border),
                       ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(color: AppColors.accentBg, borderRadius: BorderRadius.circular(6)),
-                        child: Text(notice.scope, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.accent)),
-                      ),
-                      const SizedBox(height: 20),
-                      Divider(color: AppColors.border),
-                      const SizedBox(height: 16),
-                      Text(notice.content, style: TextStyle(fontSize: 15, color: AppColors.text, height: 1.6)),
-                    ],
-                  ),
+                      child: Text(announcement.content,
+                          style: const TextStyle(
+                              fontSize: 14,
+                              height: 1.6,
+                              color: AppColors.text)),
+                    ),
+                  ],
                 ),
               ),
             ),
