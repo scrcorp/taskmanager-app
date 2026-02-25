@@ -69,15 +69,6 @@ class TaskNotifier extends StateNotifier<TaskState> {
     }
   }
 
-  Future<void> addComment(String taskId, {required String text, String? imageUrl}) async {
-    try {
-      await _service.addComment(taskId, text: text, imageUrl: imageUrl);
-      await _reloadTask(taskId);
-    } catch (e) {
-      state = state.copyWith(error: e.toString());
-    }
-  }
-
   Future<void> _reloadTask(String id) async {
     final updated = await _service.getTask(id);
     state = state.copyWith(
