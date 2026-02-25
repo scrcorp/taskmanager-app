@@ -20,8 +20,11 @@ class AppColors {
 }
 
 class AppTheme {
+  static const String fontFamily = 'DMSans';
+
   static ThemeData get light => ThemeData(
     useMaterial3: true,
+    fontFamily: fontFamily,
     scaffoldBackgroundColor: AppColors.bg,
     colorScheme: ColorScheme.light(
       primary: AppColors.accent,
