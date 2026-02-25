@@ -46,7 +46,7 @@ class AuthService {
   }
 
   Future<Map<String, dynamic>> getMe() async {
-    final response = await _dio.get('/app/auth/me');
+    final response = await _dio.get('/auth/me');
     return response.data;
   }
 
@@ -54,7 +54,7 @@ class AuthService {
     final refreshToken = await TokenStorage.getRefreshToken();
     if (refreshToken != null) {
       try {
-        await _dio.post('/app/auth/logout', data: {
+        await _dio.post('/auth/logout', data: {
           'refresh_token': refreshToken,
         });
       } catch (_) {}
