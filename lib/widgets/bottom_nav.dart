@@ -8,8 +8,8 @@ class BottomNav extends StatelessWidget {
   static const _tabs = [
     _Tab('/home', Icons.home_outlined, Icons.home, 'Home'),
     _Tab('/work', Icons.assignment_outlined, Icons.assignment, 'mytask'),
-    _Tab('/tasks', Icons.task_outlined, Icons.task, 'Tasks'),
-    _Tab('/notices', Icons.campaign_outlined, Icons.campaign, 'Notices'),
+    _Tab('/clock', Icons.access_time_outlined, Icons.access_time, 'Clock In Out'),
+    _Tab('/schedule', Icons.calendar_today_outlined, Icons.calendar_today, 'Schedule'),
   ];
 
   @override

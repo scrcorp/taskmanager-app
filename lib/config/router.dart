@@ -49,6 +49,8 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(path: '/work', builder: (_, __) => const WorkScreen()),
           GoRoute(path: '/tasks', builder: (_, __) => const TaskListScreen()),
           GoRoute(path: '/notices', builder: (_, __) => const NoticeListScreen()),
+          GoRoute(path: '/clock', builder: (_, __) => const _PlaceholderScreen(title: 'Clock In Out', icon: Icons.access_time_outlined)),
+          GoRoute(path: '/schedule', builder: (_, __) => const _PlaceholderScreen(title: 'Schedule', icon: Icons.calendar_today_outlined)),
         ],
       ),
       GoRoute(path: '/work/:id', builder: (_, state) => ChecklistScreen(id: state.pathParameters['id']!)),
@@ -59,3 +61,25 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
+
+class _PlaceholderScreen extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  const _PlaceholderScreen({required this.title, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 48, color: const Color(0xFF9CA3AF)),
+          const SizedBox(height: 16),
+          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF1A1D2E))),
+          const SizedBox(height: 8),
+          const Text('Coming soon', style: TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
+        ],
+      ),
+    );
+  }
+}
