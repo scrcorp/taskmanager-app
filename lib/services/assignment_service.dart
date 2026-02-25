@@ -14,7 +14,7 @@ class AssignmentService {
 
   Future<List<Assignment>> getMyAssignments({String? workDate, String? status}) async {
     final params = <String, dynamic>{};
-    if (workDate != null) params['date'] = workDate;
+    if (workDate != null) params['work_date'] = workDate;
     if (status != null) params['status'] = status;
 
     final response = await _dio.get('/app/my/work-assignments', queryParameters: params);
@@ -27,24 +27,19 @@ class AssignmentService {
     return Assignment.fromJson(response.data);
   }
 
-  Future<void> toggleChecklistItem(String assignmentId, int itemIndex, bool isCompleted) async {
-    await _dio.patch('/app/my/work-assignments/$assignmentId/checklist/$itemIndex', data: {
-      'is_completed': isCompleted,
-    });
-  }
-
-  Future<void> completeChecklistItemWithVerification(
+  Future<void> toggleChecklistItem(
     String assignmentId,
-    int itemIndex, {
+    int itemIndex,
+    bool isCompleted, {
+    String timezone = 'America/Los_Angeles',
     String? photoUrl,
-    String? comment,
-    String? completedBy,
+    String? note,
   }) async {
     await _dio.patch('/app/my/work-assignments/$assignmentId/checklist/$itemIndex', data: {
-      'is_completed': true,
+      'is_completed': isCompleted,
+      'timezone': timezone,
       if (photoUrl != null) 'photo_url': photoUrl,
-      if (comment != null) 'comment': comment,
-      if (completedBy != null) 'completed_by': completedBy,
+      if (note != null) 'note': note,
     });
   }
 }

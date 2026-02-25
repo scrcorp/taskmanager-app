@@ -17,21 +17,21 @@ class NotificationService {
     if (page != null) params['page'] = page;
     if (perPage != null) params['per_page'] = perPage;
 
-    final response = await _dio.get('/app/notifications', queryParameters: params);
+    final response = await _dio.get('/app/my/notifications', queryParameters: params);
     final list = response.data is List ? response.data : response.data['items'] ?? response.data['data'] ?? [];
     return (list as List).map((e) => AppNotification.fromJson(e)).toList();
   }
 
   Future<int> getUnreadCount() async {
-    final response = await _dio.get('/app/notifications/unread-count');
+    final response = await _dio.get('/app/my/notifications/unread-count');
     return response.data['count'] ?? response.data['unread_count'] ?? 0;
   }
 
   Future<void> markAsRead(String id) async {
-    await _dio.patch('/app/notifications/$id/read');
+    await _dio.patch('/app/my/notifications/$id/read');
   }
 
   Future<void> markAllAsRead() async {
-    await _dio.patch('/app/notifications/read-all');
+    await _dio.patch('/app/my/notifications/read-all');
   }
 }

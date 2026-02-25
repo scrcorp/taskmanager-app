@@ -17,13 +17,13 @@ class AnnouncementService {
     if (page != null) params['page'] = page;
     if (perPage != null) params['per_page'] = perPage;
 
-    final response = await _dio.get('/app/announcements', queryParameters: params);
+    final response = await _dio.get('/app/my/announcements', queryParameters: params);
     final list = response.data is List ? response.data : response.data['items'] ?? response.data['data'] ?? [];
     return (list as List).map((e) => Announcement.fromJson(e)).toList();
   }
 
   Future<Announcement> getAnnouncement(String id) async {
-    final response = await _dio.get('/app/announcements/$id');
+    final response = await _dio.get('/app/my/announcements/$id');
     return Announcement.fromJson(response.data);
   }
 }

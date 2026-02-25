@@ -63,25 +63,16 @@ class AssignmentNotifier extends StateNotifier<AssignmentState> {
   Future<void> toggleChecklistItem(
     String assignmentId,
     int itemIndex,
-    bool isCompleted,
-  ) async {
-    await _service.toggleChecklistItem(assignmentId, itemIndex, isCompleted);
-    await _reloadAssignment(assignmentId);
-  }
-
-  Future<void> completeChecklistItemWithVerification(
-    String assignmentId,
-    int itemIndex, {
+    bool isCompleted, {
     String? photoUrl,
-    String? comment,
-    String? completedBy,
+    String? note,
   }) async {
-    await _service.completeChecklistItemWithVerification(
+    await _service.toggleChecklistItem(
       assignmentId,
       itemIndex,
+      isCompleted,
       photoUrl: photoUrl,
-      comment: comment,
-      completedBy: completedBy,
+      note: note,
     );
     await _reloadAssignment(assignmentId);
   }

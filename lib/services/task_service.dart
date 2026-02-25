@@ -16,24 +16,25 @@ class TaskService {
     final params = <String, dynamic>{};
     if (status != null) params['status'] = status;
 
-    final response = await _dio.get('/app/my/tasks', queryParameters: params);
+    final response = await _dio.get('/app/my/additional-tasks', queryParameters: params);
     final list = response.data is List ? response.data : response.data['items'] ?? response.data['data'] ?? [];
     return (list as List).map((e) => AdditionalTask.fromJson(e)).toList();
   }
 
   Future<AdditionalTask> getTask(String id) async {
-    final response = await _dio.get('/app/my/tasks/$id');
+    final response = await _dio.get('/app/my/additional-tasks/$id');
     return AdditionalTask.fromJson(response.data);
   }
 
   Future<void> completeTask(String id) async {
-    await _dio.post('/app/my/tasks/$id/complete');
+    await _dio.patch('/app/my/additional-tasks/$id/complete');
   }
 
-  Future<void> addComment(String taskId, {required String text, String? imageUrl}) async {
-    await _dio.post('/app/my/tasks/$taskId/comments', data: {
-      'text': text,
-      if (imageUrl != null) 'image_url': imageUrl,
+  Future<void> addEvidence(String taskId, {required String fileUrl, String fileType = 'photo', String? note}) async {
+    await _dio.post('/app/my/additional-tasks/$taskId/evidences', data: {
+      'file_url': fileUrl,
+      'file_type': fileType,
+      if (note != null) 'note': note,
     });
   }
 }
