@@ -23,6 +23,8 @@ class User {
     required this.companyCode,
   });
 
+  String get firstName => fullName.split(' ').first;
+
   String get initials {
     if (fullName.isNotEmpty) {
       final parts = fullName.split(' ');
