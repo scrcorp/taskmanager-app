@@ -4,15 +4,17 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../config/theme.dart';
 import '../../providers/task_provider.dart';
+import '../../models/task.dart';
 
 class TaskListScreen extends ConsumerStatefulWidget {
   const TaskListScreen({super.key});
-
   @override
   ConsumerState<TaskListScreen> createState() => _TaskListScreenState();
 }
 
 class _TaskListScreenState extends ConsumerState<TaskListScreen> {
+  String _filter = 'all';
+
   @override
   void initState() {
     super.initState();
@@ -22,117 +24,145 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(taskProvider);
+    final filtered = _filter == 'all'
+        ? state.tasks
+        : state.tasks.where((t) => t.status == _filter).toList();
 
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: state.isLoading && state.tasks.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : state.tasks.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.task_outlined, size: 48, color: AppColors.textMuted),
-                      const SizedBox(height: 12),
-                      Text('No tasks assigned', style: TextStyle(fontSize: 15, color: AppColors.textMuted)),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: () => ref.read(taskProvider.notifier).loadTasks(),
-                  child: ListView.separated(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: state.tasks.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (_, i) {
-                      final task = state.tasks[i];
-                      final isUrgent = task.priority == 'urgent' || task.priority == 'high';
-
-                      return GestureDetector(
-                        onTap: () => context.push('/tasks/${task.id}'),
-                        child: Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: AppColors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: isUrgent ? AppColors.danger.withValues(alpha: 0.3) : AppColors.border),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  if (isUrgent) ...[
-                                    Container(
-                                      width: 8, height: 8,
-                                      decoration: const BoxDecoration(color: AppColors.danger, shape: BoxShape.circle),
-                                    ),
-                                    const SizedBox(width: 8),
-                                  ],
-                                  Expanded(
-                                    child: Text(task.title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.text), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                  ),
-                                  _StatusBadge(status: task.status),
-                                ],
-                              ),
-                              if (task.description != null && task.description!.isNotEmpty) ...[
-                                const SizedBox(height: 6),
-                                Text(task.description!, style: TextStyle(fontSize: 13, color: AppColors.textSecondary), maxLines: 2, overflow: TextOverflow.ellipsis),
-                              ],
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  if (task.storeName != null) ...[
-                                    Icon(Icons.store, size: 13, color: AppColors.textMuted),
-                                    const SizedBox(width: 4),
-                                    Text(task.storeName!, style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                                    const SizedBox(width: 12),
-                                  ],
-                                  if (task.dueDate != null) ...[
-                                    Icon(Icons.schedule, size: 13, color: AppColors.textMuted),
-                                    const SizedBox(width: 4),
-                                    Text(DateFormat('MMM d, h:mm a').format(task.dueDate!), style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                                  ],
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+    return Column(
+      children: [
+        // Filter row
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+          child: Row(
+            children: [
+              const Text('Filter: ',
+                  style: TextStyle(
+                      fontSize: 14, color: AppColors.textSecondary)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.border),
                 ),
+                child: DropdownButton<String>(
+                  value: _filter,
+                  underline: const SizedBox(),
+                  isDense: true,
+                  items: const [
+                    DropdownMenuItem(value: 'all', child: Text('All')),
+                    DropdownMenuItem(value: 'pending', child: Text('Pending')),
+                    DropdownMenuItem(
+                        value: 'in_progress', child: Text('In Progress')),
+                    DropdownMenuItem(
+                        value: 'completed', child: Text('Completed')),
+                  ],
+                  onChanged: (v) => setState(() => _filter = v ?? 'all'),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Task list
+        Expanded(
+          child: state.isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : filtered.isEmpty
+                  ? const Center(
+                      child: Text('No tasks',
+                          style: TextStyle(color: AppColors.textMuted)))
+                  : RefreshIndicator(
+                      onRefresh: () =>
+                          ref.read(taskProvider.notifier).loadTasks(),
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 8),
+                        itemCount: filtered.length,
+                        itemBuilder: (_, i) => _TaskCard(task: filtered[i]),
+                      ),
+                    ),
+        ),
+      ],
     );
   }
 }
 
-class _StatusBadge extends StatelessWidget {
-  final String status;
-  const _StatusBadge({required this.status});
+class _TaskCard extends StatelessWidget {
+  final AdditionalTask task;
+  const _TaskCard({required this.task});
+
+  Color get _priorityColor {
+    switch (task.priority) {
+      case 'urgent':
+        return AppColors.danger;
+      case 'high':
+        return AppColors.warning;
+      default:
+        return AppColors.textMuted;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    Color bg;
-    Color fg;
-    String label;
-    switch (status) {
-      case 'completed':
-        bg = AppColors.successBg;
-        fg = AppColors.success;
-        label = 'Done';
-      case 'in_progress':
-        bg = AppColors.accentBg;
-        fg = AppColors.accent;
-        label = 'In Progress';
-      default:
-        bg = AppColors.warningBg;
-        fg = AppColors.warning;
-        label = 'Pending';
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(8)),
-      child: Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: fg)),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GestureDetector(
+        onTap: () => context.push('/tasks/${task.id}'),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: task.status == 'completed'
+                    ? const Icon(Icons.check_circle,
+                        size: 14, color: AppColors.success)
+                    : Icon(Icons.circle, size: 10, color: _priorityColor),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(task.title,
+                        style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.text)),
+                    const SizedBox(height: 4),
+                    Text(task.storeName ?? '',
+                        style: const TextStyle(
+                            fontSize: 12, color: AppColors.textMuted)),
+                    const SizedBox(height: 2),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        if (task.dueDate != null)
+                          Text(
+                              'Due: ${DateFormat('MMM d, yyyy').format(task.dueDate!)}',
+                              style: const TextStyle(
+                                  fontSize: 12, color: AppColors.textMuted)),
+                        Text(task.statusLabel,
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: task.status == 'completed'
+                                    ? AppColors.success
+                                    : AppColors.textSecondary)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
