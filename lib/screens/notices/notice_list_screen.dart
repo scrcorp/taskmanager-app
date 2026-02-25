@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../config/theme.dart';
 import '../../models/announcement.dart';
 import '../../providers/announcement_provider.dart';
+import '../../widgets/app_header.dart';
 
 class NoticeListScreen extends ConsumerStatefulWidget {
   const NoticeListScreen({super.key});
@@ -24,23 +25,33 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(announcementProvider);
 
-    return state.isLoading
-        ? const Center(child: CircularProgressIndicator())
-        : state.announcements.isEmpty
-            ? const Center(
-                child: Text('No notices',
-                    style: TextStyle(color: AppColors.textMuted)))
-            : RefreshIndicator(
-                onRefresh: () =>
-                    ref.read(announcementProvider.notifier).loadAnnouncements(),
-                child: ListView.builder(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  itemCount: state.announcements.length,
-                  itemBuilder: (_, i) =>
-                      _NoticeCard(announcement: state.announcements[i]),
-                ),
-              );
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: Column(
+        children: [
+          AppHeader(title: 'Notices', isDetail: true, onBack: () => context.pop()),
+          Expanded(
+            child: state.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : state.announcements.isEmpty
+                    ? const Center(
+                        child: Text('No notices',
+                            style: TextStyle(color: AppColors.textMuted)))
+                    : RefreshIndicator(
+                        onRefresh: () =>
+                            ref.read(announcementProvider.notifier).loadAnnouncements(),
+                        child: ListView.builder(
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          itemCount: state.announcements.length,
+                          itemBuilder: (_, i) =>
+                              _NoticeCard(announcement: state.announcements[i]),
+                        ),
+                      ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

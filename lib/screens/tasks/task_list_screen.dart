@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../config/theme.dart';
 import '../../providers/task_provider.dart';
 import '../../models/task.dart';
+import '../../widgets/app_header.dart';
 
 class TaskListScreen extends ConsumerStatefulWidget {
   const TaskListScreen({super.key});
@@ -28,61 +29,65 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
         ? state.tasks
         : state.tasks.where((t) => t.status == _filter).toList();
 
-    return Column(
-      children: [
-        // Filter row
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          child: Row(
-            children: [
-              const Text('Filter: ',
-                  style: TextStyle(
-                      fontSize: 14, color: AppColors.textSecondary)),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.border),
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      body: Column(
+        children: [
+          AppHeader(title: 'Tasks', isDetail: true, onBack: () => context.pop()),
+          // Filter row
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: Row(
+              children: [
+                const Text('Filter: ',
+                    style: TextStyle(
+                        fontSize: 14, color: AppColors.textSecondary)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: DropdownButton<String>(
+                    value: _filter,
+                    underline: const SizedBox(),
+                    isDense: true,
+                    items: const [
+                      DropdownMenuItem(value: 'all', child: Text('All')),
+                      DropdownMenuItem(value: 'pending', child: Text('Pending')),
+                      DropdownMenuItem(
+                          value: 'in_progress', child: Text('In Progress')),
+                      DropdownMenuItem(
+                          value: 'completed', child: Text('Completed')),
+                    ],
+                    onChanged: (v) => setState(() => _filter = v ?? 'all'),
+                  ),
                 ),
-                child: DropdownButton<String>(
-                  value: _filter,
-                  underline: const SizedBox(),
-                  isDense: true,
-                  items: const [
-                    DropdownMenuItem(value: 'all', child: Text('All')),
-                    DropdownMenuItem(value: 'pending', child: Text('Pending')),
-                    DropdownMenuItem(
-                        value: 'in_progress', child: Text('In Progress')),
-                    DropdownMenuItem(
-                        value: 'completed', child: Text('Completed')),
-                  ],
-                  onChanged: (v) => setState(() => _filter = v ?? 'all'),
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        // Task list
-        Expanded(
-          child: state.isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : filtered.isEmpty
-                  ? const Center(
-                      child: Text('No tasks',
-                          style: TextStyle(color: AppColors.textMuted)))
-                  : RefreshIndicator(
-                      onRefresh: () =>
-                          ref.read(taskProvider.notifier).loadTasks(),
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 8),
-                        itemCount: filtered.length,
-                        itemBuilder: (_, i) => _TaskCard(task: filtered[i]),
+          // Task list
+          Expanded(
+            child: state.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : filtered.isEmpty
+                    ? const Center(
+                        child: Text('No tasks',
+                            style: TextStyle(color: AppColors.textMuted)))
+                    : RefreshIndicator(
+                        onRefresh: () =>
+                            ref.read(taskProvider.notifier).loadTasks(),
+                        child: ListView.builder(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 8),
+                          itemCount: filtered.length,
+                          itemBuilder: (_, i) => _TaskCard(task: filtered[i]),
+                        ),
                       ),
-                    ),
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 }
