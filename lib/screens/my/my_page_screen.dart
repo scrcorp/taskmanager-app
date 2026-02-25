@@ -1,124 +1,463 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
-import '../../widgets/app_header.dart';
+import '../../providers/notification_provider.dart';
+import '../../widgets/app_modal.dart';
 
-class MyPageScreen extends ConsumerWidget {
+class _DocumentType {
+  final String key;
+  final String title;
+  final String subtitle;
+  final IconData icon;
+
+  const _DocumentType({
+    required this.key,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+  });
+}
+
+const _documentTypes = [
+  _DocumentType(key: 'food_handler', title: 'Food Handler Card', subtitle: 'Required food safety certification', icon: Icons.restaurant_menu),
+  _DocumentType(key: 'ssn_work_auth', title: 'SSN / Work Authorization', subtitle: 'Social Security Number or Work Permit', icon: Icons.badge_outlined),
+  _DocumentType(key: 'id_card', title: 'Government ID', subtitle: 'Driver License / State ID / Passport', icon: Icons.credit_card),
+  _DocumentType(key: 'i9_form', title: 'I-9 Form', subtitle: 'Employment Eligibility Verification', icon: Icons.description_outlined),
+  _DocumentType(key: 'w4_form', title: 'W-4 Form', subtitle: "Employee's Withholding Certificate", icon: Icons.receipt_long_outlined),
+];
+
+class MyPageScreen extends ConsumerStatefulWidget {
   const MyPageScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
-    final user = authState.user;
+  ConsumerState<MyPageScreen> createState() => _MyPageScreenState();
+}
 
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: Column(
-        children: [
-          AppHeader(title: 'My Page', isDetail: true, onBack: () => context.pop()),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
+class _MyPageScreenState extends ConsumerState<MyPageScreen> {
+  Uint8List? _profileImage;
+  final _picker = ImagePicker();
+  final Map<String, Uint8List> _documents = {};
+  final Map<String, DateTime> _uploadedAt = {};
+
+  Future<void> _pickProfileImage() async {
+    await showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40, height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+              ),
+              const Text('Change Profile Photo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(color: AppColors.accentBg, borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.camera_alt, color: AppColors.accent, size: 20),
+                ),
+                title: const Text('Take Photo', style: TextStyle(fontSize: 15)),
+                onTap: () { Navigator.pop(ctx); _getImage(ImageSource.camera); },
+              ),
+              ListTile(
+                leading: Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(color: AppColors.accentBg, borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.photo_library, color: AppColors.accent, size: 20),
+                ),
+                title: const Text('Choose from Gallery', style: TextStyle(fontSize: 15)),
+                onTap: () { Navigator.pop(ctx); _getImage(ImageSource.gallery); },
+              ),
+              if (_profileImage != null)
+                ListTile(
+                  leading: Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(color: AppColors.dangerBg, borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(Icons.delete_outline, color: AppColors.danger, size: 20),
+                  ),
+                  title: const Text('Remove Photo', style: TextStyle(fontSize: 15, color: AppColors.danger)),
+                  onTap: () { Navigator.pop(ctx); setState(() => _profileImage = null); },
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _getImage(ImageSource source) async {
+    try {
+      final picked = await _picker.pickImage(source: source, maxWidth: 512, maxHeight: 512, imageQuality: 80);
+      if (picked != null) {
+        final bytes = await picked.readAsBytes();
+        setState(() => _profileImage = bytes);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _pickDocument(String key) async {
+    final hasDoc = _documents.containsKey(key);
+    await showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40, height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+              ),
+              Text(hasDoc ? 'Replace Document' : 'Upload Document', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(color: AppColors.accentBg, borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.camera_alt, color: AppColors.accent, size: 20),
+                ),
+                title: const Text('Take Photo', style: TextStyle(fontSize: 15)),
+                onTap: () { Navigator.pop(ctx); _getDocumentImage(key, ImageSource.camera); },
+              ),
+              ListTile(
+                leading: Container(
+                  width: 40, height: 40,
+                  decoration: BoxDecoration(color: AppColors.accentBg, borderRadius: BorderRadius.circular(10)),
+                  child: const Icon(Icons.photo_library, color: AppColors.accent, size: 20),
+                ),
+                title: const Text('Choose from Gallery', style: TextStyle(fontSize: 15)),
+                onTap: () { Navigator.pop(ctx); _getDocumentImage(key, ImageSource.gallery); },
+              ),
+              if (hasDoc)
+                ListTile(
+                  leading: Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(color: AppColors.dangerBg, borderRadius: BorderRadius.circular(10)),
+                    child: const Icon(Icons.delete_outline, color: AppColors.danger, size: 20),
+                  ),
+                  title: const Text('Remove', style: TextStyle(fontSize: 15, color: AppColors.danger)),
+                  onTap: () { Navigator.pop(ctx); setState(() { _documents.remove(key); _uploadedAt.remove(key); }); },
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _getDocumentImage(String key, ImageSource source) async {
+    try {
+      final picked = await _picker.pickImage(source: source, maxWidth: 1024, maxHeight: 1024, imageQuality: 85);
+      if (picked != null) {
+        final bytes = await picked.readAsBytes();
+        setState(() { _documents[key] = bytes; _uploadedAt[key] = DateTime.now(); });
+      }
+    } catch (_) {}
+  }
+
+  void _previewDocument(String key, String title) {
+    final bytes = _documents[key];
+    if (bytes == null) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        insetPadding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 8, 8),
+              child: Row(
                 children: [
-                  // Profile card
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Column(
-                      children: [
-                        CircleAvatar(
-                          radius: 36,
-                          backgroundColor: AppColors.accentBg,
-                          child: Text(
-                            user?.initials ?? '?',
-                            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.accent),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(user?.fullName ?? 'Unknown', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.text)),
-                        const SizedBox(height: 4),
-                        if (user != null && user.roleName.isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(color: AppColors.accentBg, borderRadius: BorderRadius.circular(8)),
-                            child: Text(user.roleName, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.accent)),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Info section
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.border),
-                    ),
-                    child: Column(
-                      children: [
-                        _InfoRow(icon: Icons.email_outlined, label: 'Email', value: user?.email ?? '-'),
-                        _InfoRow(icon: Icons.person_outline, label: 'Username', value: user?.username ?? '-'),
-                        _InfoRow(icon: Icons.badge_outlined, label: 'Status', value: (user?.isActive ?? false) ? 'Active' : 'Inactive'),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Logout
-                  SizedBox(
-                    width: double.infinity,
-                    height: 52,
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        await ref.read(authProvider.notifier).logout();
-                        if (context.mounted) context.go('/login');
-                      },
-                      icon: const Icon(Icons.logout, color: AppColors.danger),
-                      label: const Text('Logout', style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w700)),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: AppColors.danger),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                  ),
+                  Expanded(child: Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text))),
+                  IconButton(icon: const Icon(Icons.close, size: 20), onPressed: () => Navigator.pop(ctx)),
                 ],
               ),
             ),
+            ClipRRect(
+              borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(16), bottomRight: Radius.circular(16)),
+              child: Image.memory(bytes, fit: BoxFit.contain, width: double.infinity),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = ref.watch(authProvider).user;
+    final unread = ref.watch(notificationProvider).unreadCount;
+    final uploadedCount = _documents.length;
+
+    return Scaffold(
+      backgroundColor: AppColors.bg,
+      appBar: AppBar(
+        backgroundColor: AppColors.white,
+        leading: IconButton(icon: const Icon(Icons.chevron_left, size: 28), onPressed: () => context.pop()),
+        title: const Text('My Page'),
+        centerTitle: true,
+        elevation: 0,
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          // ── Profile header ──
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.border)),
+            child: Row(
+              children: [
+                GestureDetector(
+                  onTap: _pickProfileImage,
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 28,
+                        backgroundColor: AppColors.accentBg,
+                        backgroundImage: _profileImage != null ? MemoryImage(_profileImage!) : null,
+                        child: _profileImage == null
+                            ? Text(user?.initials ?? '??', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.accent))
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: 0, right: 0,
+                        child: Container(
+                          width: 22, height: 22,
+                          decoration: BoxDecoration(color: AppColors.accent, shape: BoxShape.circle, border: Border.all(color: AppColors.white, width: 2)),
+                          child: const Icon(Icons.camera_alt, size: 12, color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(user?.fullName ?? 'Staff', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.text)),
+                      const SizedBox(height: 2),
+                      Text(user?.roleName ?? 'staff', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                      const SizedBox(height: 2),
+                      Text(user?.email ?? '', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
+          const SizedBox(height: 24),
+
+          // ── Documents Section ──
+          Row(
+            children: [
+              const Text('Documents', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: uploadedCount == _documentTypes.length ? AppColors.successBg : AppColors.accentBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$uploadedCount/${_documentTypes.length}',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: uploadedCount == _documentTypes.length ? AppColors.success : AppColors.accent),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text('Upload required documents for employment verification', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+          const SizedBox(height: 12),
+          ...List.generate(_documentTypes.length, (i) {
+            final doc = _documentTypes[i];
+            final isUploaded = _documents.containsKey(doc.key);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _DocumentCard(
+                docType: doc, isUploaded: isUploaded, uploadedAt: _uploadedAt[doc.key],
+                imageBytes: _documents[doc.key],
+                onUpload: () => _pickDocument(doc.key),
+                onPreview: () => _previewDocument(doc.key, doc.title),
+              ),
+            );
+          }),
+          const SizedBox(height: 8),
+
+          // ── Menu ──
+          Container(
+            decoration: BoxDecoration(color: AppColors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppColors.border)),
+            child: Column(
+              children: [
+                _MenuItem(
+                  label: 'Alerts',
+                  trailing: unread > 0
+                      ? Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(color: AppColors.danger, borderRadius: BorderRadius.circular(10)),
+                          child: Text('$unread', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                        )
+                      : null,
+                  onTap: () => context.push('/alerts'),
+                ),
+                const Divider(height: 1),
+                _MenuItem(
+                  label: 'Logout',
+                  isDestructive: true,
+                  onTap: () async {
+                    final confirmed = await AppModal.show(context, title: 'Logout', message: 'Are you sure you want to log out?', type: ModalType.confirm, confirmText: 'Logout');
+                    if (confirmed == true) {
+                      await ref.read(authProvider.notifier).logout();
+                      if (context.mounted) context.go('/login');
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
         ],
       ),
     );
   }
 }
 
-class _InfoRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  const _InfoRow({required this.icon, required this.label, required this.value});
+class _DocumentCard extends StatelessWidget {
+  final _DocumentType docType;
+  final bool isUploaded;
+  final DateTime? uploadedAt;
+  final Uint8List? imageBytes;
+  final VoidCallback onUpload;
+  final VoidCallback onPreview;
+
+  const _DocumentCard({required this.docType, required this.isUploaded, this.uploadedAt, this.imageBytes, required this.onUpload, required this.onPreview});
+
+  String _formatDate(DateTime dt) {
+    final m = dt.month.toString().padLeft(2, '0');
+    final d = dt.day.toString().padLeft(2, '0');
+    final h = dt.hour.toString().padLeft(2, '0');
+    final min = dt.minute.toString().padLeft(2, '0');
+    return '${dt.year}.$m.$d $h:$min';
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white, borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: isUploaded ? AppColors.success.withValues(alpha: 0.3) : AppColors.border),
+      ),
+      child: Column(
         children: [
-          Icon(icon, size: 18, color: AppColors.textMuted),
-          const SizedBox(width: 10),
-          SizedBox(width: 80, child: Text(label, style: TextStyle(fontSize: 13, color: AppColors.textMuted))),
-          Expanded(child: Text(value, style: TextStyle(fontSize: 14, color: AppColors.text))),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 44, height: 44,
+                  decoration: BoxDecoration(color: isUploaded ? AppColors.successBg : AppColors.bg, borderRadius: BorderRadius.circular(12)),
+                  child: Icon(isUploaded ? Icons.check_circle : docType.icon, size: 22, color: isUploaded ? AppColors.success : AppColors.textMuted),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(docType.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.text)),
+                      const SizedBox(height: 2),
+                      if (isUploaded && uploadedAt != null)
+                        Text('Uploaded ${_formatDate(uploadedAt!)}', style: const TextStyle(fontSize: 12, color: AppColors.success))
+                      else
+                        Text(docType.subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (isUploaded)
+                  Row(mainAxisSize: MainAxisSize.min, children: [
+                    GestureDetector(
+                      onTap: onPreview,
+                      child: Container(width: 34, height: 34, decoration: BoxDecoration(color: AppColors.accentBg, borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.accent)),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: onUpload,
+                      child: Container(width: 34, height: 34, decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(8)), child: const Icon(Icons.more_horiz, size: 18, color: AppColors.textSecondary)),
+                    ),
+                  ])
+                else
+                  GestureDetector(
+                    onTap: onUpload,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(10)),
+                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.upload_file, size: 16, color: Colors.white),
+                        SizedBox(width: 4),
+                        Text('Upload', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                      ]),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (isUploaded && imageBytes != null)
+            GestureDetector(
+              onTap: onPreview,
+              child: Container(
+                height: 80, width: double.infinity,
+                decoration: BoxDecoration(border: Border(top: BorderSide(color: AppColors.border.withValues(alpha: 0.5)))),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(13), bottomRight: Radius.circular(13)),
+                  child: Image.memory(imageBytes!, fit: BoxFit.cover, width: double.infinity),
+                ),
+              ),
+            ),
         ],
+      ),
+    );
+  }
+}
+
+class _MenuItem extends StatelessWidget {
+  final String label;
+  final Widget? trailing;
+  final bool isDestructive;
+  final VoidCallback onTap;
+  const _MenuItem({required this.label, this.trailing, this.isDestructive = false, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Expanded(child: Text(label, style: TextStyle(fontSize: 15, color: isDestructive ? AppColors.danger : AppColors.text))),
+            if (trailing != null) ...[trailing!, const SizedBox(width: 8)],
+            if (!isDestructive) const Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
+          ],
+        ),
       ),
     );
   }
