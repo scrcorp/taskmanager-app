@@ -72,82 +72,92 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
           _ProfileCard(user: user, tags: tags.toList()),
           const SizedBox(height: 20),
 
-          // ── Checklist banner ──
+          // ── Checklist banners (one per assignment) ──
           if (assignments.isLoading)
             const SizedBox(
               height: 72,
               child: Center(child: CircularProgressIndicator()),
             )
           else if (assignments.assignments.isNotEmpty) ...[
-            Builder(builder: (context) {
-              final a = assignments.assignments.first;
+            ...assignments.assignments.map((a) {
               final total = a.checklistSnapshot?.totalItems ?? 0;
               final completed = a.checklistSnapshot?.completedItems ?? 0;
               final isDone = total > 0 && completed == total;
 
-              return GestureDetector(
-                onTap: () => _openChecklist(context, a.id),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: isDone
-                          ? [const Color(0xFF00B894), const Color(0xFF00CEC9)]
-                          : [const Color(0xFF6C5CE7), const Color(0xFF74B9FF)],
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: GestureDetector(
+                  onTap: () => _openChecklist(context, a.id),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      gradient: LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: isDone
+                            ? [const Color(0xFF00B894), const Color(0xFF00CEC9)]
+                            : [const Color(0xFF6C5CE7), const Color(0xFF74B9FF)],
+                      ),
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              isDone ? 'Checklist Complete!' : 'Checklist',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white70,
-                                letterSpacing: 0.5,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isDone ? 'Checklist Complete!' : 'Checklist',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white70,
+                                  letterSpacing: 0.5,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              isDone
-                                  ? 'All tasks completed for today'
-                                  : '$completed/$total done · ${a.store.name}',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                              const SizedBox(height: 6),
+                              Text(
+                                isDone
+                                    ? 'All done · ${a.store.name}'
+                                    : '$completed/$total done · ${a.store.name}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 2),
+                              Text(
+                                '${a.shift.name} · ${a.position.name}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white60,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(12),
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(
+                            isDone ? Icons.check_circle : Icons.checklist_rounded,
+                            color: Colors.white,
+                            size: 24,
+                          ),
                         ),
-                        child: Icon(
-                          isDone ? Icons.check_circle : Icons.checklist_rounded,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               );
             }),
-            const SizedBox(height: 24),
+            const SizedBox(height: 14),
           ],
 
           // ── Section divider ──
