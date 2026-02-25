@@ -70,7 +70,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                       ),
                       const SizedBox(width: 12),
                       Text(
-                        '${assignment.checklistSnapshot?.completedItems ?? 0}/${assignment.checklistSnapshot?.totalItems ?? 0}',
+                        '${assignment.completedItems}/${assignment.totalItems}',
                         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.text),
                       ),
                     ],

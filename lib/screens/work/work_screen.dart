@@ -80,8 +80,8 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
             )
           else if (assignments.assignments.isNotEmpty) ...[
             ...assignments.assignments.map((a) {
-              final total = a.checklistSnapshot?.totalItems ?? 0;
-              final completed = a.checklistSnapshot?.completedItems ?? 0;
+              final total = a.totalItems;
+              final completed = a.completedItems;
               final isDone = total > 0 && completed == total;
 
               return Padding(

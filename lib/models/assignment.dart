@@ -8,6 +8,8 @@ class Assignment {
   final PositionInfo position;
   final String status;
   final DateTime workDate;
+  final int totalItems;
+  final int completedItems;
   final ChecklistSnapshot? checklistSnapshot;
   final DateTime? createdAt;
 
@@ -18,6 +20,8 @@ class Assignment {
     required this.position,
     required this.status,
     required this.workDate,
+    this.totalItems = 0,
+    this.completedItems = 0,
     this.checklistSnapshot,
     this.createdAt,
   });
@@ -62,6 +66,8 @@ class Assignment {
       }),
       status: json['status'] ?? 'assigned',
       workDate: DateTime.parse(json['work_date']),
+      totalItems: json['total_items'] ?? checklist?.totalItems ?? 0,
+      completedItems: json['completed_items'] ?? checklist?.completedItems ?? 0,
       checklistSnapshot: checklist,
       createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
     );
