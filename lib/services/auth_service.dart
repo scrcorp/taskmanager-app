@@ -12,43 +12,37 @@ class AuthService {
 
   AuthService(this._dio);
 
-  Future<Map<String, dynamic>> login(String username, String password) async {
+  Future<void> login(String username, String password) async {
     final companyCode = await TokenStorage.getCompanyCode();
     final response = await _dio.post('/app/auth/login', data: {
-      'email': username,
+      'username': username,
       'password': password,
       if (companyCode != null) 'company_code': companyCode,
     });
-    final data = response.data;
     await TokenStorage.setTokens(
-      data['access_token'],
-      data['refresh_token'],
+      response.data['access_token'],
+      response.data['refresh_token'],
     );
-    return data['user'] ?? data;
   }
 
-  Future<Map<String, dynamic>> register({
+  Future<void> register({
     required String username,
     required String password,
     required String fullName,
     String? email,
-    String? phone,
   }) async {
     final companyCode = await TokenStorage.getCompanyCode();
     final response = await _dio.post('/app/auth/register', data: {
-      'email': email ?? username,
-      'password': password,
-      'name': fullName,
       'username': username,
-      if (phone != null) 'phone': phone,
-      if (companyCode != null) 'company_code': companyCode,
+      'password': password,
+      'full_name': fullName,
+      if (email != null) 'email': email,
+      'company_code': companyCode,
     });
-    final data = response.data;
     await TokenStorage.setTokens(
-      data['access_token'],
-      data['refresh_token'],
+      response.data['access_token'],
+      response.data['refresh_token'],
     );
-    return data['user'] ?? data;
   }
 
   Future<Map<String, dynamic>> getMe() async {
@@ -57,6 +51,14 @@ class AuthService {
   }
 
   Future<void> logout() async {
+    final refreshToken = await TokenStorage.getRefreshToken();
+    if (refreshToken != null) {
+      try {
+        await _dio.post('/app/auth/logout', data: {
+          'refresh_token': refreshToken,
+        });
+      } catch (_) {}
+    }
     await TokenStorage.clearTokens();
   }
 }

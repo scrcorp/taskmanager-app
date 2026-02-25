@@ -45,11 +45,11 @@ class MyPageScreen extends ConsumerWidget {
                         const SizedBox(height: 12),
                         Text(user?.fullName ?? 'Unknown', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.text)),
                         const SizedBox(height: 4),
-                        if (user?.roleName != null)
+                        if (user != null && user.roleName.isNotEmpty)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(color: AppColors.accentBg, borderRadius: BorderRadius.circular(8)),
-                            child: Text(user!.roleName!, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.accent)),
+                            child: Text(user.roleName, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.accent)),
                           ),
                       ],
                     ),

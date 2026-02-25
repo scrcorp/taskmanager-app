@@ -47,8 +47,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<bool> login(String username, String password) async {
     state = state.copyWith(status: AuthStatus.loading, error: null);
     try {
-      final userData = await _authService.login(username, password);
-      state = AuthState(status: AuthStatus.authenticated, user: User.fromJson(userData));
+      await _authService.login(username, password);
+      final data = await _authService.getMe();
+      state = AuthState(status: AuthStatus.authenticated, user: User.fromJson(data));
       return true;
     } catch (e) {
       String msg = 'Login failed';
@@ -66,13 +67,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }) async {
     state = state.copyWith(status: AuthStatus.loading, error: null);
     try {
-      final userData = await _authService.register(
+      await _authService.register(
         username: username,
         password: password,
         fullName: fullName,
         email: email,
       );
-      state = AuthState(status: AuthStatus.authenticated, user: User.fromJson(userData));
+      final data = await _authService.getMe();
+      state = AuthState(status: AuthStatus.authenticated, user: User.fromJson(data));
       return true;
     } catch (e) {
       String msg = 'Registration failed';

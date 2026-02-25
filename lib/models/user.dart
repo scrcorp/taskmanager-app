@@ -1,77 +1,49 @@
 class User {
   final String id;
   final String organizationId;
-  final String roleId;
   final String username;
-  final String email;
-  final String? firstName;
-  final String? lastName;
+  final String fullName;
+  final String? email;
   final bool isActive;
-  final String? roleName;
-  final int? roleLevel;
-  final DateTime? createdAt;
+  final String roleName;
+  final int roleLevel;
+  final String organizationName;
+  final String companyCode;
 
   const User({
     required this.id,
     required this.organizationId,
-    required this.roleId,
     required this.username,
-    required this.email,
-    this.firstName,
-    this.lastName,
+    required this.fullName,
+    this.email,
     this.isActive = true,
-    this.roleName,
-    this.roleLevel,
-    this.createdAt,
+    required this.roleName,
+    required this.roleLevel,
+    required this.organizationName,
+    required this.companyCode,
   });
 
-  String get fullName {
-    if (firstName != null && lastName != null) return '$firstName $lastName';
-    if (firstName != null) return firstName!;
-    if (lastName != null) return lastName!;
-    return username;
-  }
-
   String get initials {
-    if (firstName != null && lastName != null) {
-      return '${firstName![0]}${lastName![0]}'.toUpperCase();
+    if (fullName.isNotEmpty) {
+      final parts = fullName.split(' ');
+      if (parts.length >= 2) return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+      return fullName.substring(0, fullName.length >= 2 ? 2 : 1).toUpperCase();
     }
     return username.substring(0, 2).toUpperCase();
   }
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'],
-      organizationId: json['organization_id'] ?? '',
-      roleId: json['role_id'] ?? '',
-      username: json['username'],
-      email: json['email'] ?? '',
-      firstName: json['first_name'],
-      lastName: json['last_name'],
-      isActive: json['is_active'] ?? true,
-      roleName: json['role_name'] ?? json['role']?['name'],
-      roleLevel: json['role_level'] ?? json['role']?['level'],
-      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
-    );
-  }
-
-  User copyWith({
-    String? firstName,
-    String? lastName,
-    String? email,
-  }) {
-    return User(
-      id: id,
-      organizationId: organizationId,
-      roleId: roleId,
-      username: username,
-      email: email ?? this.email,
-      firstName: firstName ?? this.firstName,
-      lastName: lastName ?? this.lastName,
-      isActive: isActive,
-      roleName: roleName,
-      roleLevel: roleLevel,
-      createdAt: createdAt,
+      id: json['id'] as String,
+      organizationId: json['organization_id'] as String? ?? '',
+      username: json['username'] as String,
+      fullName: json['full_name'] as String? ?? '',
+      email: json['email'] as String?,
+      isActive: json['is_active'] as bool? ?? true,
+      roleName: json['role_name'] as String? ?? '',
+      roleLevel: json['role_level'] as int? ?? 40,
+      organizationName: json['organization_name'] as String? ?? '',
+      companyCode: json['company_code'] as String? ?? '',
     );
   }
 }
