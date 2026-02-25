@@ -82,10 +82,10 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                               const SizedBox(height: 8),
                               Row(
                                 children: [
-                                  if (task.store != null) ...[
+                                  if (task.storeName != null) ...[
                                     Icon(Icons.store, size: 13, color: AppColors.textMuted),
                                     const SizedBox(width: 4),
-                                    Text(task.store!.name, style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                                    Text(task.storeName!, style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
                                     const SizedBox(width: 12),
                                   ],
                                   if (task.dueDate != null) ...[

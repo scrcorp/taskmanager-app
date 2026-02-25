@@ -108,7 +108,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                       ),
                       child: Column(
                         children: [
-                          if (task.store != null) _InfoRow(icon: Icons.store, label: 'Store', value: task.store!.name),
+                          if (task.storeName != null) _InfoRow(icon: Icons.store, label: 'Store', value: task.storeName!),
                           if (task.createdByName != null) _InfoRow(icon: Icons.person, label: 'Created by', value: task.createdByName!),
                           if (task.dueDate != null) _InfoRow(icon: Icons.schedule, label: 'Due', value: DateFormat('MMM d, yyyy h:mm a').format(task.dueDate!)),
                           if (task.createdAt != null) _InfoRow(icon: Icons.calendar_today, label: 'Created', value: DateFormat('MMM d, yyyy').format(task.createdAt!)),
@@ -118,7 +118,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                     const SizedBox(height: 12),
 
                     // Assignees
-                    if (task.assignees.isNotEmpty)
+                    if (task.assigneeNames.isNotEmpty)
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
@@ -132,14 +132,13 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                           children: [
                             Text('Assignees', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.text)),
                             const SizedBox(height: 8),
-                            ...task.assignees.map((a) => Padding(
+                            ...task.assigneeNames.map((name) => Padding(
                               padding: const EdgeInsets.only(bottom: 6),
                               child: Row(
                                 children: [
-                                  Icon(a.isCompleted ? Icons.check_circle : Icons.radio_button_unchecked,
-                                    size: 18, color: a.isCompleted ? AppColors.success : AppColors.textMuted),
+                                  Icon(Icons.person, size: 18, color: AppColors.textMuted),
                                   const SizedBox(width: 8),
-                                  Text(a.fullName ?? 'Unknown', style: TextStyle(fontSize: 14, color: AppColors.text)),
+                                  Text(name, style: TextStyle(fontSize: 14, color: AppColors.text)),
                                 ],
                               ),
                             )),
