@@ -223,7 +223,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     icon: Icons.campaign_rounded,
                     label: 'Notices',
                     badge: noticeCount > 0 ? noticeCount : null,
-                    onTap: () => context.go('/notices'),
+                    onTap: () => context.push('/notices'),
                   ),
                 ),
                 const SizedBox(width: 12),
