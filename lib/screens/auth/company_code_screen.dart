@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
+import '../../utils/token_storage.dart';
 
 class CompanyCodeScreen extends StatefulWidget {
   const CompanyCodeScreen({super.key});
@@ -18,10 +19,11 @@ class _CompanyCodeScreenState extends State<CompanyCodeScreen> {
     super.dispose();
   }
 
-  void _next() {
+  Future<void> _next() async {
     final code = _codeCtrl.text.trim();
     if (code.isEmpty) return;
-    context.go('/register?company_code=$code');
+    await TokenStorage.setCompanyCode(code);
+    if (mounted) context.go('/register?company_code=$code');
   }
 
   @override

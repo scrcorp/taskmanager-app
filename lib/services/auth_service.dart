@@ -31,7 +31,7 @@ class AuthService {
     required String fullName,
     String? email,
   }) async {
-    final companyCode = await TokenStorage.getCompanyCode();
+    final companyCode = await TokenStorage.getCompanyCode() ?? '3Y1FII';
     final response = await _dio.post('/app/auth/register', data: {
       'username': username,
       'password': password,

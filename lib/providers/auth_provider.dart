@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
@@ -52,9 +53,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = AuthState(status: AuthStatus.authenticated, user: User.fromJson(data));
       return true;
     } catch (e) {
-      String msg = 'Login failed';
-      if (e is Exception) msg = e.toString().replaceFirst('Exception: ', '');
-      state = AuthState(status: AuthStatus.unauthenticated, error: msg);
+      state = AuthState(status: AuthStatus.unauthenticated, error: _parseError(e, 'Login failed'));
       return false;
     }
   }
@@ -77,11 +76,39 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = AuthState(status: AuthStatus.authenticated, user: User.fromJson(data));
       return true;
     } catch (e) {
-      String msg = 'Registration failed';
-      if (e is Exception) msg = e.toString().replaceFirst('Exception: ', '');
-      state = AuthState(status: AuthStatus.unauthenticated, error: msg);
+      state = AuthState(status: AuthStatus.unauthenticated, error: _parseError(e, 'Registration failed'));
       return false;
     }
+  }
+
+  /// Dio 에러 응답을 사용자 친화적 메시지로 변환
+  String _parseError(Object e, String fallback) {
+    if (e is DioException && e.response?.data != null) {
+      final data = e.response!.data;
+      if (data is Map<String, dynamic>) {
+        final detail = data['detail'];
+        // 서버 에러: {"detail": "message"}
+        if (detail is String) return detail;
+        // 422 유효성 에러: {"detail": [{"loc": [...], "msg": "..."}]}
+        if (detail is List && detail.isNotEmpty) {
+          return detail.map((d) {
+            final loc = (d['loc'] as List?)?.where((l) => l != 'body').join(' > ') ?? '';
+            final msg = d['msg'] ?? '';
+            return loc.isNotEmpty ? '$loc: $msg' : msg;
+          }).join('\n');
+        }
+      }
+    }
+    if (e is DioException) {
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        return 'Server not responding. Please try again.';
+      }
+      if (e.type == DioExceptionType.connectionError) {
+        return 'No internet connection.';
+      }
+    }
+    return fallback;
   }
 
   Future<void> logout() async {
