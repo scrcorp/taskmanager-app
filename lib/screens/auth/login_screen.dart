@@ -126,7 +126,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 children: [
                   Text("Don't have an account? ", style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
                   GestureDetector(
-                    onTap: () => context.go('/company-code'),
+                    onTap: () => context.go('/register'),
                     child: Text('Register', style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w700, fontSize: 14)),
                   ),
                 ],
