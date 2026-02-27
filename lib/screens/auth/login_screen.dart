@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/app_modal.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -38,33 +38,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       context.go('/home');
     } else if (mounted) {
       final error = ref.read(authProvider).error ?? 'Login failed';
-      _showErrorDialog(error);
+      AppModal.show(
+        context,
+        title: 'Login Failed',
+        message: error,
+        type: ModalType.error,
+      );
     }
-  }
-
-  void _showErrorDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Login Failed'),
-        content: SelectableText(message),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: message));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Copied to clipboard'), duration: Duration(seconds: 1)),
-              );
-            },
-            child: const Text('Copy'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -78,12 +58,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 80),
-              Icon(Icons.task_alt, size: 56, color: AppColors.accent),
-              const SizedBox(height: 12),
-              Text('TaskManager', textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.text)),
+              Text.rich(
+                TextSpan(children: [
+                  TextSpan(text: '● ', style: TextStyle(color: AppColors.accent, fontSize: 32, fontWeight: FontWeight.w800)),
+                  TextSpan(text: 'TaskManager', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: AppColors.text)),
+                ]),
+                textAlign: TextAlign.center,
+              ),
               const SizedBox(height: 4),
-              Text('Staff Portal', textAlign: TextAlign.center,
+              Text('Staff App', textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
               const SizedBox(height: 48),
               TextField(
@@ -117,7 +100,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: _loading ? null : _login,
                   child: _loading
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Login'),
+                      : const Text('Log In'),
                 ),
               ),
               const SizedBox(height: 20),
