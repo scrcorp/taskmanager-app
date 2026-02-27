@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
+import '../../models/assignment.dart';
 import '../../models/checklist.dart';
 import '../../providers/assignment_provider.dart';
 import '../../utils/date_utils.dart';
@@ -222,7 +223,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
     );
   }
 
-  Widget _buildProgressSection(assignment) {
+  Widget _buildProgressSection(Assignment assignment) {
     final snapshot = assignment.checklistSnapshot;
     final completed = snapshot?.completedItems ?? 0;
     final total = snapshot?.totalItems ?? 0;
