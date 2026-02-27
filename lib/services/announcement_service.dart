@@ -26,4 +26,16 @@ class AnnouncementService {
     final response = await _dio.get('/app/my/announcements/$id');
     return Announcement.fromJson(response.data);
   }
+
+  Future<NoticeComment> addComment(String announcementId, String text) async {
+    final response = await _dio.post(
+      '/app/my/announcements/$announcementId/comments',
+      data: {'text': text},
+    );
+    return NoticeComment.fromJson(response.data);
+  }
+
+  Future<void> toggleAcknowledge(String announcementId) async {
+    await _dio.patch('/app/my/announcements/$announcementId/acknowledge');
+  }
 }
