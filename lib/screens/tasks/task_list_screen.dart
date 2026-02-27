@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import '../../config/theme.dart';
 import '../../providers/task_provider.dart';
 import '../../models/task.dart';
+import '../../utils/date_utils.dart';
 import '../../widgets/app_header.dart';
 
 class TaskListScreen extends ConsumerStatefulWidget {
@@ -141,7 +141,7 @@ class _TaskCard extends StatelessWidget {
                             fontWeight: FontWeight.w600,
                             color: AppColors.text)),
                     const SizedBox(height: 4),
-                    Text(task.storeName ?? '',
+                    Text(task.store?.name ?? task.storeName ?? '',
                         style: const TextStyle(
                             fontSize: 12, color: AppColors.textMuted)),
                     const SizedBox(height: 2),
@@ -150,7 +150,7 @@ class _TaskCard extends StatelessWidget {
                       children: [
                         if (task.dueDate != null)
                           Text(
-                              'Due: ${DateFormat('MMM d, yyyy').format(task.dueDate!)}',
+                              'Due: ${formatFixedDate(task.dueDate!)}',
                               style: const TextStyle(
                                   fontSize: 12, color: AppColors.textMuted)),
                         Text(task.statusLabel,
