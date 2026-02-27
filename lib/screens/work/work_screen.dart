@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import '../../config/theme.dart';
 import '../../models/checklist.dart';
 import '../../models/task.dart';
+import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/assignment_provider.dart';
 import '../../providers/task_provider.dart';
@@ -72,87 +73,85 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
           _ProfileCard(user: user, tags: tags.toList()),
           const SizedBox(height: 20),
 
-          // ── Checklist banners (one per assignment) ──
+          // ── Checklist banner (first assignment) ──
           if (assignments.isLoading)
             const SizedBox(
               height: 72,
               child: Center(child: CircularProgressIndicator()),
             )
           else if (assignments.assignments.isNotEmpty) ...[
-            ...assignments.assignments.map((a) {
+            Builder(builder: (context) {
+              final a = assignments.assignments.first;
               final total = a.totalItems;
               final completed = a.completedItems;
               final isDone = total > 0 && completed == total;
 
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: GestureDetector(
-                  onTap: () => _openChecklist(context, a.id),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      gradient: LinearGradient(
-                        begin: Alignment.centerLeft,
-                        end: Alignment.centerRight,
-                        colors: isDone
-                            ? [const Color(0xFF00B894), const Color(0xFF00CEC9)]
-                            : [const Color(0xFF6C5CE7), const Color(0xFF74B9FF)],
+              return GestureDetector(
+                onTap: () => _openChecklist(context, a.id),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: isDone
+                          ? [const Color(0xFF00B894), const Color(0xFF00CEC9)]
+                          : [const Color(0xFF6C5CE7), const Color(0xFF74B9FF)],
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              isDone ? 'Checklist Complete!' : 'Checklist',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white70,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              isDone
+                                  ? 'All done · ${a.store.name}'
+                                  : '$completed/$total done · ${a.store.name}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${a.shift.name} · ${a.position.name}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.white60,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                isDone ? 'Checklist Complete!' : 'Checklist',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white70,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                isDone
-                                    ? 'All done · ${a.store.name}'
-                                    : '$completed/$total done · ${a.store.name}',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                '${a.shift.name} · ${a.position.name}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.white60,
-                                ),
-                              ),
-                            ],
-                          ),
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        Container(
-                          width: 44,
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Icon(
-                            isDone ? Icons.check_circle : Icons.checklist_rounded,
-                            color: Colors.white,
-                            size: 24,
-                          ),
+                        child: Icon(
+                          isDone ? Icons.check_circle : Icons.checklist_rounded,
+                          color: Colors.white,
+                          size: 24,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -264,7 +263,7 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
 // ─── Profile card ─────────────────────────────────────────────────────────────
 
 class _ProfileCard extends StatelessWidget {
-  final dynamic user;
+  final User? user;
   final List<String> tags;
 
   const _ProfileCard({this.user, required this.tags});
@@ -420,8 +419,9 @@ class _TaskCard extends StatelessWidget {
     final duePart = task.dueDate != null
         ? '~ ${DateFormat('MM.dd').format(task.dueDate!)}'
         : null;
+    final storeName = task.store?.name ?? task.storeName;
     final subtitle = [
-      if (task.storeName != null) task.storeName!,
+      if (storeName != null) storeName,
       if (duePart != null) duePart,
     ].join(' · ');
 
