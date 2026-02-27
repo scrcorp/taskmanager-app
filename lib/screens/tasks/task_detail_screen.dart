@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import '../../config/theme.dart';
 import '../../models/task.dart';
 import '../../providers/task_provider.dart';
+import '../../utils/date_utils.dart';
+import '../../utils/toast_manager.dart';
 import '../../widgets/app_header.dart';
 
 class TaskDetailScreen extends ConsumerStatefulWidget {
@@ -16,8 +17,6 @@ class TaskDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
-  bool _completing = false;
-
   @override
   void initState() {
     super.initState();
@@ -54,17 +53,6 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
     }
   }
 
-  Future<void> _markComplete() async {
-    setState(() => _completing = true);
-    await ref.read(taskProvider.notifier).completeTask(widget.id);
-    if (mounted) {
-      setState(() => _completing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Task marked as complete'), backgroundColor: AppColors.success),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(taskProvider);
@@ -97,7 +85,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                       const SizedBox(height: 8),
                       _buildDescriptionSection(task),
                     ],
-                    if (task.assigneeNames.isNotEmpty) ...[
+                    if (task.assignees.isNotEmpty || task.assigneeNames.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       _buildAssigneesSection(task),
                     ],
@@ -116,8 +104,17 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   child: SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _completing ? null : _markComplete,
-                      child: _completing
+                      onPressed: state.isLoading
+                          ? null
+                          : () async {
+                              await ref
+                                  .read(taskProvider.notifier)
+                                  .completeTask(widget.id);
+                              if (mounted) {
+                                ToastManager().success(context, 'Task marked as complete');
+                              }
+                            },
+                      child: state.isLoading
                           ? const SizedBox(
                               height: 20,
                               width: 20,
@@ -198,11 +195,65 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
               color: AppColors.text,
             ),
           ),
-          if (task.storeName != null) ...[
+          if (task.store?.name != null || task.storeName != null) ...[
             const SizedBox(height: 4),
             Text(
-              task.storeName!,
+              task.store?.name ?? task.storeName!,
               style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+            ),
+          ],
+          // Labels
+          if (task.labels.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: task.labels.map((label) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.bg,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+          // Completion info
+          if (task.status == 'completed' && task.completedAt != null) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.successBg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle, size: 18, color: AppColors.success),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Completed by ${task.completedByName ?? 'Unknown'} · ${formatActionTime(task.completedAt!)}',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.success,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ],
@@ -218,24 +269,38 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
+          if (task.startDate != null)
+            _DetailRow(
+              icon: Icons.play_circle_outline,
+              label: 'Start time',
+              value: formatDateTime(task.startDate!),
+            ),
+          if (task.startDate != null && task.dueDate != null)
+            const SizedBox(height: 14),
           if (task.dueDate != null)
             _DetailRow(
               icon: Icons.schedule,
               label: 'Due date',
-              value: DateFormat('MMM d, h:mm a').format(task.dueDate!),
+              value: formatDateTime(task.dueDate!),
               valueColor: task.dueDate!.isBefore(DateTime.now()) && task.status != 'completed'
                   ? AppColors.danger
                   : null,
             ),
-          if (task.dueDate != null && (task.assigneeNames.isNotEmpty || task.createdByName != null))
+          if (task.dueDate != null || task.startDate != null)
             const _SectionDivider(),
-          if (task.assigneeNames.isNotEmpty)
+          if (task.assignees.isNotEmpty)
+            _DetailRow(
+              icon: Icons.people_outline,
+              label: 'Assigned to',
+              value: task.assignees.map((a) => a.fullName ?? 'Unknown').join(', '),
+            )
+          else if (task.assigneeNames.isNotEmpty)
             _DetailRow(
               icon: Icons.people_outline,
               label: 'Assigned to',
               value: task.assigneeNames.join(', '),
             ),
-          if (task.assigneeNames.isNotEmpty && task.createdByName != null)
+          if (task.assignees.isNotEmpty || task.assigneeNames.isNotEmpty)
             const _SectionDivider(),
           if (task.createdByName != null)
             _DetailRow(
@@ -248,7 +313,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             _DetailRow(
               icon: Icons.access_time,
               label: 'Created at',
-              value: DateFormat('MMM d, h:mm a').format(task.createdAt!),
+              value: formatDateTime(task.createdAt!),
             ),
           ],
         ],
@@ -289,6 +354,10 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
 
   // ── Assignees Section ──
   Widget _buildAssigneesSection(AdditionalTask task) {
+    final count = task.assignees.isNotEmpty
+        ? task.assignees.length
+        : task.assigneeNames.length;
+
     return Container(
       width: double.infinity,
       color: AppColors.white,
@@ -297,7 +366,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Assignees (${task.assigneeNames.length})',
+            'Assignees ($count)',
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -305,31 +374,83 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          ...task.assigneeNames.map((name) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 16,
-                    backgroundColor: AppColors.accentBg,
-                    child: const Icon(Icons.person, size: 16, color: AppColors.accent),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      name,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.text,
+          if (task.assignees.isNotEmpty)
+            ...task.assignees.map((assignee) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: assignee.isCompleted
+                          ? AppColors.successBg
+                          : AppColors.accentBg,
+                      child: Icon(
+                        assignee.isCompleted ? Icons.check : Icons.person,
+                        size: 16,
+                        color: assignee.isCompleted
+                            ? AppColors.success
+                            : AppColors.accent,
                       ),
                     ),
-                  ),
-                ],
-              ),
-            );
-          }),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            assignee.fullName ?? 'Unknown',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.text,
+                            ),
+                          ),
+                          if (assignee.isCompleted && assignee.completedAt != null)
+                            Text(
+                              'Done ${formatActionTime(assignee.completedAt!)}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.success,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    if (assignee.isCompleted)
+                      const Icon(Icons.check_circle, size: 18, color: AppColors.success)
+                    else
+                      const Icon(Icons.radio_button_unchecked, size: 18, color: AppColors.textMuted),
+                  ],
+                ),
+              );
+            })
+          else
+            ...task.assigneeNames.map((name) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  children: [
+                    const CircleAvatar(
+                      radius: 16,
+                      backgroundColor: AppColors.accentBg,
+                      child: Icon(Icons.person, size: 16, color: AppColors.accent),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.text,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
         ],
       ),
     );
