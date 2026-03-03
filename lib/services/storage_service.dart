@@ -13,28 +13,7 @@ class StorageService {
 
   StorageService(this._dio);
 
-  /// Upload file via multipart form POST (로컬 모드).
-  /// presigned URL 없이 직접 업로드. temp 경로에 저장됨.
-  /// Returns file_url (temp URL, finalize_upload으로 최종 이동).
-  Future<String> uploadFileMultipart(
-    Uint8List data,
-    String filename,
-    String contentType, {
-    String folder = 'completions',
-  }) async {
-    final formData = FormData.fromMap({
-      'folder': folder,
-      'file': MultipartFile.fromBytes(
-        data,
-        filename: filename,
-        contentType: DioMediaType.parse(contentType),
-      ),
-    });
-    final response = await _dio.post('/app/storage/upload', data: formData);
-    return response.data['file_url'] as String;
-  }
-
-  /// Get a presigned URL for S3 uploads.
+  /// Get a presigned URL for uploading a file.
   /// Returns {upload_url, file_url}.
   Future<Map<String, String>> getPresignedUrl(
     String filename,
@@ -52,8 +31,10 @@ class StorageService {
     };
   }
 
-  /// Upload raw bytes to S3 presigned URL.
-  Future<void> uploadToPresignedUrl(
+  /// Upload file bytes to the presigned URL.
+  /// S3: presigned PUT URL로 직접 업로드.
+  /// Local: 로컬 서버 PUT 엔드포인트로 업로드.
+  Future<void> uploadFile(
     String uploadUrl,
     Uint8List data,
     String contentType,
@@ -61,10 +42,9 @@ class StorageService {
     final uploadDio = Dio();
     await uploadDio.put(
       uploadUrl,
-      data: Stream.fromIterable([data]),
+      data: data,
       options: Options(
         contentType: contentType,
-        headers: {'Content-Length': data.length},
       ),
     );
   }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -81,12 +82,11 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
       const contentType = 'image/jpeg';
 
       final storage = ref.read(storageServiceProvider);
-      final fileUrl = await storage.uploadFileMultipart(
-        bytes, filename, contentType,
-        folder: 'completions',
-      );
-      return fileUrl;
+      final urls = await storage.getPresignedUrl(filename, contentType);
+      await storage.uploadFile(urls['upload_url']!, bytes, contentType);
+      return urls['file_url'];
     } catch (e) {
+      debugPrint('[ChecklistScreen] Photo upload error: $e');
       if (mounted) {
         ToastManager().error(context, 'Photo upload failed');
       }
