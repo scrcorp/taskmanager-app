@@ -81,9 +81,11 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
       const contentType = 'image/jpeg';
 
       final storage = ref.read(storageServiceProvider);
-      final urls = await storage.getPresignedUrl(filename, contentType);
-      await storage.uploadFile(urls['upload_url']!, bytes, contentType);
-      return urls['file_url'];
+      final fileUrl = await storage.uploadFileMultipart(
+        bytes, filename, contentType,
+        folder: 'completions',
+      );
+      return fileUrl;
     } catch (e) {
       if (mounted) {
         ToastManager().error(context, 'Photo upload failed');

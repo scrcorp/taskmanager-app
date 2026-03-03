@@ -13,8 +13,29 @@ class StorageService {
 
   StorageService(this._dio);
 
-  /// Get a presigned URL for uploading a file.
-  /// Returns {upload_url, file_url, key}.
+  /// Upload file via multipart form POST (로컬 모드).
+  /// presigned URL 없이 직접 업로드. temp 경로에 저장됨.
+  /// Returns file_url (temp URL, finalize_upload으로 최종 이동).
+  Future<String> uploadFileMultipart(
+    Uint8List data,
+    String filename,
+    String contentType, {
+    String folder = 'completions',
+  }) async {
+    final formData = FormData.fromMap({
+      'folder': folder,
+      'file': MultipartFile.fromBytes(
+        data,
+        filename: filename,
+        contentType: DioMediaType.parse(contentType),
+      ),
+    });
+    final response = await _dio.post('/app/storage/upload', data: formData);
+    return response.data['file_url'] as String;
+  }
+
+  /// Get a presigned URL for S3 uploads.
+  /// Returns {upload_url, file_url}.
   Future<Map<String, String>> getPresignedUrl(
     String filename,
     String contentType, {
@@ -31,33 +52,19 @@ class StorageService {
     };
   }
 
-  /// Upload file bytes via the app storage upload endpoint.
-  /// Uses _dio (authenticated, correct baseUrl) to ensure the request
-  /// reaches the server regardless of localhost/IP differences.
-  Future<void> uploadFile(
+  /// Upload raw bytes to S3 presigned URL.
+  Future<void> uploadToPresignedUrl(
     String uploadUrl,
     Uint8List data,
     String contentType,
   ) async {
-    // Extract relative path from absolute upload URL.
-    // uploadUrl: http://host:port/api/v1/app/storage/upload/temp/...
-    // _dio.baseUrl: http://host:port/api/v1
-    // We need: /app/storage/upload/temp/...
-    final uri = Uri.parse(uploadUrl);
-    var path = uri.path;
-    const apiPrefix = '/api/v1';
-    if (path.startsWith(apiPrefix)) {
-      path = path.substring(apiPrefix.length);
-    }
-
-    await _dio.put(
-      path,
+    final uploadDio = Dio();
+    await uploadDio.put(
+      uploadUrl,
       data: Stream.fromIterable([data]),
       options: Options(
         contentType: contentType,
-        headers: {
-          'Content-Length': data.length,
-        },
+        headers: {'Content-Length': data.length},
       ),
     );
   }
