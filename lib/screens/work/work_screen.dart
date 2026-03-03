@@ -1083,7 +1083,8 @@ class _VerificationBottomSheetState
     extends ConsumerState<_VerificationBottomSheet> {
   final _noteController = TextEditingController();
   Uint8List? _pickedImageBytes;
-  String? _pickedImageName;
+  String? _uploadedFileUrl;
+  bool _isUploading = false;
   bool _isSubmitting = false;
 
   @override
@@ -1093,12 +1094,34 @@ class _VerificationBottomSheetState
   }
 
   bool get _canSubmit {
-    if (_isSubmitting) return false;
-    if (widget.item.requiresPhoto && _pickedImageBytes == null) return false;
+    if (_isSubmitting || _isUploading) return false;
+    if (widget.item.requiresPhoto && _uploadedFileUrl == null) return false;
     if (widget.item.requiresComment && _noteController.text.trim().isEmpty) {
       return false;
     }
     return true;
+  }
+
+  /// 사진 선택/촬영 후 즉시 temp에 업로드.
+  Future<void> _uploadToTemp(Uint8List bytes) async {
+    setState(() => _isUploading = true);
+    try {
+      final storage = ref.read(storageServiceProvider);
+      final filename = 'checklist_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      const contentType = 'image/jpeg';
+      final urls = await storage.getPresignedUrl(filename, contentType);
+      await storage.uploadFile(urls['upload_url']!, bytes, contentType);
+      if (mounted) {
+        setState(() {
+          _pickedImageBytes = bytes;
+          _uploadedFileUrl = urls['file_url'];
+        });
+      }
+    } catch (e) {
+      debugPrint('[Verification] Photo upload error: $e');
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
   }
 
   Future<void> _pickImage() async {
@@ -1111,10 +1134,7 @@ class _VerificationBottomSheetState
     );
     if (picked != null) {
       final bytes = await picked.readAsBytes();
-      setState(() {
-        _pickedImageBytes = bytes;
-        _pickedImageName = picked.name;
-      });
+      await _uploadToTemp(bytes);
     }
   }
 
@@ -1128,10 +1148,7 @@ class _VerificationBottomSheetState
     );
     if (picked != null) {
       final bytes = await picked.readAsBytes();
-      setState(() {
-        _pickedImageBytes = bytes;
-        _pickedImageName = picked.name;
-      });
+      await _uploadToTemp(bytes);
     }
   }
 
@@ -1139,27 +1156,11 @@ class _VerificationBottomSheetState
     if (!_canSubmit) return;
     setState(() => _isSubmitting = true);
 
-    String? photoUrl;
-    if (_pickedImageBytes != null) {
-      try {
-        final storage = ref.read(storageServiceProvider);
-        final filename = 'checklist_${DateTime.now().millisecondsSinceEpoch}.jpg';
-        const contentType = 'image/jpeg';
-        final urls = await storage.getPresignedUrl(filename, contentType);
-        await storage.uploadFile(urls['upload_url']!, _pickedImageBytes!, contentType);
-        photoUrl = urls['file_url'];
-      } catch (e) {
-        debugPrint('[Verification] Photo upload error: $e');
-        if (mounted) setState(() => _isSubmitting = false);
-        return;
-      }
-    }
-
     await ref.read(assignmentProvider.notifier).toggleChecklistItem(
       widget.assignmentId,
       widget.item.index,
       true,
-      photoUrl: photoUrl,
+      photoUrl: _uploadedFileUrl,
       note: _noteController.text.trim().isNotEmpty
           ? _noteController.text.trim()
           : null,
@@ -1297,13 +1298,25 @@ class _VerificationBottomSheetState
                                       fit: BoxFit.cover,
                                     ),
                                   ),
-                                  Positioned(
+                                  if (_isUploading)
+                                    Positioned.fill(
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.black26,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Center(
+                                          child: CircularProgressIndicator(color: AppColors.white),
+                                        ),
+                                      ),
+                                    ),
+                                  if (!_isUploading) Positioned(
                                     top: 8,
                                     right: 8,
                                     child: GestureDetector(
                                       onTap: () => setState(() {
                                         _pickedImageBytes = null;
-                                        _pickedImageName = null;
+                                        _uploadedFileUrl = null;
                                       }),
                                       child: Container(
                                         width: 28,
