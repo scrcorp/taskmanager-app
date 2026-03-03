@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,6 +15,7 @@ import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/assignment_provider.dart';
 import '../../providers/task_provider.dart';
+import '../../services/storage_service.dart';
 
 class WorkScreen extends ConsumerStatefulWidget {
   const WorkScreen({super.key});
@@ -1137,11 +1139,27 @@ class _VerificationBottomSheetState
     if (!_canSubmit) return;
     setState(() => _isSubmitting = true);
 
+    String? photoUrl;
+    if (_pickedImageBytes != null) {
+      try {
+        final storage = ref.read(storageServiceProvider);
+        final filename = 'checklist_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        const contentType = 'image/jpeg';
+        final urls = await storage.getPresignedUrl(filename, contentType);
+        await storage.uploadFile(urls['upload_url']!, _pickedImageBytes!, contentType);
+        photoUrl = urls['file_url'];
+      } catch (e) {
+        debugPrint('[Verification] Photo upload error: $e');
+        if (mounted) setState(() => _isSubmitting = false);
+        return;
+      }
+    }
+
     await ref.read(assignmentProvider.notifier).toggleChecklistItem(
       widget.assignmentId,
       widget.item.index,
       true,
-      photoUrl: _pickedImageName,
+      photoUrl: photoUrl,
       note: _noteController.text.trim().isNotEmpty
           ? _noteController.text.trim()
           : null,
