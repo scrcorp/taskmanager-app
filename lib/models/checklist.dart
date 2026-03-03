@@ -70,10 +70,8 @@ class ChecklistItem {
     this.completedBy,
   });
 
-  bool get requiresPhoto =>
-      verificationType == 'photo' || verificationType == 'photo_comment';
-  bool get requiresComment =>
-      verificationType == 'comment' || verificationType == 'photo_comment';
+  bool get requiresPhoto => verificationType.contains('photo');
+  bool get requiresComment => verificationType.contains('text');
   bool get requiresVerification => verificationType != 'none';
 
   String? get completedAtDisplay {
