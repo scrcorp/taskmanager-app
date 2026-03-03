@@ -6,15 +6,18 @@ import '../providers/auth_provider.dart';
 import '../screens/auth/company_code_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
+import '../screens/clock/clock_screen.dart';
 import '../screens/home/home_screen.dart';
-import '../screens/work/work_screen.dart';
-import '../screens/work/checklist_screen.dart';
-import '../screens/tasks/task_list_screen.dart';
-import '../screens/tasks/task_detail_screen.dart';
-import '../screens/notices/notice_list_screen.dart';
-import '../screens/notices/notice_detail_screen.dart';
 import '../screens/my/my_page_screen.dart';
+import '../screens/notices/notice_detail_screen.dart';
+import '../screens/notices/notice_list_screen.dart';
 import '../screens/notifications/notification_screen.dart';
+import '../screens/ojt/ojt_screen.dart';
+import '../screens/schedule/schedule_screen.dart';
+import '../screens/tasks/task_detail_screen.dart';
+import '../screens/tasks/task_list_screen.dart';
+import '../screens/work/checklist_screen.dart';
+import '../screens/work/work_screen.dart';
 import '../widgets/app_shell.dart';
 
 class _AuthNotifier extends ChangeNotifier {
@@ -47,10 +50,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
           GoRoute(path: '/work', builder: (_, __) => const WorkScreen()),
-          GoRoute(path: '/clock', builder: (_, __) => const _PlaceholderScreen(title: 'Clock In Out', icon: Icons.access_time_outlined)),
-          GoRoute(path: '/schedule', builder: (_, __) => const _PlaceholderScreen(title: 'Schedule', icon: Icons.calendar_today_outlined)),
+          GoRoute(path: '/clock', builder: (_, __) => const ClockScreen()),
+          GoRoute(path: '/schedule', builder: (_, __) => const ScheduleScreen()),
         ],
       ),
+      GoRoute(path: '/ojt', builder: (_, __) => const OjtScreen()),
       GoRoute(path: '/tasks', builder: (_, __) => const TaskListScreen()),
       GoRoute(path: '/tasks/:id', builder: (_, state) => TaskDetailScreen(id: state.pathParameters['id']!)),
       GoRoute(path: '/notices', builder: (_, __) => const NoticeListScreen()),
@@ -61,25 +65,3 @@ final routerProvider = Provider<GoRouter>((ref) {
     ],
   );
 });
-
-class _PlaceholderScreen extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  const _PlaceholderScreen({required this.title, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 48, color: const Color(0xFF9CA3AF)),
-          const SizedBox(height: 16),
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF1A1D2E))),
-          const SizedBox(height: 8),
-          const Text('Coming soon', style: TextStyle(fontSize: 14, color: Color(0xFF6B7280))),
-        ],
-      ),
-    );
-  }
-}
