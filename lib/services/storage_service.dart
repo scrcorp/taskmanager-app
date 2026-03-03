@@ -3,6 +3,9 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'api_client.dart';
+import 'upload_helper_stub.dart'
+    if (dart.library.html) 'upload_helper_web.dart'
+    if (dart.library.io) 'upload_helper_native.dart' as uploader;
 
 final storageServiceProvider = Provider<StorageService>((ref) {
   return StorageService(ref.read(dioProvider));
@@ -32,20 +35,13 @@ class StorageService {
   }
 
   /// Upload file bytes to the presigned URL.
-  /// S3: presigned PUT URL로 직접 업로드.
-  /// Local: 로컬 서버 PUT 엔드포인트로 업로드.
+  /// Web: dart:html HttpRequest로 직접 PUT (fetch API와 동일).
+  /// Native: Dio PUT으로 업로드.
   Future<void> uploadFile(
     String uploadUrl,
     Uint8List data,
     String contentType,
   ) async {
-    final uploadDio = Dio();
-    await uploadDio.put(
-      uploadUrl,
-      data: data,
-      options: Options(
-        contentType: contentType,
-      ),
-    );
+    await uploader.uploadBytes(uploadUrl, data, contentType);
   }
 }
