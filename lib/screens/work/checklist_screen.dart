@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../config/theme.dart';
 import '../../models/assignment.dart';
 import '../../models/checklist.dart';
 import '../../providers/assignment_provider.dart';
+import '../../services/storage_service.dart';
 import '../../utils/date_utils.dart';
 import '../../utils/toast_manager.dart';
 import '../../widgets/app_header.dart';
@@ -32,10 +34,138 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
     ToastManager().success(context, 'All tasks completed! Great work!');
   }
 
-  void _onItemTap(ChecklistItem item) {
-    if (item.isCompleted) return;
+  bool _isUploading = false;
+
+  void _onItemTap(ChecklistItem item) async {
+    if (item.isCompleted || _isUploading) return;
+
+    String? photoUrl;
+    String? note;
+
+    // Handle photo requirement
+    if (item.requiresPhoto) {
+      photoUrl = await _handlePhotoCapture();
+      if (photoUrl == null) return; // User cancelled
+    }
+
+    // Handle text/comment requirement
+    if (item.requiresComment) {
+      note = await _showNoteDialog();
+      if (note == null) return; // User cancelled
+    }
+
     ref.read(assignmentProvider.notifier).toggleChecklistItem(
-      widget.id, item.index, !item.isCompleted,
+      widget.id, item.index, true,
+      photoUrl: photoUrl,
+      note: note,
+    );
+  }
+
+  Future<String?> _handlePhotoCapture() async {
+    final source = await _showPhotoSourceSheet();
+    if (source == null) return null;
+
+    final picker = ImagePicker();
+    final XFile? picked;
+    if (source == ImageSource.camera) {
+      picked = await picker.pickImage(source: ImageSource.camera, imageQuality: 80);
+    } else {
+      picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    }
+    if (picked == null) return null;
+
+    setState(() => _isUploading = true);
+    try {
+      final bytes = await picked.readAsBytes();
+      final filename = 'checklist_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      const contentType = 'image/jpeg';
+
+      final storage = ref.read(storageServiceProvider);
+      final urls = await storage.getPresignedUrl(filename, contentType);
+      await storage.uploadFile(urls['upload_url']!, bytes, contentType);
+      return urls['file_url'];
+    } catch (e) {
+      if (mounted) {
+        ToastManager().error(context, 'Photo upload failed');
+      }
+      return null;
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
+  Future<ImageSource?> _showPhotoSourceSheet() {
+    return showModalBottomSheet<ImageSource>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Add Photo',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: AppColors.accent),
+              title: const Text('Take Photo'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: AppColors.accent),
+              title: const Text('Choose from Gallery'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<String?> _showNoteDialog() {
+    final controller = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        title: const Text('Add Note', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            hintText: 'Enter verification note...',
+            hintStyle: TextStyle(color: AppColors.textMuted),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final text = controller.text.trim();
+              if (text.isEmpty) return;
+              Navigator.pop(ctx, text);
+            },
+            child: const Text('Submit'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -54,7 +184,9 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
       });
     }
 
-    return Scaffold(
+    return Stack(
+      children: [
+        Scaffold(
       backgroundColor: AppColors.bg,
       body: Column(
         children: [
@@ -220,6 +352,25 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
             ),
         ],
       ),
+    ),
+        if (_isUploading)
+          Container(
+            color: Colors.black26,
+            child: const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: AppColors.accent),
+                  SizedBox(height: 12),
+                  Text(
+                    'Uploading photo...',
+                    style: TextStyle(color: AppColors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 
