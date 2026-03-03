@@ -8,8 +8,17 @@ import '../../providers/auth_provider.dart';
 import '../../providers/assignment_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/announcement_provider.dart';
+import '../../providers/voice_provider.dart';
 import '../../models/announcement.dart';
 import '../../utils/toast_manager.dart';
+
+const _voiceCategories = <String, String>{
+  'idea': '\u{1F4A1} Idea',
+  'facility': '\u{1F527} Facility',
+  'safety': '\u{26A0}\u{FE0F} Safety',
+  'hr': '\u{1F464} HR',
+  'other': '\u{1F4CB} Other',
+};
 
 String _getGreeting() {
   final hour = DateTime.now().hour;
@@ -38,6 +47,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _ideaCtrl = TextEditingController();
+  String _selectedCategory = 'idea';
 
   @override
   void initState() {
@@ -56,12 +66,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.dispose();
   }
 
-  void _submitIdea() {
+  Future<void> _submitVoice() async {
     final text = _ideaCtrl.text.trim();
     if (text.isEmpty) return;
-    _ideaCtrl.clear();
     FocusScope.of(context).unfocus();
-    ToastManager().success(context, 'Thanks for sharing!');
+    final ok = await ref.read(voiceProvider.notifier).submitVoice(
+          title: text,
+          category: _selectedCategory,
+        );
+    if (!mounted) return;
+    if (ok) {
+      _ideaCtrl.clear();
+      ToastManager().success(context, 'Thanks for sharing!');
+    } else {
+      ToastManager().error(context, 'Failed to submit. Please try again.');
+    }
   }
 
   @override
@@ -273,12 +292,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Text(
-                        fullName,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.text,
+                      Expanded(
+                        child: Text(
+                          fullName,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.text,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: AppColors.bg,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: _selectedCategory,
+                            isDense: true,
+                            style: const TextStyle(fontSize: 13, color: AppColors.text),
+                            icon: const Icon(Icons.expand_more, size: 16, color: AppColors.textMuted),
+                            items: _voiceCategories.entries.map((e) {
+                              return DropdownMenuItem(value: e.key, child: Text(e.value));
+                            }).toList(),
+                            onChanged: (v) {
+                              if (v != null) setState(() => _selectedCategory = v);
+                            },
+                          ),
                         ),
                       ),
                     ],
@@ -296,7 +338,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             controller: _ideaCtrl,
                             style: const TextStyle(fontSize: 14, color: AppColors.text),
                             decoration: const InputDecoration(
-                              hintText: 'Share your idea!',
+                              hintText: 'Share your voice!',
                               hintStyle: TextStyle(
                                 fontSize: 14,
                                 color: AppColors.textMuted,
@@ -310,11 +352,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 vertical: 12,
                               ),
                             ),
-                            onSubmitted: (_) => _submitIdea(),
+                            onSubmitted: (_) => _submitVoice(),
                           ),
                         ),
                         GestureDetector(
-                          onTap: _submitIdea,
+                          onTap: _submitVoice,
                           child: Container(
                             margin: const EdgeInsets.only(right: 6),
                             width: 36,
