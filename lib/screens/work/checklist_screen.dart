@@ -78,15 +78,20 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
     setState(() => _isUploading = true);
     try {
       final bytes = await picked.readAsBytes();
+      debugPrint('[Photo] 1. readAsBytes: ${bytes.length} bytes');
       final filename = 'checklist_${DateTime.now().millisecondsSinceEpoch}.jpg';
       const contentType = 'image/jpeg';
 
       final storage = ref.read(storageServiceProvider);
+      debugPrint('[Photo] 2. requesting presigned URL...');
       final urls = await storage.getPresignedUrl(filename, contentType);
+      debugPrint('[Photo] 3. got presigned URL: upload=${urls['upload_url']}, file=${urls['file_url']}');
       await storage.uploadFile(urls['upload_url']!, bytes, contentType);
+      debugPrint('[Photo] 4. upload complete');
       return urls['file_url'];
-    } catch (e) {
-      debugPrint('[ChecklistScreen] Photo upload error: $e');
+    } catch (e, st) {
+      debugPrint('[Photo] ERROR: $e');
+      debugPrint('[Photo] Stack: $st');
       if (mounted) {
         ToastManager().error(context, 'Photo upload failed');
       }
