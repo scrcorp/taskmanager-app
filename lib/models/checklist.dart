@@ -107,6 +107,7 @@ class ChecklistItem {
   // Rejection/feedback fields
   final bool isRejected;
   final String? rejectionComment;
+  final List<String> rejectionPhotoUrls;
   final String? rejectedBy;
   final String? rejectedAt;
 
@@ -133,6 +134,7 @@ class ChecklistItem {
     this.completedBy,
     this.isRejected = false,
     this.rejectionComment,
+    this.rejectionPhotoUrls = const [],
     this.rejectedBy,
     this.rejectedAt,
     this.responseComment,
@@ -163,6 +165,7 @@ class ChecklistItem {
       events.add(ChecklistItemEvent(
         type: 'rejected',
         comment: rejectionComment,
+        photoUrls: rejectionPhotoUrls,
         by: rejectedBy,
         at: rejectedAt,
       ));
@@ -239,6 +242,7 @@ class ChecklistItem {
     String? completedBy,
     bool? isRejected,
     String? rejectionComment,
+    List<String>? rejectionPhotoUrls,
     String? rejectedBy,
     String? rejectedAt,
     String? responseComment,
@@ -261,6 +265,7 @@ class ChecklistItem {
       completedBy: completedBy ?? this.completedBy,
       isRejected: isRejected ?? this.isRejected,
       rejectionComment: rejectionComment ?? this.rejectionComment,
+      rejectionPhotoUrls: rejectionPhotoUrls ?? this.rejectionPhotoUrls,
       rejectedBy: rejectedBy ?? this.rejectedBy,
       rejectedAt: rejectedAt ?? this.rejectedAt,
       responseComment: responseComment ?? this.responseComment,
@@ -286,6 +291,10 @@ class ChecklistItem {
       completedBy: json['completed_by'] ?? json['completed_by_name'],
       isRejected: json['is_rejected'] ?? false,
       rejectionComment: json['rejection_comment'],
+      rejectionPhotoUrls: (json['rejection_photo_urls'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
       rejectedBy: json['rejected_by'],
       rejectedAt: json['rejected_at'],
       responseComment: json['response_comment'],

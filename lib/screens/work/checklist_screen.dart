@@ -614,7 +614,9 @@ class _ChecklistItemTile extends StatelessWidget {
                     ),
                   ],
                   // Inline rejection feedback
-                  if (item.isRejected && item.rejectionComment != null) ...[
+                  if (item.isRejected &&
+                      (item.rejectionComment != null ||
+                          item.rejectionPhotoUrls.isNotEmpty)) ...[
                     const SizedBox(height: 8),
                     GestureDetector(
                       onTap: onTapDetail,
@@ -657,16 +659,47 @@ class _ChecklistItemTile extends StatelessWidget {
                                   ),
                               ],
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              item.rejectionComment!,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.text,
+                            if (item.rejectionComment != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                item.rejectionComment!,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.text,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                            ],
+                            if (item.rejectionPhotoUrls.isNotEmpty) ...[
+                              const SizedBox(height: 6),
+                              SizedBox(
+                                height: 48,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: item.rejectionPhotoUrls.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(width: 4),
+                                  itemBuilder: (context, i) => ClipRRect(
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: Image.network(
+                                      item.rejectionPhotoUrls[i],
+                                      width: 48,
+                                      height: 48,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        width: 48,
+                                        height: 48,
+                                        color: AppColors.border,
+                                        child: const Icon(Icons.broken_image,
+                                            size: 16,
+                                            color: AppColors.textSecondary),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
