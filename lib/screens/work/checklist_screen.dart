@@ -580,7 +580,7 @@ class _ChecklistItemTile extends StatelessWidget {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: const Text(
-                            '재요청',
+                            'Action Required',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
@@ -813,7 +813,7 @@ class _ItemDetailSheet extends StatelessWidget {
                     if (hasPending && index == events.length) {
                       return const _TimelineStepCard(
                         type: 'pending',
-                        comment: '재수행 대기중',
+                        comment: 'Awaiting resubmission',
                         isLast: true,
                       );
                     }
@@ -871,22 +871,22 @@ class _ItemDetailSheet extends StatelessWidget {
     final IconData icon;
 
     if (item.isRejected && !item.isResolved) {
-      label = '수정요청';
+      label = 'Revision Requested';
       color = const Color(0xFFF59E0B);
       bg = const Color(0xFFFFFBEB);
       icon = Icons.edit_note;
     } else if (item.isResolved) {
-      label = '재제출 완료';
+      label = 'Resubmitted';
       color = const Color(0xFF6C5CE7);
       bg = const Color(0xFFF0EEFF);
       icon = Icons.replay;
     } else if (item.isCompleted) {
-      label = '제출 완료';
+      label = 'Submitted';
       color = const Color(0xFF10B981);
       bg = const Color(0xFFD1FAE5);
       icon = Icons.check_circle;
     } else {
-      label = '미제출';
+      label = 'Not Submitted';
       color = const Color(0xFF9CA3AF);
       bg = const Color(0xFFF9FAFB);
       icon = Icons.schedule;
@@ -979,13 +979,13 @@ class _TimelineStepCard extends StatelessWidget {
   String get _label {
     switch (type) {
       case 'completed':
-        return '제출';
+        return 'Submitted';
       case 'rejected':
-        return '수정요청';
+        return 'Revision Requested';
       case 'responded':
-        return '재제출';
+        return 'Resubmitted';
       case 'pending':
-        return '대기중';
+        return 'Pending';
       default:
         return type;
     }
