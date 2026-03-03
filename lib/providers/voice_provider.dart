@@ -51,16 +51,14 @@ class VoiceNotifier extends StateNotifier<VoiceState> {
   }
 
   Future<bool> submitVoice({
-    required String title,
-    String? description,
+    required String content,
     String category = 'idea',
     String priority = 'normal',
   }) async {
     state = state.copyWith(isSubmitting: true, error: null);
     try {
       final voice = await _service.createVoice(
-        title: title,
-        description: description,
+        content: content,
         category: category,
         priority: priority,
       );

@@ -13,15 +13,13 @@ class VoiceService {
   VoiceService(this._dio);
 
   Future<Voice> createVoice({
-    required String title,
-    String? description,
+    required String content,
     String category = 'idea',
     String priority = 'normal',
     String? storeId,
   }) async {
     final response = await _dio.post('/app/my/voices', data: {
-      'title': title,
-      if (description != null) 'description': description,
+      'content': content,
       'category': category,
       'priority': priority,
       if (storeId != null) 'store_id': storeId,

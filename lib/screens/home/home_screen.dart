@@ -71,7 +71,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (text.isEmpty) return;
     FocusScope.of(context).unfocus();
     final ok = await ref.read(voiceProvider.notifier).submitVoice(
-          title: text,
+          content: text,
           category: _selectedCategory,
         );
     if (!mounted) return;

@@ -1,7 +1,7 @@
 class Voice {
   final String id;
   final String title;
-  final String? description;
+  final String? content;
   final String category;
   final String status;
   final String priority;
@@ -17,7 +17,7 @@ class Voice {
   const Voice({
     required this.id,
     required this.title,
-    this.description,
+    this.content,
     required this.category,
     required this.status,
     required this.priority,
@@ -35,7 +35,7 @@ class Voice {
     return Voice(
       id: json['id'],
       title: json['title'],
-      description: json['description'],
+      content: json['content'],
       category: json['category'] ?? 'other',
       status: json['status'] ?? 'open',
       priority: json['priority'] ?? 'normal',
