@@ -103,6 +103,33 @@ class ShiftInfo {
 
   const ShiftInfo({this.id, required this.name});
 
+  static final _timeRangeRegex = RegExp(r'(\d{1,2}):(\d{2})\s*[-~]\s*(\d{1,2}):(\d{2})');
+
+  ({int hour, int minute})? get startTime {
+    final match = _timeRangeRegex.firstMatch(name);
+    if (match == null) return null;
+    return (hour: int.parse(match.group(1)!), minute: int.parse(match.group(2)!));
+  }
+
+  ({int hour, int minute})? get endTime {
+    final match = _timeRangeRegex.firstMatch(name);
+    if (match == null) return null;
+    return (hour: int.parse(match.group(3)!), minute: int.parse(match.group(4)!));
+  }
+
+  bool isWithinShiftHours(DateTime dateTime) {
+    final start = startTime;
+    final end = endTime;
+    if (start == null || end == null) return true;
+    final nowMin = dateTime.hour * 60 + dateTime.minute;
+    final startMin = start.hour * 60 + start.minute;
+    final endMin = end.hour * 60 + end.minute;
+    if (endMin < startMin) {
+      return nowMin >= startMin || nowMin <= endMin;
+    }
+    return nowMin >= startMin && nowMin <= endMin;
+  }
+
   factory ShiftInfo.fromJson(Map<String, dynamic> json) {
     return ShiftInfo(id: json['id'], name: json['name'] ?? '');
   }

@@ -107,6 +107,21 @@ class AssignmentNotifier extends StateNotifier<AssignmentState> {
     await _reloadAssignment(assignmentId);
   }
 
+  Future<void> respondToRejection(
+    String assignmentId,
+    int itemIndex, {
+    String? responseComment,
+    String? photoUrl,
+  }) async {
+    await _service.respondToRejection(
+      assignmentId,
+      itemIndex,
+      responseComment: responseComment,
+      photoUrl: photoUrl,
+    );
+    await _reloadAssignment(assignmentId);
+  }
+
   Future<void> _reloadAssignment(String assignmentId) async {
     final updated = await _service.getAssignment(assignmentId);
     final updatedList = state.assignments.map((a) {

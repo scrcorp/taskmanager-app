@@ -59,4 +59,18 @@ class AssignmentService {
       if (note != null) 'note': note,
     });
   }
+
+  Future<void> respondToRejection(
+    String assignmentId,
+    int itemIndex, {
+    String? responseComment,
+    String? photoUrl,
+    String timezone = 'America/Los_Angeles',
+  }) async {
+    await _dio.patch('/app/my/work-assignments/$assignmentId/checklist/$itemIndex/respond', data: {
+      'timezone': timezone,
+      if (responseComment != null) 'response_comment': responseComment,
+      if (photoUrl != null) 'photo_url': photoUrl,
+    });
+  }
 }

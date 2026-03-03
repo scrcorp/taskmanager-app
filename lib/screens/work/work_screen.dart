@@ -27,6 +27,9 @@ class WorkScreen extends ConsumerStatefulWidget {
 class _WorkScreenState extends ConsumerState<WorkScreen> {
   int _selectedTab = 0; // 0 = Today, 1 = Past
   bool _pastLoaded = false;
+  final _scrollController = ScrollController();
+  final _checklistKey = GlobalKey();
+  final _taskKey = GlobalKey();
 
   @override
   void initState() {
@@ -35,6 +38,27 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
     Future.microtask(() {
       ref.read(assignmentProvider.notifier).loadAssignments(today);
       ref.read(taskProvider.notifier).loadTasks();
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToSection(String section) {
+    final key = section == 'task' ? _taskKey : _checklistKey;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = key.currentContext;
+      if (ctx != null) {
+        Scrollable.ensureVisible(
+          ctx,
+          duration: const Duration(milliseconds: 400),
+          curve: Curves.easeOutCubic,
+          alignment: 0.05,
+        );
+      }
     });
   }
 
@@ -61,16 +85,17 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
     final assignments = ref.watch(assignmentProvider);
     final tasks = ref.watch(taskProvider);
 
+    // Handle scrollTo query parameter
+    final scrollTo = GoRouterState.of(context).uri.queryParameters['scrollTo'];
+    if (scrollTo != null) {
+      _scrollToSection(scrollTo);
+    }
+
     final tags = <String>{};
     for (final a in assignments.assignments) {
       if (a.store.name.isNotEmpty) tags.add(a.store.name);
       if (a.shift.name.isNotEmpty) tags.add(a.shift.name);
     }
-
-    final totalTasks = tasks.tasks.length;
-    final doneTasks = tasks.tasks.where((t) => t.status == 'completed').length;
-    final remainingTasks = totalTasks - doneTasks;
-    final doneRatio = totalTasks > 0 ? doneTasks / totalTasks : 0.0;
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -85,14 +110,16 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
         }
       },
       child: ListView(
+        controller: _scrollController,
         padding: const EdgeInsets.all(20),
         children: [
           // ── Profile card ──
           _ProfileCard(user: user, tags: tags.toList()),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
 
           // ── Checklist section ──
           Container(
+            key: _checklistKey,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: AppColors.white,
@@ -105,15 +132,19 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
                 Row(
                   children: [
                     Container(
-                      width: 32,
-                      height: 32,
+                      width: 28,
+                      height: 28,
                       decoration: BoxDecoration(
                         color: AppColors.accentBg,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.checklist_rounded, size: 18, color: AppColors.accent),
+                      child: const Icon(
+                        Icons.checklist_rounded,
+                        size: 16,
+                        color: AppColors.accent,
+                      ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     const Text(
                       'Checklist',
                       style: TextStyle(
@@ -125,171 +156,71 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                // Tab toggle
                 _TabToggle(
                   selectedIndex: _selectedTab,
                   onChanged: _switchTab,
                 ),
                 const SizedBox(height: 12),
-                // Tab content
                 if (_selectedTab == 0)
-                  _buildTodayContent(assignments)
+                  _TodayAssignmentList(
+                    assignments: assignments,
+                    onOpenChecklist: _openChecklist,
+                  )
                 else
-                  _buildPastContent(assignments),
+                  _PastContent(
+                    assignments: assignments,
+                    onOpenChecklist: _openChecklist,
+                  ),
               ],
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
 
-          // ── Section divider ──
+          // ── Task section ──
           Container(
-            margin: const EdgeInsets.only(bottom: 20),
-            height: 1,
-            color: AppColors.border,
-          ),
-
-          // ── Task progress ──
-          if (!tasks.isLoading && totalTasks > 0) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _SectionLabel(text: 'Task($remainingTasks/$totalTasks)'),
-                Text(
-                  '$doneTasks done',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.success,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+            key: _taskKey,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
             ),
-            const SizedBox(height: 8),
-            const Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'done',
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                ),
-                Text(
-                  'left',
-                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Stack(
-              children: [
-                Container(
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(5),
-                  ),
-                ),
-                FractionallySizedBox(
-                  widthFactor: doneRatio,
-                  child: Container(
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: AppColors.accent,
-                      borderRadius: BorderRadius.circular(5),
+                Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: AppColors.warningBg,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.task_alt_rounded,
+                        size: 16,
+                        color: AppColors.warning,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Task',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.text,
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 12),
+                _TodayTaskContent(tasks: tasks),
               ],
             ),
-            const SizedBox(height: 20),
-          ],
-
-          // ── Task List ──
-          const _SectionLabel(text: 'Task List'),
-          const SizedBox(height: 10),
-          if (tasks.isLoading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(20),
-                child: CircularProgressIndicator(),
-              ),
-            )
-          else if (tasks.tasks.isEmpty)
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: const Center(
-                child: Text(
-                  'No tasks assigned',
-                  style: TextStyle(color: AppColors.textMuted),
-                ),
-              ),
-            )
-          else
-            ...tasks.tasks.map(
-              (t) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _TaskCard(task: t),
-              ),
-            ),
-          const SizedBox(height: 20),
+          ),
         ],
       ),
-    );
-  }
-
-  Widget _buildTodayContent(AssignmentState assignments) {
-    if (assignments.isLoading) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 20),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-    if (assignments.assignments.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 20),
-        child: Center(
-          child: Text(
-            'No checklists assigned today',
-            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
-          ),
-        ),
-      );
-    }
-    return Column(
-      children: assignments.assignments.map((a) => _AssignmentCard(
-        assignment: a,
-        onTap: () => _openChecklist(context, a.id),
-      )).toList(),
-    );
-  }
-
-  Widget _buildPastContent(AssignmentState assignments) {
-    if (assignments.isPastLoading) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 20),
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-    if (assignments.pastAssignments.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 20),
-        child: Center(
-          child: Text(
-            'No past checklists',
-            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
-          ),
-        ),
-      );
-    }
-    return Column(
-      children: assignments.pastAssignments.map((a) => _AssignmentCard(
-        assignment: a,
-        onTap: () => _openChecklist(context, a.id),
-      )).toList(),
     );
   }
 }
@@ -348,6 +279,172 @@ class _TabToggle extends StatelessWidget {
               color: isSelected ? AppColors.text : AppColors.textMuted,
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Today assignment list ───────────────────────────────────────────────────
+
+class _TodayAssignmentList extends StatelessWidget {
+  final AssignmentState assignments;
+  final void Function(BuildContext, String) onOpenChecklist;
+
+  const _TodayAssignmentList({
+    required this.assignments,
+    required this.onOpenChecklist,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (assignments.isLoading) {
+      return const SizedBox(
+        height: 72,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (assignments.assignments.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Center(
+          child: Text(
+            'No checklists assigned today',
+            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: assignments.assignments.map((a) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: _TodayAssignmentCard(
+            assignment: a,
+            onTap: () => onOpenChecklist(context, a.id),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+// ─── Today assignment card (with shift-time coloring) ────────────────────────
+
+class _TodayAssignmentCard extends StatelessWidget {
+  final Assignment assignment;
+  final VoidCallback onTap;
+
+  const _TodayAssignmentCard({
+    required this.assignment,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final a = assignment;
+    final total = a.checklistSnapshot?.totalItems ?? 0;
+    final completed = a.checklistSnapshot?.completedItems ?? 0;
+    final isDone = total > 0 && completed == total;
+    final isWithinShift = a.shift.isWithinShiftHours(DateTime.now());
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDone
+                ? AppColors.success.withValues(alpha: 0.4)
+                : isWithinShift
+                    ? AppColors.accent.withValues(alpha: 0.3)
+                    : AppColors.border,
+          ),
+        ),
+        child: Row(
+          children: [
+            // Date badge
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: isDone
+                    ? AppColors.successBg
+                    : isWithinShift
+                        ? AppColors.accentBg
+                        : AppColors.bg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Center(
+                child: Text(
+                  DateFormat('dd').format(a.workDate),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: isDone
+                        ? AppColors.success
+                        : isWithinShift
+                            ? AppColors.accent
+                            : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Store name + shift
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    a.store.name,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.text,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    a.shift.name,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Completion badge
+            if (total > 0)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isDone ? AppColors.successBg : AppColors.accentBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '$completed/$total',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: isDone ? AppColors.success : AppColors.accent,
+                  ),
+                ),
+              ),
+            const SizedBox(width: 4),
+            const Icon(
+              Icons.chevron_right,
+              size: 20,
+              color: AppColors.textMuted,
+            ),
+          ],
         ),
       ),
     );
@@ -479,104 +576,428 @@ class _ProfileCard extends StatelessWidget {
   }
 }
 
-// ─── Assignment card ──────────────────────────────────────────────────────────
+// ─── Today task content (with search/filter/sort) ────────────────────────────
 
-class _AssignmentCard extends StatelessWidget {
-  final Assignment assignment;
-  final VoidCallback onTap;
+enum _TaskSortOption { dueDate, priority, recent, name }
 
-  const _AssignmentCard({required this.assignment, required this.onTap});
+class _TodayTaskContent extends StatefulWidget {
+  final TaskState tasks;
+
+  const _TodayTaskContent({required this.tasks});
+
+  @override
+  State<_TodayTaskContent> createState() => _TodayTaskContentState();
+}
+
+class _TodayTaskContentState extends State<_TodayTaskContent> {
+  String _searchQuery = '';
+  DateTime? _selectedDate;
+  _TaskSortOption _sortOption = _TaskSortOption.dueDate;
+  final _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<AdditionalTask> get _filteredAndSorted {
+    var list = widget.tasks.tasks.toList();
+
+    // Search filter
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      list = list.where((t) {
+        return t.title.toLowerCase().contains(q) ||
+            (t.store?.name.toLowerCase().contains(q) ?? false);
+      }).toList();
+    }
+
+    // Date filter
+    if (_selectedDate != null) {
+      list = list.where((t) {
+        if (t.dueDate == null) return false;
+        return t.dueDate!.year == _selectedDate!.year &&
+            t.dueDate!.month == _selectedDate!.month &&
+            t.dueDate!.day == _selectedDate!.day;
+      }).toList();
+    }
+
+    // Sort
+    switch (_sortOption) {
+      case _TaskSortOption.dueDate:
+        list.sort((a, b) {
+          if (a.dueDate == null && b.dueDate == null) return 0;
+          if (a.dueDate == null) return 1;
+          if (b.dueDate == null) return -1;
+          return a.dueDate!.compareTo(b.dueDate!);
+        });
+      case _TaskSortOption.priority:
+        const order = {'urgent': 0, 'high': 1, 'normal': 2, 'low': 3};
+        list.sort((a, b) =>
+            (order[a.priority] ?? 2).compareTo(order[b.priority] ?? 2));
+      case _TaskSortOption.recent:
+        list.sort((a, b) {
+          if (a.createdAt == null && b.createdAt == null) return 0;
+          if (a.createdAt == null) return 1;
+          if (b.createdAt == null) return -1;
+          return b.createdAt!.compareTo(a.createdAt!);
+        });
+      case _TaskSortOption.name:
+        list.sort(
+            (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+    }
+
+    return list;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final total = assignment.totalItems;
-    final completed = assignment.completedItems;
-    final isDone = total > 0 && completed == total;
-    final day = assignment.workDate.day.toString();
+    final totalTasks = widget.tasks.tasks.length;
+    final doneTasks =
+        widget.tasks.tasks.where((t) => t.status == 'completed').length;
+    final remainingTasks = totalTasks - doneTasks;
+    final doneRatio = totalTasks > 0 ? doneTasks / totalTasks : 0.0;
+    final filtered = _filteredAndSorted;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AppColors.bg,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // ── Task progress
+        if (!widget.tasks.isLoading && totalTasks > 0) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Date badge
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: isDone ? AppColors.successBg : AppColors.accentBg,
-                  borderRadius: BorderRadius.circular(12),
+              Text(
+                '$remainingTasks / $totalTasks',
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.text,
                 ),
-                child: Center(
-                  child: Text(
-                    day,
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: isDone ? AppColors.success : AppColors.accent,
-                    ),
+              ),
+              Text(
+                '$doneTasks done',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.success,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'done',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              Text(
+                'left',
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Stack(
+            children: [
+              Container(
+                height: 10,
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(5),
+                ),
+              ),
+              FractionallySizedBox(
+                widthFactor: doneRatio,
+                child: Container(
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: AppColors.accent,
+                    borderRadius: BorderRadius.circular(5),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
-              // Store / shift info
+            ],
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // ── Filter toolbar
+        if (!widget.tasks.isLoading && totalTasks > 0) ...[
+          const Divider(color: AppColors.border, height: 1),
+          const SizedBox(height: 12),
+
+          // Search bar + filter icons in one row
+          Row(
+            children: [
+              // Search bar (expanded)
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      assignment.store.name,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.text,
-                      ),
+                child: Container(
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.bg,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: TextField(
+                    controller: _searchController,
+                    onSubmitted: (_) => _applySearch(),
+                    style: const TextStyle(
+                        fontSize: 13, color: AppColors.text),
+                    decoration: InputDecoration(
+                      hintText: 'Search tasks or stores',
+                      hintStyle: const TextStyle(
+                          fontSize: 13, color: AppColors.textMuted),
+                      prefixIcon: const Icon(Icons.search,
+                          size: 18, color: AppColors.textMuted),
+                      suffixIcon: _searchController.text.isNotEmpty
+                          ? GestureDetector(
+                              onTap: _searchQuery.isNotEmpty
+                                  ? _clearSearch
+                                  : _applySearch,
+                              child: Container(
+                                width: 32,
+                                height: 32,
+                                margin: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: _searchQuery.isNotEmpty
+                                      ? AppColors.dangerBg
+                                      : AppColors.accent,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  _searchQuery.isNotEmpty
+                                      ? Icons.close
+                                      : Icons.arrow_forward,
+                                  size: 15,
+                                  color: _searchQuery.isNotEmpty
+                                      ? AppColors.danger
+                                      : AppColors.white,
+                                ),
+                              ),
+                            )
+                          : null,
+                      border: InputBorder.none,
+                      contentPadding:
+                          const EdgeInsets.symmetric(vertical: 9),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${assignment.shift.name} · ${assignment.position.name}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
+                    onChanged: (_) => setState(() {}),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
-              // Completion badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: isDone ? AppColors.successBg : AppColors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isDone ? AppColors.success : AppColors.border,
+              // Date filter button
+              _FilterIconButton(
+                icon: Icons.calendar_today,
+                isActive: _selectedDate != null,
+                onTap: () => _pickDate(context),
+              ),
+              const SizedBox(width: 6),
+              // Sort button
+              _FilterIconButton(
+                icon: Icons.swap_vert,
+                isActive: _sortOption != _TaskSortOption.dueDate,
+                onTap: () => _showSortOptions(context),
+              ),
+            ],
+          ),
+
+          // Active date chip
+          if (_selectedDate != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.accentBg,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Due',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.accent,
+                    ),
                   ),
+                  Container(
+                    width: 1,
+                    height: 12,
+                    margin: const EdgeInsets.symmetric(horizontal: 8),
+                    color: AppColors.accent.withValues(alpha: 0.3),
+                  ),
+                  Text(
+                    DateFormat('yyyy.MM.dd').format(_selectedDate!),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.accent,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  GestureDetector(
+                    onTap: () => setState(() => _selectedDate = null),
+                    child: const Icon(Icons.close,
+                        size: 14, color: AppColors.accent),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          const SizedBox(height: 12),
+        ],
+
+        // ── Task List
+        if (widget.tasks.isLoading)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(20),
+              child: CircularProgressIndicator(),
+            ),
+          )
+        else if (widget.tasks.tasks.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(
+              child: Text(
+                'No tasks assigned',
+                style: TextStyle(color: AppColors.textMuted),
+              ),
+            ),
+          )
+        else if (filtered.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: Text(
+                _searchQuery.isNotEmpty
+                    ? 'No results for "$_searchQuery"'
+                    : 'No tasks for selected date',
+                style: const TextStyle(
+                    fontSize: 13, color: AppColors.textMuted),
+              ),
+            ),
+          )
+        else
+          ...filtered.map(
+            (t) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _TaskCard(task: t),
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _applySearch() {
+    setState(() => _searchQuery = _searchController.text.trim());
+    FocusScope.of(context).unfocus();
+  }
+
+  void _clearSearch() {
+    setState(() {
+      _searchController.clear();
+      _searchQuery = '';
+    });
+  }
+
+  Future<void> _pickDate(BuildContext context) async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate ?? now,
+      firstDate: now.subtract(const Duration(days: 365)),
+      lastDate: now.add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.accent,
+              onSurface: AppColors.text,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() => _selectedDate = picked);
+    }
+  }
+
+  void _showSortOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                child: Text(
-                  '$completed/$total',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: isDone ? AppColors.success : AppColors.textSecondary,
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Sort by',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.text,
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: 4),
-              const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted),
+              const SizedBox(height: 4),
+              _sortTile('Due date', _TaskSortOption.dueDate),
+              _sortTile('Priority', _TaskSortOption.priority),
+              _sortTile('Recent', _TaskSortOption.recent),
+              _sortTile('Name', _TaskSortOption.name),
+              const SizedBox(height: 8),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _sortTile(String label, _TaskSortOption option) {
+    final isSelected = _sortOption == option;
+    return ListTile(
+      dense: true,
+      title: Text(
+        label,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+          color: isSelected ? AppColors.accent : AppColors.text,
+        ),
+      ),
+      trailing: isSelected
+          ? const Icon(Icons.check, size: 18, color: AppColors.accent)
+          : null,
+      onTap: () {
+        setState(() => _sortOption = option);
+        Navigator.pop(context);
+      },
     );
   }
 }
@@ -686,23 +1107,890 @@ class _TaskCard extends StatelessWidget {
   }
 }
 
-// ─── Section label ────────────────────────────────────────────────────────────
+// ─── Filter icon button ──────────────────────────────────────────────────────
 
-class _SectionLabel extends StatelessWidget {
-  final String text;
+class _FilterIconButton extends StatelessWidget {
+  final IconData icon;
+  final bool isActive;
+  final VoidCallback onTap;
 
-  const _SectionLabel({required this.text});
+  const _FilterIconButton({
+    required this.icon,
+    required this.isActive,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-        color: AppColors.textSecondary,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.accentBg : AppColors.bg,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
+          size: 16,
+          color: isActive ? AppColors.accent : AppColors.textMuted,
+        ),
       ),
     );
+  }
+}
+
+// ─── Past content (with filter chips + pagination) ───────────────────────────
+
+class _PastContent extends StatefulWidget {
+  final AssignmentState assignments;
+  final void Function(BuildContext, String) onOpenChecklist;
+
+  const _PastContent({
+    required this.assignments,
+    required this.onOpenChecklist,
+  });
+
+  @override
+  State<_PastContent> createState() => _PastContentState();
+}
+
+class _PastContentState extends State<_PastContent> {
+  bool _showAll = false;
+  bool _unresolvedOnly = false;
+  DateTime? _selectedDate;
+  int _currentPage = 0;
+  static const _pageSize = 5;
+
+  List<Assignment> get _allPast => widget.assignments.pastAssignments;
+
+  List<DateTime> get _workDates {
+    final seen = <String>{};
+    final dates = <DateTime>[];
+    for (final a in _allPast) {
+      final key = DateFormat('yyyy-MM-dd').format(a.workDate);
+      if (seen.add(key)) dates.add(a.workDate);
+    }
+    return dates;
+  }
+
+  List<Assignment> get _unresolvedAssignments => _allPast
+      .where((a) => (a.checklistSnapshot?.unresolvedRejections ?? []).isNotEmpty)
+      .toList();
+
+  bool get _hasActiveFilter => _showAll || _unresolvedOnly || _selectedDate != null;
+
+  List<Assignment> get _filteredAssignments {
+    var list = List<Assignment>.from(_allPast);
+    if (_showAll) return list;
+    if (_unresolvedOnly) {
+      list = _unresolvedAssignments;
+    }
+    if (_selectedDate != null) {
+      list = list
+          .where((a) =>
+              a.workDate.year == _selectedDate!.year &&
+              a.workDate.month == _selectedDate!.month &&
+              a.workDate.day == _selectedDate!.day)
+          .toList();
+    }
+    return list;
+  }
+
+  List<Assignment> get _latestDateAssignments {
+    if (_allPast.isEmpty) return [];
+    final latestDate = _allPast.first.workDate;
+    return _allPast
+        .where((a) =>
+            a.workDate.year == latestDate.year &&
+            a.workDate.month == latestDate.month &&
+            a.workDate.day == latestDate.day)
+        .toList();
+  }
+
+  void _resetFilters() {
+    setState(() {
+      _showAll = false;
+      _unresolvedOnly = false;
+      _selectedDate = null;
+      _currentPage = 0;
+    });
+  }
+
+  void _toggleShowAll() {
+    setState(() {
+      _showAll = !_showAll;
+      if (_showAll) {
+        _unresolvedOnly = false;
+        _selectedDate = null;
+      }
+      _currentPage = 0;
+    });
+  }
+
+  void _toggleUnresolvedFilter() {
+    setState(() {
+      _unresolvedOnly = !_unresolvedOnly;
+      if (_unresolvedOnly) _showAll = false;
+      _currentPage = 0;
+    });
+  }
+
+  void _showDateSelector() {
+    final dates = _workDates;
+    if (dates.isEmpty) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _WorkDatePickerSheet(
+        workDates: dates,
+        selectedDate: _selectedDate,
+        onSelect: (date) {
+          Navigator.pop(ctx);
+          setState(() {
+            _selectedDate = date;
+            _showAll = false;
+            _currentPage = 0;
+          });
+        },
+      ),
+    );
+  }
+
+  void _clearDate() {
+    setState(() {
+      _selectedDate = null;
+      _currentPage = 0;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.assignments.isPastLoading) {
+      return const SizedBox(
+        height: 120,
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_allPast.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(
+          child: Text(
+            'No past checklists',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildFilterRow(),
+        const SizedBox(height: 12),
+        if (!_hasActiveFilter)
+          _buildDefaultView()
+        else
+          _buildFilteredView(),
+      ],
+    );
+  }
+
+  Widget _buildFilterRow() {
+    return Row(
+      children: [
+        _FilterChip(
+          label: 'All',
+          isActive: _showAll,
+          onTap: _toggleShowAll,
+        ),
+        const SizedBox(width: 6),
+        if (_unresolvedAssignments.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: _FilterChip(
+              label: 'Unresolved ${_unresolvedAssignments.length}',
+              isActive: _unresolvedOnly,
+              color: AppColors.warning,
+              onTap: _toggleUnresolvedFilter,
+            ),
+          ),
+        if (_selectedDate != null)
+          _FilterChip(
+            label: DateFormat('MM/dd').format(_selectedDate!),
+            isActive: true,
+            icon: Icons.close,
+            onTap: _clearDate,
+          )
+        else
+          _FilterChip(
+            label: 'Date',
+            isActive: false,
+            icon: Icons.calendar_today,
+            onTap: _showDateSelector,
+          ),
+        const Spacer(),
+        if (_hasActiveFilter)
+          GestureDetector(
+            onTap: _resetFilters,
+            child: const Text(
+              'Reset',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.accent,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildDefaultView() {
+    final latestAssignments = _latestDateAssignments;
+    final latestIds = latestAssignments.map((a) => a.id).toSet();
+    final otherUnresolved =
+        _unresolvedAssignments.where((a) => !latestIds.contains(a.id)).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ...latestAssignments.map((a) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _PastAssignmentCard(
+                assignment: a,
+                onTap: () => widget.onOpenChecklist(context, a.id),
+              ),
+            )),
+        if (otherUnresolved.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+            child: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded,
+                    size: 14, color: AppColors.warning),
+                const SizedBox(width: 4),
+                Text(
+                  'Previous unresolved: ${otherUnresolved.length}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.warning,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          ...otherUnresolved.map((a) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _PastAssignmentCard(
+                  assignment: a,
+                  onTap: () => widget.onOpenChecklist(context, a.id),
+                ),
+              )),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildFilteredView() {
+    final filtered = _filteredAssignments;
+
+    if (filtered.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(
+          child: Text(
+            'No matching records',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+          ),
+        ),
+      );
+    }
+
+    final totalPages = (filtered.length / _pageSize).ceil();
+    final start = _currentPage * _pageSize;
+    final pageItems = filtered.skip(start).take(_pageSize).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ...pageItems.map((a) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _PastAssignmentCard(
+                assignment: a,
+                onTap: () => widget.onOpenChecklist(context, a.id),
+              ),
+            )),
+        if (totalPages > 1) ...[
+          const SizedBox(height: 8),
+          _buildPagination(totalPages),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildPagination(int totalPages) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        GestureDetector(
+          onTap: _currentPage > 0
+              ? () => setState(() => _currentPage--)
+              : null,
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: _currentPage > 0 ? AppColors.bg : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.chevron_left,
+              size: 18,
+              color: _currentPage > 0 ? AppColors.text : AppColors.border,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '${_currentPage + 1} / $totalPages',
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary,
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: _currentPage < totalPages - 1
+              ? () => setState(() => _currentPage++)
+              : null,
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: _currentPage < totalPages - 1
+                  ? AppColors.bg
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.chevron_right,
+              size: 18,
+              color: _currentPage < totalPages - 1
+                  ? AppColors.text
+                  : AppColors.border,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Past assignment card ────────────────────────────────────────────────────
+
+class _PastAssignmentCard extends StatelessWidget {
+  final Assignment assignment;
+  final VoidCallback onTap;
+
+  const _PastAssignmentCard({
+    required this.assignment,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final a = assignment;
+    final total = a.checklistSnapshot?.totalItems ?? 0;
+    final completed = a.checklistSnapshot?.completedItems ?? 0;
+    final isDone = total > 0 && completed == total;
+    final unresolvedList = a.checklistSnapshot?.unresolvedRejections ?? [];
+    final hasUnresolved = unresolvedList.isNotEmpty;
+    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    final wd = weekdays[a.workDate.weekday - 1];
+    final dateStr = '${DateFormat('MM/dd').format(a.workDate)} ($wd)';
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: hasUnresolved
+                ? AppColors.warning.withValues(alpha: 0.4)
+                : AppColors.border,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                // Date badge
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: hasUnresolved
+                        ? AppColors.warningBg
+                        : isDone
+                            ? AppColors.successBg
+                            : AppColors.bg,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Center(
+                    child: Text(
+                      DateFormat('dd').format(a.workDate),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: hasUnresolved
+                            ? AppColors.warning
+                            : isDone
+                                ? AppColors.success
+                                : AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${a.store.name} · ${a.shift.name}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.text,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(
+                            dateStr,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          if (hasUnresolved) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 1),
+                              decoration: BoxDecoration(
+                                color: AppColors.warningBg,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'Unresolved ${unresolvedList.length}',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.warning,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Completion badge
+                if (total > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDone ? AppColors.successBg : AppColors.warningBg,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$completed/$total',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: isDone ? AppColors.success : AppColors.warning,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            // Unresolved rejection feedback
+            if (hasUnresolved) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.warningBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: unresolvedList.map((item) {
+                    return Padding(
+                      padding: EdgeInsets.only(
+                          top: item == unresolvedList.first ? 0 : 8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(top: 2),
+                            child: Icon(Icons.feedback_outlined,
+                                size: 14, color: AppColors.warning),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.title,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.text,
+                                  ),
+                                ),
+                                if (item.rejectionComment != null) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    item.rejectionComment!,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Filter chip ─────────────────────────────────────────────────────────────
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool isActive;
+  final Color? color;
+  final IconData? icon;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.isActive,
+    this.color,
+    this.icon,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final activeColor = color ?? AppColors.accent;
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isActive
+              ? activeColor.withValues(alpha: 0.1)
+              : AppColors.bg,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isActive
+                ? activeColor.withValues(alpha: 0.4)
+                : AppColors.border,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 12, color: isActive ? activeColor : AppColors.textMuted),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isActive ? activeColor : AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Work date picker bottom sheet ───────────────────────────────────────────
+
+class _WorkDatePickerSheet extends StatefulWidget {
+  final List<DateTime> workDates;
+  final DateTime? selectedDate;
+  final ValueChanged<DateTime> onSelect;
+
+  const _WorkDatePickerSheet({
+    required this.workDates,
+    this.selectedDate,
+    required this.onSelect,
+  });
+
+  @override
+  State<_WorkDatePickerSheet> createState() => _WorkDatePickerSheetState();
+}
+
+class _WorkDatePickerSheetState extends State<_WorkDatePickerSheet> {
+  late DateTime _currentMonth;
+  late Set<String> _workDateKeys;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentMonth = widget.workDates.isNotEmpty
+        ? DateTime(widget.workDates.first.year, widget.workDates.first.month)
+        : DateTime(DateTime.now().year, DateTime.now().month);
+    _workDateKeys = widget.workDates
+        .map((d) => DateFormat('yyyy-MM-dd').format(d))
+        .toSet();
+  }
+
+  void _prevMonth() {
+    setState(() {
+      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
+    });
+  }
+
+  void _nextMonth() {
+    final now = DateTime.now();
+    final next = DateTime(_currentMonth.year, _currentMonth.month + 1);
+    if (next.isBefore(DateTime(now.year, now.month + 1))) {
+      setState(() => _currentMonth = next);
+    }
+  }
+
+  bool _isWorkDate(DateTime day) {
+    return _workDateKeys.contains(DateFormat('yyyy-MM-dd').format(day));
+  }
+
+  bool _isSelected(DateTime day) {
+    if (widget.selectedDate == null) return false;
+    return day.year == widget.selectedDate!.year &&
+        day.month == widget.selectedDate!.month &&
+        day.day == widget.selectedDate!.day;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final year = _currentMonth.year;
+    final month = _currentMonth.month;
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    final firstWeekday = DateTime(year, month, 1).weekday;
+
+    const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.border,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Select Work Date',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: AppColors.text,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Month navigation
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GestureDetector(
+                onTap: _prevMonth,
+                child: const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Icon(Icons.chevron_left, size: 22, color: AppColors.textSecondary),
+                ),
+              ),
+              Text(
+                DateFormat('yyyy MMM').format(_currentMonth),
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.text,
+                ),
+              ),
+              GestureDetector(
+                onTap: _nextMonth,
+                child: const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Icon(Icons.chevron_right, size: 22, color: AppColors.textSecondary),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Weekday headers
+          Row(
+            children: weekdayLabels.map((label) {
+              return Expanded(
+                child: Center(
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 8),
+          // Calendar grid
+          ..._buildWeeks(year, month, daysInMonth, firstWeekday),
+          const SizedBox(height: 12),
+          // Legend
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: AppColors.accent,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Text(
+                'Work day',
+                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: AppColors.bg,
+                  borderRadius: BorderRadius.circular(3),
+                  border: Border.all(color: AppColors.border),
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Text(
+                'No work',
+                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _buildWeeks(int year, int month, int daysInMonth, int firstWeekday) {
+    final weeks = <Widget>[];
+    final offset = firstWeekday - 1;
+    var day = 1;
+
+    while (day <= daysInMonth) {
+      final cells = <Widget>[];
+      for (var i = 0; i < 7; i++) {
+        if ((weeks.isEmpty && i < offset) || day > daysInMonth) {
+          cells.add(const Expanded(child: SizedBox(height: 40)));
+        } else {
+          final thisDay = DateTime(year, month, day);
+          final isWork = _isWorkDate(thisDay);
+          final isSel = _isSelected(thisDay);
+
+          cells.add(Expanded(
+            child: GestureDetector(
+              onTap: isWork ? () => widget.onSelect(thisDay) : null,
+              child: Container(
+                height: 40,
+                margin: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: isSel
+                      ? AppColors.accent
+                      : isWork
+                          ? AppColors.accentBg
+                          : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Text(
+                    '$day',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: isWork ? FontWeight.w700 : FontWeight.w400,
+                      color: isSel
+                          ? AppColors.white
+                          : isWork
+                              ? AppColors.accent
+                              : AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ));
+          day++;
+        }
+      }
+      weeks.add(Row(children: cells));
+    }
+    return weeks;
   }
 }
 
@@ -1102,7 +2390,6 @@ class _VerificationBottomSheetState
     return true;
   }
 
-  /// 사진 선택/촬영 후 즉시 temp에 업로드.
   Future<void> _uploadToTemp(Uint8List bytes) async {
     setState(() => _isUploading = true);
     try {
