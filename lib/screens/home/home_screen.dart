@@ -231,12 +231,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   child: _QuickActionCard(
                     icon: Icons.school_rounded,
                     label: 'OJT',
-                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Coming soon'),
-                        duration: Duration(seconds: 1),
-                      ),
-                    ),
+                    onTap: () => context.push('/ojt'),
                   ),
                 ),
               ],
