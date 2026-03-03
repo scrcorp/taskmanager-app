@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../../config/theme.dart';
+import '../../models/assignment.dart';
 import '../../models/checklist.dart';
 import '../../models/task.dart';
 import '../../models/user.dart';
@@ -73,91 +74,64 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
           _ProfileCard(user: user, tags: tags.toList()),
           const SizedBox(height: 20),
 
-          // ── Checklist banner (first assignment) ──
-          if (assignments.isLoading)
-            const SizedBox(
-              height: 72,
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (assignments.assignments.isNotEmpty) ...[
-            Builder(builder: (context) {
-              final a = assignments.assignments.first;
-              final total = a.totalItems;
-              final completed = a.completedItems;
-              final isDone = total > 0 && completed == total;
-
-              return GestureDetector(
-                onTap: () => _openChecklist(context, a.id),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: LinearGradient(
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: isDone
-                          ? [const Color(0xFF00B894), const Color(0xFF00CEC9)]
-                          : [const Color(0xFF6C5CE7), const Color(0xFF74B9FF)],
+          // ── Checklist section ──
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: AppColors.accentBg,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.checklist_rounded, size: 18, color: AppColors.accent),
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              isDone ? 'Checklist Complete!' : 'Checklist',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white70,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              isDone
-                                  ? 'All done · ${a.store.name}'
-                                  : '$completed/$total done · ${a.store.name}',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${a.shift.name} · ${a.position.name}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.white60,
-                              ),
-                            ),
-                          ],
-                        ),
+                    const SizedBox(width: 10),
+                    const Text(
+                      'Checklist',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.text,
                       ),
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          isDone ? Icons.check_circle : Icons.checklist_rounded,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              );
-            }),
-            const SizedBox(height: 14),
-          ],
+                const SizedBox(height: 12),
+                if (assignments.isLoading)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (assignments.assignments.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 20),
+                    child: Center(
+                      child: Text(
+                        'No checklists assigned today',
+                        style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                      ),
+                    ),
+                  )
+                else
+                  ...assignments.assignments.map((a) => _AssignmentCard(
+                    assignment: a,
+                    onTap: () => _openChecklist(context, a.id),
+                  )),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
 
           // ── Section divider ──
           Container(
@@ -380,6 +354,108 @@ class _ProfileCard extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+// ─── Assignment card ──────────────────────────────────────────────────────────
+
+class _AssignmentCard extends StatelessWidget {
+  final Assignment assignment;
+  final VoidCallback onTap;
+
+  const _AssignmentCard({required this.assignment, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = assignment.totalItems;
+    final completed = assignment.completedItems;
+    final isDone = total > 0 && completed == total;
+    final day = assignment.workDate.day.toString();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.bg,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              // Date badge
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: isDone ? AppColors.successBg : AppColors.accentBg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    day,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: isDone ? AppColors.success : AppColors.accent,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Store / shift info
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      assignment.store.name,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.text,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${assignment.shift.name} · ${assignment.position.name}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Completion badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isDone ? AppColors.successBg : AppColors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isDone ? AppColors.success : AppColors.border,
+                  ),
+                ),
+                child: Text(
+                  '$completed/$total',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isDone ? AppColors.success : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted),
+            ],
+          ),
+        ),
       ),
     );
   }
