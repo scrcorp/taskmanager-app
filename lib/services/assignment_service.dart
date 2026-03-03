@@ -27,6 +27,23 @@ class AssignmentService {
     return Assignment.fromJson(response.data);
   }
 
+  Future<PaginatedAssignments> getPastAssignments({
+    required String dateTo,
+    String? dateFrom,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final params = <String, dynamic>{
+      'date_to': dateTo,
+      'page': page,
+      'per_page': perPage,
+    };
+    if (dateFrom != null) params['date_from'] = dateFrom;
+
+    final response = await _dio.get('/app/my/work-assignments', queryParameters: params);
+    return PaginatedAssignments.fromJson(response.data as Map<String, dynamic>);
+  }
+
   Future<void> toggleChecklistItem(
     String assignmentId,
     int itemIndex,

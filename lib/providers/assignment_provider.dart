@@ -4,27 +4,37 @@ import '../services/assignment_service.dart';
 
 class AssignmentState {
   final List<Assignment> assignments;
+  final PaginatedAssignments? pastResult;
   final Assignment? selected;
   final bool isLoading;
+  final bool isPastLoading;
   final String? error;
 
   const AssignmentState({
     this.assignments = const [],
+    this.pastResult,
     this.selected,
     this.isLoading = false,
+    this.isPastLoading = false,
     this.error,
   });
 
+  List<Assignment> get pastAssignments => pastResult?.items ?? [];
+
   AssignmentState copyWith({
     List<Assignment>? assignments,
+    PaginatedAssignments? pastResult,
     Assignment? selected,
     bool? isLoading,
+    bool? isPastLoading,
     String? error,
   }) {
     return AssignmentState(
       assignments: assignments ?? this.assignments,
+      pastResult: pastResult ?? this.pastResult,
       selected: selected ?? this.selected,
       isLoading: isLoading ?? this.isLoading,
+      isPastLoading: isPastLoading ?? this.isPastLoading,
       error: error,
     );
   }
@@ -57,6 +67,26 @@ class AssignmentNotifier extends StateNotifier<AssignmentState> {
       state = state.copyWith(selected: assignment, isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  Future<void> loadPastAssignments({int page = 1}) async {
+    state = state.copyWith(isPastLoading: true, error: null);
+    try {
+      final now = DateTime.now();
+      final yesterday = now.subtract(const Duration(days: 1));
+      final dateTo = '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
+      final from = yesterday.subtract(const Duration(days: 29));
+      final dateFrom = '${from.year}-${from.month.toString().padLeft(2, '0')}-${from.day.toString().padLeft(2, '0')}';
+
+      final result = await _service.getPastAssignments(
+        dateTo: dateTo,
+        dateFrom: dateFrom,
+        page: page,
+      );
+      state = state.copyWith(pastResult: result, isPastLoading: false);
+    } catch (e) {
+      state = state.copyWith(isPastLoading: false, error: e.toString());
     }
   }
 

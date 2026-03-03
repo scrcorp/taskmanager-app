@@ -23,6 +23,9 @@ class WorkScreen extends ConsumerStatefulWidget {
 }
 
 class _WorkScreenState extends ConsumerState<WorkScreen> {
+  int _selectedTab = 0; // 0 = Today, 1 = Past
+  bool _pastLoaded = false;
+
   @override
   void initState() {
     super.initState();
@@ -40,6 +43,14 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => _ChecklistBottomSheet(assignmentId: assignmentId),
     );
+  }
+
+  void _switchTab(int index) {
+    setState(() => _selectedTab = index);
+    if (index == 1 && !_pastLoaded) {
+      _pastLoaded = true;
+      ref.read(assignmentProvider.notifier).loadPastAssignments();
+    }
   }
 
   @override
@@ -61,11 +72,15 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
 
     return RefreshIndicator(
       onRefresh: () async {
-        final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-        await Future.wait([
-          ref.read(assignmentProvider.notifier).loadAssignments(today),
-          ref.read(taskProvider.notifier).loadTasks(),
-        ]);
+        if (_selectedTab == 0) {
+          final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+          await Future.wait([
+            ref.read(assignmentProvider.notifier).loadAssignments(today),
+            ref.read(taskProvider.notifier).loadTasks(),
+          ]);
+        } else {
+          await ref.read(assignmentProvider.notifier).loadPastAssignments();
+        }
       },
       child: ListView(
         padding: const EdgeInsets.all(20),
@@ -108,26 +123,17 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                if (assignments.isLoading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (assignments.assignments.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 20),
-                    child: Center(
-                      child: Text(
-                        'No checklists assigned today',
-                        style: TextStyle(fontSize: 13, color: AppColors.textMuted),
-                      ),
-                    ),
-                  )
+                // Tab toggle
+                _TabToggle(
+                  selectedIndex: _selectedTab,
+                  onChanged: _switchTab,
+                ),
+                const SizedBox(height: 12),
+                // Tab content
+                if (_selectedTab == 0)
+                  _buildTodayContent(assignments)
                 else
-                  ...assignments.assignments.map((a) => _AssignmentCard(
-                    assignment: a,
-                    onTap: () => _openChecklist(context, a.id),
-                  )),
+                  _buildPastContent(assignments),
               ],
             ),
           ),
@@ -229,6 +235,118 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
             ),
           const SizedBox(height: 20),
         ],
+      ),
+    );
+  }
+
+  Widget _buildTodayContent(AssignmentState assignments) {
+    if (assignments.isLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (assignments.assignments.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(
+          child: Text(
+            'No checklists assigned today',
+            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+          ),
+        ),
+      );
+    }
+    return Column(
+      children: assignments.assignments.map((a) => _AssignmentCard(
+        assignment: a,
+        onTap: () => _openChecklist(context, a.id),
+      )).toList(),
+    );
+  }
+
+  Widget _buildPastContent(AssignmentState assignments) {
+    if (assignments.isPastLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (assignments.pastAssignments.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(
+          child: Text(
+            'No past checklists',
+            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+          ),
+        ),
+      );
+    }
+    return Column(
+      children: assignments.pastAssignments.map((a) => _AssignmentCard(
+        assignment: a,
+        onTap: () => _openChecklist(context, a.id),
+      )).toList(),
+    );
+  }
+}
+
+// ─── Tab toggle ──────────────────────────────────────────────────────────────
+
+class _TabToggle extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onChanged;
+
+  const _TabToggle({required this.selectedIndex, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: AppColors.bg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          _buildTab('Today', 0),
+          _buildTab('Past', 1),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTab(String label, int index) {
+    final isSelected = selectedIndex == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onChanged(index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: isSelected ? AppColors.text : AppColors.textMuted,
+            ),
+          ),
+        ),
       ),
     );
   }

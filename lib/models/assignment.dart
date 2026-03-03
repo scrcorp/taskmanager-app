@@ -1,6 +1,29 @@
 import 'store.dart';
 import 'checklist.dart';
 
+class PaginatedAssignments {
+  final List<Assignment> items;
+  final int total;
+  final int page;
+  final int perPage;
+
+  const PaginatedAssignments({
+    required this.items,
+    required this.total,
+    required this.page,
+    required this.perPage,
+  });
+
+  factory PaginatedAssignments.fromJson(Map<String, dynamic> json) {
+    return PaginatedAssignments(
+      items: (json['items'] as List).map((e) => Assignment.fromJson(e as Map<String, dynamic>)).toList(),
+      total: json['total'] ?? 0,
+      page: json['page'] ?? 1,
+      perPage: json['per_page'] ?? 20,
+    );
+  }
+}
+
 class Assignment {
   final String id;
   final Store store;
