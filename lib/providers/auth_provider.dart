@@ -1,11 +1,22 @@
+/// 인증(Auth) 상태 관리 Provider
+///
+/// JWT 토큰 기반 인증 흐름을 관리한다:
+/// 1. checkAuth(): 저장된 토큰으로 자동 로그인 시도
+/// 2. login(): 사용자명+비밀번호로 로그인
+/// 3. register(): 회사코드 기반 회원가입
+/// 4. logout(): 토큰 삭제 및 로그아웃
+///
+/// Dio 에러를 사용자 친화적 메시지로 변환하는 _parseError() 포함.
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../utils/token_storage.dart';
 
+/// 인증 상태 열거형
 enum AuthStatus { initial, authenticated, unauthenticated, loading }
 
+/// 인증 상태 데이터 클래스
 class AuthState {
   final AuthStatus status;
   final User? user;
@@ -22,15 +33,21 @@ class AuthState {
   }
 }
 
+/// 인증 상태 Provider (앱 전역에서 접근)
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
   return AuthNotifier(ref.read(authServiceProvider));
 });
 
+/// 인증 상태 관리 Notifier
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthService _authService;
 
   AuthNotifier(this._authService) : super(const AuthState());
 
+  /// 앱 시작 시 저장된 토큰으로 인증 상태 확인
+  ///
+  /// 토큰이 없으면 즉시 unauthenticated,
+  /// 토큰이 있으면 /auth/me로 유효성 검증 후 사용자 정보 로드.
   Future<void> checkAuth() async {
     final token = await TokenStorage.getAccessToken();
     if (token == null) {
@@ -45,6 +62,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// 사용자명+비밀번호로 로그인
+  ///
+  /// 성공 시 true 반환 + authenticated 상태 전환.
+  /// 실패 시 false 반환 + 에러 메시지 설정.
   Future<bool> login(String username, String password) async {
     state = state.copyWith(status: AuthStatus.loading, error: null);
     try {
@@ -58,6 +79,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// 회원가입 (회사코드 기반)
+  ///
+  /// TokenStorage에 저장된 회사코드를 사용하여 조직에 가입.
+  /// 성공 시 자동으로 인증 상태로 전환.
   Future<bool> register({
     required String username,
     required String password,
@@ -82,14 +107,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   /// Dio 에러 응답을 사용자 친화적 메시지로 변환
+  ///
+  /// - 서버 에러: {"detail": "message"} → 메시지 직접 표시
+  /// - 422 유효성 에러: {"detail": [{"loc": [...], "msg": "..."}]} → 필드별 에러
+  /// - 네트워크 에러: 타임아웃/연결 불가 시 안내 메시지
   String _parseError(Object e, String fallback) {
     if (e is DioException && e.response?.data != null) {
       final data = e.response!.data;
       if (data is Map<String, dynamic>) {
         final detail = data['detail'];
-        // 서버 에러: {"detail": "message"}
         if (detail is String) return detail;
-        // 422 유효성 에러: {"detail": [{"loc": [...], "msg": "..."}]}
         if (detail is List && detail.isNotEmpty) {
           return detail.map((d) {
             final loc = (d['loc'] as List?)?.where((l) => l != 'body').join(' > ') ?? '';
@@ -111,6 +138,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     return fallback;
   }
 
+  /// 로그아웃: 서버에 refresh token 무효화 요청 후 로컬 토큰 삭제
   Future<void> logout() async {
     await _authService.logout();
     state = const AuthState(status: AuthStatus.unauthenticated);

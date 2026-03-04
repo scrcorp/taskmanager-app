@@ -1,12 +1,21 @@
+/// 근무배정(Assignment) 상태 관리 Provider
+///
+/// 오늘의 근무배정, 과거 근무배정, 체크리스트 항목 완료/반려 응답을 관리.
+/// WorkScreen과 ChecklistScreen에서 사용.
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/assignment.dart';
 import '../services/assignment_service.dart';
 
+/// 근무배정 상태 데이터
 class AssignmentState {
+  /// 오늘의 근무배정 목록
   final List<Assignment> assignments;
+  /// 과거 근무배정 (페이지네이션 결과)
   final PaginatedAssignments? pastResult;
+  /// 현재 상세 보기 중인 근무배정
   final Assignment? selected;
   final bool isLoading;
+  /// 과거 배정 별도 로딩 상태
   final bool isPastLoading;
   final String? error;
 
@@ -19,6 +28,7 @@ class AssignmentState {
     this.error,
   });
 
+  /// 과거 근무배정 항목 목록 (편의 접근자)
   List<Assignment> get pastAssignments => pastResult?.items ?? [];
 
   AssignmentState copyWith({
@@ -40,16 +50,19 @@ class AssignmentState {
   }
 }
 
+/// 근무배정 Provider
 final assignmentProvider =
     StateNotifierProvider<AssignmentNotifier, AssignmentState>((ref) {
   return AssignmentNotifier(ref.read(assignmentServiceProvider));
 });
 
+/// 근무배정 상태 관리 Notifier
 class AssignmentNotifier extends StateNotifier<AssignmentState> {
   final AssignmentService _service;
 
   AssignmentNotifier(this._service) : super(const AssignmentState());
 
+  /// 특정 날짜의 근무배정 목록 로드
   Future<void> loadAssignments(String workDate) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
@@ -60,6 +73,7 @@ class AssignmentNotifier extends StateNotifier<AssignmentState> {
     }
   }
 
+  /// 근무배정 상세 로드 (체크리스트 포함)
   Future<void> loadAssignment(String id) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
@@ -70,6 +84,7 @@ class AssignmentNotifier extends StateNotifier<AssignmentState> {
     }
   }
 
+  /// 과거 근무배정 로드 (최근 30일, 페이지네이션)
   Future<void> loadPastAssignments({int page = 1}) async {
     state = state.copyWith(isPastLoading: true, error: null);
     try {
@@ -90,6 +105,10 @@ class AssignmentNotifier extends StateNotifier<AssignmentState> {
     }
   }
 
+  /// 체크리스트 항목 완료/미완료 토글
+  ///
+  /// 사진/노트가 필요한 경우 함께 전달.
+  /// 토글 후 해당 근무배정을 자동 리로드하여 최신 상태 반영.
   Future<void> toggleChecklistItem(
     String assignmentId,
     int itemIndex,
@@ -107,6 +126,7 @@ class AssignmentNotifier extends StateNotifier<AssignmentState> {
     await _reloadAssignment(assignmentId);
   }
 
+  /// 반려된 체크리스트 항목에 재응답
   Future<void> respondToRejection(
     String assignmentId,
     int itemIndex, {
@@ -122,6 +142,7 @@ class AssignmentNotifier extends StateNotifier<AssignmentState> {
     await _reloadAssignment(assignmentId);
   }
 
+  /// 근무배정 리로드 후 목록과 상세 상태 모두 업데이트
   Future<void> _reloadAssignment(String assignmentId) async {
     final updated = await _service.getAssignment(assignmentId);
     final updatedList = state.assignments.map((a) {
