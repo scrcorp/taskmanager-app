@@ -135,6 +135,8 @@ class _ReportCard extends StatelessWidget {
     }
   }
 
+  bool get _isDraft => report.status == 'draft';
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -144,9 +146,12 @@ class _ReportCard extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.white,
+            color: _isDraft ? const Color(0xFFFFFBEB) : AppColors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(
+              color: _isDraft ? const Color(0xFFFBBF24) : AppColors.border,
+              width: _isDraft ? 1.5 : 1,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,6 +169,21 @@ class _ReportCard extends StatelessWidget {
                       ),
                     ),
                   ),
+                  // Comment count
+                  if (report.commentCount > 0) ...[
+                    Icon(Icons.comment_outlined,
+                        size: 14, color: AppColors.accent),
+                    const SizedBox(width: 3),
+                    Text(
+                      '${report.commentCount}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.accent,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   // Status badge
                   Container(
                     padding:

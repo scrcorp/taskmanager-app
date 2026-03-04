@@ -128,6 +128,7 @@ class DailyReport {
   final DateTime updatedAt;
   final List<DailyReportSection> sections;
   final List<DailyReportComment> comments;
+  final int commentCount;
 
   const DailyReport({
     required this.id,
@@ -145,6 +146,7 @@ class DailyReport {
     required this.updatedAt,
     this.sections = const [],
     this.comments = const [],
+    this.commentCount = 0,
   });
 
   /// 상태 표시 라벨
@@ -198,6 +200,7 @@ class DailyReport {
               ?.map((e) => DailyReportComment.fromJson(e))
               .toList() ??
           [],
+      commentCount: json['comment_count'] ?? 0,
     );
   }
 }
