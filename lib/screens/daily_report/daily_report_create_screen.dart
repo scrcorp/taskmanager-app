@@ -137,7 +137,8 @@ class _DailyReportCreateScreenState
     if (mounted) {
       if (ok) {
         ToastManager().success(context, 'Draft saved');
-        context.pop();
+        await ref.read(dailyReportProvider.notifier).loadReports();
+        if (mounted) context.pop();
       } else {
         ToastManager().error(context, 'Failed to save');
       }
@@ -184,7 +185,8 @@ class _DailyReportCreateScreenState
     if (mounted) {
       if (ok) {
         ToastManager().success(context, 'Report submitted');
-        context.pop();
+        await ref.read(dailyReportProvider.notifier).loadReports();
+        if (mounted) context.pop();
       } else {
         ToastManager().error(context, 'Failed to submit');
       }
