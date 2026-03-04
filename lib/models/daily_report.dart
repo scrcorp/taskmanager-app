@@ -60,6 +60,7 @@ class DailyReportSection {
   final String id;
   final String? templateSectionId;
   final String title;
+  final String? description;
   final String? content;
   final int sortOrder;
 
@@ -67,6 +68,7 @@ class DailyReportSection {
     required this.id,
     this.templateSectionId,
     required this.title,
+    this.description,
     this.content,
     required this.sortOrder,
   });
@@ -76,6 +78,7 @@ class DailyReportSection {
       id: json['id'],
       templateSectionId: json['template_section_id'],
       title: json['title'],
+      description: json['description'],
       content: json['content'],
       sortOrder: json['sort_order'] ?? 0,
     );

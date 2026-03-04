@@ -20,7 +20,6 @@ import '../screens/notices/notice_list_screen.dart';
 import '../screens/notifications/notification_screen.dart';
 import '../screens/ojt/ojt_screen.dart';
 import '../screens/schedule/schedule_screen.dart';
-import '../screens/daily_report/daily_report_create_screen.dart';
 import '../screens/daily_report/daily_report_detail_screen.dart';
 import '../screens/daily_report/daily_report_list_screen.dart';
 import '../screens/tasks/task_detail_screen.dart';
@@ -87,7 +86,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/notices/:id', builder: (_, state) => NoticeDetailScreen(id: state.pathParameters['id']!)),
       GoRoute(path: '/work/:id', builder: (_, state) => ChecklistScreen(id: state.pathParameters['id']!)),
       GoRoute(path: '/daily-reports', builder: (_, __) => const DailyReportListScreen()),
-      GoRoute(path: '/daily-reports/create', builder: (_, __) => const DailyReportCreateScreen()),
+      GoRoute(path: '/daily-reports/create', builder: (_, __) => const DailyReportDetailScreen()),
       GoRoute(path: '/daily-reports/:id', builder: (_, state) => DailyReportDetailScreen(id: state.pathParameters['id']!)),
       GoRoute(path: '/my', builder: (_, __) => const MyPageScreen()),
       GoRoute(path: '/alerts', builder: (_, __) => const NotificationScreen()),

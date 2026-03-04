@@ -1,25 +1,26 @@
-/// 일일 리포트 상세 화면
+/// 일일 리포트 상세/생성/편집 통합 화면
 ///
-/// 리포트 헤더(날짜, 시간대, 매장, 상태) + 섹션 내용 표시.
-/// Draft 상태이고 본인 리포트인 경우:
-///   - 인라인 편집 모드 (텍스트필드로 전환)
-///   - Save / Submit 버튼
-/// 하단에 댓글 목록 (읽기 전용).
+/// - id가 없으면 생성 모드 (매장/날짜/시간대 선택 후 섹션 작성)
+/// - id가 있으면 조회 모드 (draft 시 편집 가능)
+/// - 섹션 description은 snapshot으로 보존되어 템플릿 삭제와 무관하게 표시
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import '../../config/theme.dart';
 import '../../models/daily_report.dart';
+import '../../models/store.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/daily_report_provider.dart';
+import '../../services/daily_report_service.dart';
 import '../../utils/date_utils.dart';
 import '../../utils/toast_manager.dart';
 import '../../widgets/app_header.dart';
 
-/// 일일 리포트 상세 화면 위젯
 class DailyReportDetailScreen extends ConsumerStatefulWidget {
-  final String id;
-  const DailyReportDetailScreen({super.key, required this.id});
+  final String? id;
+  const DailyReportDetailScreen({super.key, this.id});
 
   @override
   ConsumerState<DailyReportDetailScreen> createState() =>
@@ -28,15 +29,31 @@ class DailyReportDetailScreen extends ConsumerStatefulWidget {
 
 class _DailyReportDetailScreenState
     extends ConsumerState<DailyReportDetailScreen> {
+  // -- Common state --
   bool _isEditing = false;
   final Map<String, TextEditingController> _controllers = {};
   Set<String> _emptySectionIds = {};
 
+  // -- Create mode state --
+  bool get _isCreateMode => widget.id == null;
+  Store? _selectedStore;
+  DateTime _selectedDate = DateTime.now();
+  String _selectedPeriod = 'lunch';
+  DailyReportTemplate? _template;
+  DailyReport? _createdReport; // report created during create flow
+  bool _isCreating = false;
+  List<Store> _stores = [];
+  bool _isLoadingStores = true;
+
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-        () => ref.read(dailyReportProvider.notifier).loadReport(widget.id));
+    if (_isCreateMode) {
+      Future.microtask(() => _loadStores());
+    } else {
+      Future.microtask(
+          () => ref.read(dailyReportProvider.notifier).loadReport(widget.id!));
+    }
   }
 
   @override
@@ -47,16 +64,128 @@ class _DailyReportDetailScreenState
     super.dispose();
   }
 
-  void _enterEditMode(DailyReport report) {
-    for (final section in report.sections) {
+  // ─── Create mode helpers ───
+
+  Future<void> _loadStores() async {
+    try {
+      final service = ref.read(dailyReportServiceProvider);
+      final data = await service.getMyStores();
+      if (mounted) {
+        setState(() {
+          _stores = data.map((e) => Store.fromJson(e)).toList();
+          _isLoadingStores = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingStores = false);
+    }
+  }
+
+  Future<void> _showDuplicateDialog(String existingId) async {
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Report Exists'),
+        content: const Text(
+          'A report already exists for this store/date/period.\nWould you like to view the existing report?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Go to Report'),
+          ),
+        ],
+      ),
+    );
+    if (go == true && mounted) {
+      context.pushReplacement('/daily-reports/$existingId');
+    }
+  }
+
+  Future<void> _createAndLoadTemplate() async {
+    if (_selectedStore == null) {
+      ToastManager().warning(context, 'Please select a store');
+      return;
+    }
+    setState(() => _isCreating = true);
+
+    await ref
+        .read(dailyReportProvider.notifier)
+        .loadTemplate(storeId: _selectedStore!.id);
+    final template = ref.read(dailyReportProvider).template;
+
+    if (template == null) {
+      if (mounted) ToastManager().error(context, 'Failed to load template');
+      setState(() => _isCreating = false);
+      return;
+    }
+
+    DailyReport? report;
+    try {
+      final service = ref.read(dailyReportServiceProvider);
+      report = await service.createReport(
+        storeId: _selectedStore!.id,
+        reportDate: DateFormat('yyyy-MM-dd').format(_selectedDate),
+        period: _selectedPeriod,
+        templateId: template.id,
+      );
+    } on DioException catch (e) {
+      if (!mounted) return;
+      if (e.response?.statusCode == 409) {
+        final detail = e.response?.data['detail'];
+        final existingId = detail is Map ? detail['existing_report_id'] : null;
+        if (existingId != null) {
+          setState(() => _isCreating = false);
+          await _showDuplicateDialog(existingId as String);
+          return;
+        }
+      }
+      ToastManager().error(context, 'Failed to create report');
+      setState(() => _isCreating = false);
+      return;
+    } catch (_) {
+      if (mounted) ToastManager().error(context, 'Failed to create report');
+      setState(() => _isCreating = false);
+      return;
+    }
+
+    _initControllers(report.sections);
+    setState(() {
+      _template = template;
+      _createdReport = report;
+      _isEditing = true;
+      _isCreating = false;
+    });
+  }
+
+  // ─── Common helpers ───
+
+  void _initControllers(List<DailyReportSection> sections) {
+    for (final c in _controllers.values) {
+      c.dispose();
+    }
+    _controllers.clear();
+    for (final section in sections) {
       _controllers[section.id] =
           TextEditingController(text: section.content ?? '');
     }
+  }
+
+  void _enterEditMode(DailyReport report) {
+    _initControllers(report.sections);
     setState(() => _isEditing = true);
   }
 
+  /// Current report: either created (create mode) or loaded (detail mode)
+  DailyReport? get _currentReport =>
+      _isCreateMode ? _createdReport : ref.read(dailyReportProvider).selected;
+
   Future<void> _saveDraft() async {
-    final report = ref.read(dailyReportProvider).selected;
+    final report = _currentReport;
     if (report == null) return;
 
     final sections = report.sections.map((s) {
@@ -71,8 +200,9 @@ class _DailyReportDetailScreenState
         .updateReport(report.id, sections);
     if (mounted) {
       if (ok) {
-        setState(() => _isEditing = false);
         ToastManager().success(context, 'Draft saved');
+        await ref.read(dailyReportProvider.notifier).loadReports();
+        if (mounted) context.pop();
       } else {
         ToastManager().error(context, 'Failed to save');
       }
@@ -80,10 +210,10 @@ class _DailyReportDetailScreenState
   }
 
   Future<void> _submit() async {
-    final report = ref.read(dailyReportProvider).selected;
+    final report = _currentReport;
     if (report == null) return;
 
-    // Validate: check for empty sections
+    // Validate empty sections
     final empty = <String>{};
     for (final section in report.sections) {
       final text = _isEditing
@@ -94,13 +224,12 @@ class _DailyReportDetailScreenState
       }
     }
     if (empty.isNotEmpty) {
-      // If not in edit mode, enter edit mode to show errors
       if (!_isEditing) _enterEditMode(report);
       setState(() => _emptySectionIds = empty);
       return;
     }
 
-    // 편집 모드라면 먼저 저장
+    // Save first if editing
     if (_isEditing) {
       final sections = report.sections.map((s) {
         return {
@@ -129,149 +258,317 @@ class _DailyReportDetailScreenState
         });
         ToastManager().success(context, 'Report submitted');
         await ref.read(dailyReportProvider.notifier).loadReports();
+        if (mounted) context.pop();
       } else {
         ToastManager().error(context, 'Failed to submit');
       }
     }
   }
 
+  // ─── Build ───
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(dailyReportProvider);
-    final report = state.selected;
-    final user = ref.watch(authProvider).user;
-    final isOwner = user != null && report != null && report.authorId == user.id;
-    final isDraft = report?.status == 'draft';
 
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: Column(
         children: [
           AppHeader(
-            title: 'Report Detail',
+            title: _isCreateMode ? 'New Report' : 'Report Detail',
             isDetail: true,
             onBack: () => context.pop(),
           ),
-          if (state.isLoading && report == null)
-            const Expanded(child: Center(child: CircularProgressIndicator()))
-          else if (report == null)
-            Expanded(
-              child: Center(
-                child: Text(state.error ?? 'Report not found',
-                    style: const TextStyle(color: AppColors.textMuted)),
-              ),
-            )
-          else ...[
-            Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(report),
-                    const SizedBox(height: 8),
-                    _buildSections(report),
-                    if (report.comments.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      _buildComments(report),
-                    ],
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-            ),
-            // Action buttons for draft reports
-            if (isDraft && isOwner)
-              SafeArea(
-                top: false,
-                child: Container(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-                  color: AppColors.white,
-                  child: _isEditing
-                      ? Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: state.isLoading ? null : _saveDraft,
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(
-                                      color: AppColors.border),
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(12)),
-                                ),
-                                child: const Text(
-                                  'Save Draft',
-                                  style: TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: state.isLoading ? null : _submit,
-                                child: state.isLoading
-                                    ? const SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white),
-                                      )
-                                    : const Text('Submit'),
-                              ),
-                            ),
-                          ],
-                        )
-                      : Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () => _enterEditMode(report),
-                                icon: const Icon(Icons.edit, size: 18),
-                                label: const Text('Edit'),
-                                style: OutlinedButton.styleFrom(
-                                  side: const BorderSide(
-                                      color: AppColors.border),
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(12)),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: state.isLoading ? null : _submit,
-                                child: state.isLoading
-                                    ? const SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: Colors.white),
-                                      )
-                                    : const Text('Submit'),
-                              ),
-                            ),
-                          ],
-                        ),
-                ),
-              ),
-          ],
+          Expanded(child: _buildBody(state)),
         ],
       ),
     );
   }
 
-  /// 리포트 헤더: 날짜, 시간대, 매장, 상태
+  Widget _buildBody(DailyReportState state) {
+    // Create mode: show setup form first, then section form
+    if (_isCreateMode) {
+      if (_createdReport == null) {
+        return _buildSetupForm();
+      }
+      return _buildReportView(_createdReport!, state);
+    }
+
+    // Detail mode: show loaded report
+    final report = state.selected;
+    if (state.isLoading && report == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (report == null) {
+      return Center(
+        child: Text(state.error ?? 'Report not found',
+            style: const TextStyle(color: AppColors.textMuted)),
+      );
+    }
+    return _buildReportView(report, state);
+  }
+
+  /// Report view: header + sections + comments + action buttons
+  Widget _buildReportView(DailyReport report, DailyReportState state) {
+    final user = ref.watch(authProvider).user;
+    final isOwner =
+        user != null && report.authorId == user.id;
+    final isDraft = report.status == 'draft';
+
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildHeader(report),
+                const SizedBox(height: 8),
+                _buildSections(report),
+                if (!_isCreateMode && report.comments.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  _buildComments(report),
+                ],
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+        // Action buttons for draft
+        if (isDraft && isOwner)
+          SafeArea(
+            top: false,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+              color: AppColors.white,
+              child: _isEditing
+                  ? Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: state.isLoading ? null : _saveDraft,
+                            style: OutlinedButton.styleFrom(
+                              side:
+                                  const BorderSide(color: AppColors.border),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: const Text(
+                              'Save Draft',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: state.isLoading ? null : _submit,
+                            child: state.isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white),
+                                  )
+                                : const Text('Submit'),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _enterEditMode(report),
+                            icon: const Icon(Icons.edit, size: 18),
+                            label: const Text('Edit'),
+                            style: OutlinedButton.styleFrom(
+                              side:
+                                  const BorderSide(color: AppColors.border),
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: state.isLoading ? null : _submit,
+                            child: state.isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white),
+                                  )
+                                : const Text('Submit'),
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ─── Setup form (create mode step 1) ───
+
+  Widget _buildSetupForm() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Store selector
+          const Text('Store',
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.text)),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border, width: 1.5),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<Store>(
+                value: _selectedStore,
+                isExpanded: true,
+                hint: const Text('Select store',
+                    style: TextStyle(color: AppColors.textMuted)),
+                items: _stores.map((s) {
+                  return DropdownMenuItem(value: s, child: Text(s.name));
+                }).toList(),
+                onChanged: (v) => setState(() => _selectedStore = v),
+              ),
+            ),
+          ),
+          if (_isLoadingStores)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: SizedBox(
+                height: 16,
+                width: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else if (_stores.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                'No stores assigned',
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+            ),
+          const SizedBox(height: 20),
+
+          // Date picker
+          const Text('Date',
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.text)),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: _selectedDate,
+                firstDate:
+                    DateTime.now().subtract(const Duration(days: 30)),
+                lastDate: DateTime.now(),
+              );
+              if (picked != null) setState(() => _selectedDate = picked);
+            },
+            child: Container(
+              width: double.infinity,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.border, width: 1.5),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      DateFormat('yyyy-MM-dd (EEE)')
+                          .format(_selectedDate),
+                      style: const TextStyle(
+                          fontSize: 14, color: AppColors.text),
+                    ),
+                  ),
+                  const Icon(Icons.calendar_today,
+                      size: 18, color: AppColors.textMuted),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // Period selector
+          const Text('Period',
+              style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.text)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _PeriodChip(
+                label: 'Lunch',
+                isSelected: _selectedPeriod == 'lunch',
+                onTap: () => setState(() => _selectedPeriod = 'lunch'),
+              ),
+              const SizedBox(width: 12),
+              _PeriodChip(
+                label: 'Dinner',
+                isSelected: _selectedPeriod == 'dinner',
+                onTap: () => setState(() => _selectedPeriod = 'dinner'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+
+          // Next button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _isCreating ? null : _createAndLoadTemplate,
+              child: _isCreating
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text('Start Writing'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─── Report header ───
+
   Widget _buildHeader(DailyReport report) {
     Color statusColor;
     Color statusBgColor;
@@ -402,7 +699,8 @@ class _DailyReportDetailScreenState
     );
   }
 
-  /// 섹션 내용 (읽기 또는 편집 모드)
+  // ─── Sections (read or edit) ───
+
   Widget _buildSections(DailyReport report) {
     final sections = report.sections.toList()
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
@@ -425,6 +723,9 @@ class _DailyReportDetailScreenState
           const SizedBox(height: 16),
           ...sections.map((section) {
             final hasError = _emptySectionIds.contains(section.id);
+            // Use snapshotted description from section
+            final hintText = section.description ?? 'Enter content...';
+
             return Padding(
               padding: const EdgeInsets.only(bottom: 20),
               child: Column(
@@ -447,7 +748,7 @@ class _DailyReportDetailScreenState
                       style: const TextStyle(
                           fontSize: 14, color: AppColors.text),
                       decoration: InputDecoration(
-                        hintText: 'Enter content...',
+                        hintText: hintText,
                         hintStyle: const TextStyle(
                             color: AppColors.textMuted, fontSize: 14),
                         alignLabelWithHint: true,
@@ -468,7 +769,8 @@ class _DailyReportDetailScreenState
                       ),
                       onChanged: (_) {
                         if (_emptySectionIds.contains(section.id)) {
-                          setState(() => _emptySectionIds.remove(section.id));
+                          setState(
+                              () => _emptySectionIds.remove(section.id));
                         }
                       },
                     )
@@ -480,7 +782,9 @@ class _DailyReportDetailScreenState
                         color: AppColors.bg,
                         borderRadius: BorderRadius.circular(8),
                         border: hasError
-                            ? Border.all(color: const Color(0xFFDC2626), width: 1.5)
+                            ? Border.all(
+                                color: const Color(0xFFDC2626),
+                                width: 1.5)
                             : null,
                       ),
                       child: Text(
@@ -514,7 +818,8 @@ class _DailyReportDetailScreenState
     );
   }
 
-  /// 댓글 섹션 (읽기 전용)
+  // ─── Comments (read-only) ───
+
   Widget _buildComments(DailyReport report) {
     return Container(
       width: double.infinity,
@@ -592,6 +897,44 @@ class _DailyReportDetailScreenState
             );
           }),
         ],
+      ),
+    );
+  }
+}
+
+class _PeriodChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _PeriodChip({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.accent : AppColors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? AppColors.accent : AppColors.border,
+            width: 1.5,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: isSelected ? Colors.white : AppColors.textSecondary,
+          ),
+        ),
       ),
     );
   }
