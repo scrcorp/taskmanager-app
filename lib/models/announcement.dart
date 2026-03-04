@@ -1,14 +1,23 @@
+/// 공지사항(Announcement) 데이터 모델
+///
+/// 관리자가 작성한 공지사항과 관련 댓글/확인(acknowledge) 정보를 포함.
+/// store가 null이면 전체 공지, store가 있으면 해당 매장 한정 공지.
 import 'store.dart';
 
+/// 공지사항 본체
 class Announcement {
   final String id;
+  /// 공지 대상 매장 (null이면 전체 조직 대상)
   final Store? store;
   final String title;
   final String content;
   final String? createdByName;
   final DateTime? createdAt;
+  /// 공지에 달린 댓글 목록
   final List<NoticeComment> comments;
+  /// 공지를 확인한 직원 목록
   final List<NoticeAcknowledgment> acknowledgments;
+  /// 현재 사용자의 확인 여부
   final bool isAcknowledged;
 
   const Announcement({
@@ -23,8 +32,10 @@ class Announcement {
     this.isAcknowledged = false,
   });
 
+  /// 공지 범위 표시 문자열 (매장명 또는 'All')
   String get scope => store?.name ?? 'All';
 
+  /// 댓글/확인 상태만 변경한 새 인스턴스 생성
   Announcement copyWith({
     List<NoticeComment>? comments,
     List<NoticeAcknowledgment>? acknowledgments,
@@ -43,6 +54,7 @@ class Announcement {
     );
   }
 
+  /// 서버 JSON → Announcement 객체 변환
   factory Announcement.fromJson(Map<String, dynamic> json) {
     return Announcement(
       id: json['id'],
@@ -64,13 +76,16 @@ class Announcement {
   }
 }
 
+/// 공지사항 댓글
 class NoticeComment {
   final String id;
   final String userId;
   final String userName;
   final String text;
   final DateTime createdAt;
+  /// 좋아요 수
   final int likes;
+  /// 현재 사용자의 좋아요 여부
   final bool isLiked;
 
   const NoticeComment({
@@ -83,6 +98,7 @@ class NoticeComment {
     this.isLiked = false,
   });
 
+  /// 서버 JSON → NoticeComment 객체 변환
   factory NoticeComment.fromJson(Map<String, dynamic> json) {
     return NoticeComment(
       id: json['id'],
@@ -96,6 +112,9 @@ class NoticeComment {
   }
 }
 
+/// 공지 확인(Acknowledgment) 기록
+///
+/// 직원이 공지를 읽었음을 확인한 시점과 정보를 기록한다.
 class NoticeAcknowledgment {
   final String userId;
   final String userName;
@@ -107,6 +126,7 @@ class NoticeAcknowledgment {
     required this.acknowledgedAt,
   });
 
+  /// 서버 JSON → NoticeAcknowledgment 객체 변환
   factory NoticeAcknowledgment.fromJson(Map<String, dynamic> json) {
     return NoticeAcknowledgment(
       userId: json['user_id'],

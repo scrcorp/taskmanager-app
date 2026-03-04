@@ -1,9 +1,16 @@
+/// 직원 의견(Voice) 데이터 모델
+///
+/// 직원이 홈 화면에서 아이디어/건의/시설/안전 등의 의견을 제출하는 기능.
+/// 카테고리별 분류와 우선순위를 지원하며, 관리자가 해결 처리할 수 있다.
 class Voice {
   final String id;
   final String title;
   final String? content;
+  /// 카테고리: 'idea', 'facility', 'safety', 'hr', 'other'
   final String category;
+  /// 상태: 'open', 'resolved' 등
   final String status;
+  /// 우선순위: 'low', 'normal', 'high', 'urgent'
   final String priority;
   final String? storeId;
   final String createdBy;
@@ -31,6 +38,7 @@ class Voice {
     this.updatedAt,
   });
 
+  /// 서버 JSON → Voice 객체 변환
   factory Voice.fromJson(Map<String, dynamic> json) {
     return Voice(
       id: json['id'],

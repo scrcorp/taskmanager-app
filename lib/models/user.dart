@@ -1,3 +1,8 @@
+/// 사용자(User) 데이터 모델
+///
+/// /auth/me 응답으로 받는 현재 로그인 사용자 정보.
+/// 역할(role), 조직(organization), 회사코드(companyCode) 등을 포함.
+/// roleLevel: Owner=10, GM=20, SV=30, Staff=40 (10단위 간격)
 class User {
   final String id;
   final String organizationId;
@@ -6,6 +11,7 @@ class User {
   final String? email;
   final bool isActive;
   final String roleName;
+  /// 역할 우선순위 레벨 (낮을수록 높은 권한: Owner=10, Staff=40)
   final int roleLevel;
   final String organizationName;
   final String companyCode;
@@ -23,8 +29,11 @@ class User {
     required this.companyCode,
   });
 
+  /// fullName에서 첫 단어만 추출 (인사말 등에 사용)
   String get firstName => fullName.split(' ').first;
 
+  /// 이니셜 생성 (프로필 아바타에 표시)
+  /// 예: "John Doe" → "JD", "Alice" → "AL"
   String get initials {
     if (fullName.isNotEmpty) {
       final parts = fullName.split(' ');
@@ -34,6 +43,7 @@ class User {
     return username.substring(0, 2).toUpperCase();
   }
 
+  /// 서버 JSON → User 객체 변환
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
       id: json['id'] as String,
