@@ -213,9 +213,10 @@ class _DailyReportDetailScreenState
     final report = _currentReport;
     if (report == null) return;
 
-    // Validate empty sections
+    // Validate required sections only
     final empty = <String>{};
     for (final section in report.sections) {
+      if (!section.isRequired) continue;
       final text = _isEditing
           ? (_controllers[section.key]?.text.trim() ?? '')
           : (section.content?.trim() ?? '');
@@ -778,13 +779,34 @@ class _DailyReportDetailScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    section.title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.accent,
-                    ),
+                  Row(
+                    children: [
+                      Text(
+                        section.title,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.accent,
+                        ),
+                      ),
+                      if (section.isRequired)
+                        const Text(
+                          ' *',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFFDC2626),
+                          ),
+                        )
+                      else
+                        const Text(
+                          '  (Optional)',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   if (_isEditing)
@@ -851,7 +873,7 @@ class _DailyReportDetailScreenState
                     const Padding(
                       padding: EdgeInsets.only(top: 4),
                       child: Text(
-                        'Please fill in this section',
+                        'This field is required',
                         style: TextStyle(
                             fontSize: 12, color: Color(0xFFDC2626)),
                       ),
