@@ -1,3 +1,10 @@
+/// 알림(Notification) 목록 화면
+///
+/// 미읽음/읽음 알림을 카드 형태로 표시.
+/// 미읽음 알림은 파란 점 + 강조 배경으로 구분.
+/// 상단에 "Mark all read" 버튼으로 일괄 읽음 처리.
+/// 탭 시 referenceType에 따라 해당 상세 화면으로 네비게이션
+/// (work_assignment → 근무배정, additional_task → 업무, announcement → 공지).
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +13,7 @@ import '../../config/theme.dart';
 import '../../providers/notification_provider.dart';
 import '../../widgets/app_header.dart';
 
+/// 알림 목록 화면 위젯
 class NotificationScreen extends ConsumerStatefulWidget {
   const NotificationScreen({super.key});
 

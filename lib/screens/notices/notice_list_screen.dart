@@ -1,3 +1,8 @@
+/// 공지사항 목록 화면
+///
+/// 내게 해당하는 공지사항을 카드 형태로 나열.
+/// 각 카드에 제목, scope 배지, 작성자, 날짜 표시.
+/// 탭하면 공지 상세 화면으로 이동. pull-to-refresh 지원.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +12,7 @@ import '../../models/announcement.dart';
 import '../../providers/announcement_provider.dart';
 import '../../widgets/app_header.dart';
 
+/// 공지사항 목록 화면 위젯
 class NoticeListScreen extends ConsumerStatefulWidget {
   const NoticeListScreen({super.key});
   @override

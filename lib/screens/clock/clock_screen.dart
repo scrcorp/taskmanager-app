@@ -1,6 +1,11 @@
+/// 출퇴근(Clock In/Out) 화면 — 미구현 플레이스홀더
+///
+/// 추후 GPS/QR 기반 출퇴근 기록 기능이 구현될 예정.
+/// 현재는 "Coming soon" 메시지만 표시.
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 
+/// 출퇴근 화면 — 미구현 상태
 class ClockScreen extends StatelessWidget {
   const ClockScreen({super.key});
 

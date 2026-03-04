@@ -1,3 +1,8 @@
+/// 마이 페이지 화면
+///
+/// 프로필 정보 표시 (이름, 역할, 이메일) + 프로필 사진 변경.
+/// 서류 업로드 섹션 (Food Handler, SSN, ID 등) — 현재 "Coming Soon" 상태.
+/// 메뉴: 알림 (미읽음 배지) + 로그아웃.
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +13,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../widgets/app_modal.dart';
 
+/// 서류 유형 정의 (key, 제목, 설명, 아이콘)
 class _DocumentType {
   final String key;
   final String title;
@@ -30,6 +36,7 @@ const _documentTypes = [
   _DocumentType(key: 'w4_form', title: 'W-4 Form', subtitle: "Employee's Withholding Certificate", icon: Icons.receipt_long_outlined),
 ];
 
+/// 마이 페이지 화면 위젯
 class MyPageScreen extends ConsumerStatefulWidget {
   const MyPageScreen({super.key});
 

@@ -1,3 +1,9 @@
+/// 추가 업무 상세 화면
+///
+/// 업무의 제목, 우선순위, 상태, 설명, 담당자, 날짜 정보를 표시.
+/// 미완료 상태일 때 하단에 "Mark Complete" 버튼 제공.
+/// 완료된 경우 완료자 이름과 시간을 녹색 배너로 표시.
+/// 담당자(assignees)의 개별 완료 상태도 확인 가능.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +14,7 @@ import '../../utils/date_utils.dart';
 import '../../utils/toast_manager.dart';
 import '../../widgets/app_header.dart';
 
+/// 추가 업무 상세 화면 위젯
 class TaskDetailScreen extends ConsumerStatefulWidget {
   final String id;
   const TaskDetailScreen({super.key, required this.id});

@@ -1,8 +1,14 @@
+/// 회사 코드 입력 화면
+///
+/// 직원이 소속 회사의 company_code를 입력하는 첫 번째 인증 단계.
+/// 입력한 코드를 TokenStorage에 저장한 후 회원가입 화면으로 이동.
+/// 이미 계정이 있으면 로그인 화면으로 이동 가능.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
 import '../../utils/token_storage.dart';
 
+/// 회사 코드 입력 화면 위젯
 class CompanyCodeScreen extends StatefulWidget {
   const CompanyCodeScreen({super.key});
 
@@ -19,6 +25,7 @@ class _CompanyCodeScreenState extends State<CompanyCodeScreen> {
     super.dispose();
   }
 
+  /// 회사 코드 저장 후 회원가입 화면으로 이동
   Future<void> _next() async {
     final code = _codeCtrl.text.trim();
     if (code.isEmpty) return;

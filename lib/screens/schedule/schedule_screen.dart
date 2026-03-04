@@ -1,6 +1,11 @@
+/// 스케줄(Schedule) 화면 — 미구현 플레이스홀더
+///
+/// 추후 주간/월간 근무 스케줄 확인 기능이 구현될 예정.
+/// 현재는 "Coming soon" 메시지만 표시.
 import 'package:flutter/material.dart';
 import '../../config/theme.dart';
 
+/// 스케줄 화면 — 미구현 상태
 class ScheduleScreen extends StatelessWidget {
   const ScheduleScreen({super.key});
 

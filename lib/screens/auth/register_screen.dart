@@ -1,3 +1,12 @@
+/// 회원가입 화면 — 4단계 스텝 프로세스
+///
+/// Step 1: 이용약관 동의 (필수 2개 + 선택 1개)
+/// Step 2: 이메일 인증 (현재 mock — TODO: 서버 API 연동)
+/// Step 3: 개인정보 입력 (이름, 사용자명 중복 확인, 비밀번호)
+/// Step 4: 가입 완료 및 서비스 시작
+///
+/// URL 쿼리에서 company_code를 받아와 표시하며,
+/// 최종 단계에서 authProvider.register()로 실제 가입 처리.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +15,7 @@ import '../../providers/auth_provider.dart';
 import '../../utils/toast_manager.dart';
 import '../../widgets/app_modal.dart';
 
+/// 회원가입 화면 위젯 — IndexedStack으로 4단계를 전환
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
   @override

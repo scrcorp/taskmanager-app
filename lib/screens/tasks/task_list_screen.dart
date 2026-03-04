@@ -1,3 +1,9 @@
+/// 추가 업무 목록 화면
+///
+/// 나에게 배정된 추가 업무를 카드 목록으로 표시.
+/// 상단 드롭다운으로 상태 필터링 (All/Pending/In Progress/Completed).
+/// 각 카드에 제목, 매장명, 마감일, 상태 표시.
+/// 탭하면 업무 상세 화면으로 이동. pull-to-refresh 지원.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,6 +13,7 @@ import '../../models/task.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/app_header.dart';
 
+/// 추가 업무 목록 화면 위젯
 class TaskListScreen extends ConsumerStatefulWidget {
   const TaskListScreen({super.key});
   @override

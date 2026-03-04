@@ -1,3 +1,15 @@
+/// 근무(Work) 화면 — 하단 네비게이션의 "My Task" 탭
+///
+/// 구성:
+/// - 프로필 카드: 사용자 이름/역할/조직 + 오늘 배정된 매장/시프트 태그
+/// - 체크리스트 섹션: Today/Past 탭 전환
+///   - Today: 오늘 근무배정 카드 목록 (매장명, 시프트, 진행률)
+///   - Past: 과거 30일 근무배정 (페이지네이션)
+/// - 추가 업무(Task) 섹션: 검색/날짜필터/정렬 + 진행률 바 + 업무 카드 목록
+///
+/// 체크리스트 카드 탭 시 ChecklistScreen으로 이동하거나
+/// 바텀시트로 간단한 체크리스트 표시.
+/// scrollTo 쿼리 파라미터로 특정 섹션으로 자동 스크롤 가능.
 import 'dart:async';
 import 'dart:typed_data';
 
@@ -18,6 +30,7 @@ import '../../providers/task_provider.dart';
 import '../../services/storage_service.dart';
 import '../../utils/toast_manager.dart';
 
+/// 근무 화면 메인 위젯 — Today/Past 체크리스트 + 추가 업무
 class WorkScreen extends ConsumerStatefulWidget {
   const WorkScreen({super.key});
 

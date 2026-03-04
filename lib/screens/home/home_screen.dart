@@ -1,3 +1,12 @@
+/// 홈 화면 — 직원 앱의 메인 대시보드
+///
+/// 상단: 인사말 + 날짜 헤더
+/// 중간: 오늘의 Overview (체크리스트/태스크/마감 통계)
+/// 퀵 액션: 공지사항, OJT 바로가기
+/// 하단: 의견 제출(Voice) 입력란 + 최신 공지 배너
+///
+/// initState에서 오늘 근무배정, 추가 업무, 공지사항을 병렬 로드.
+/// pull-to-refresh로 데이터 새로고침 지원.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +21,7 @@ import '../../providers/voice_provider.dart';
 import '../../models/announcement.dart';
 import '../../utils/toast_manager.dart';
 
+/// 의견 제출 카테고리 맵 (키: API 값, 값: 표시 라벨)
 const _voiceCategories = <String, String>{
   'idea': '\u{1F4A1} Idea',
   'facility': '\u{1F527} Facility',
@@ -20,6 +30,7 @@ const _voiceCategories = <String, String>{
   'other': '\u{1F4CB} Other',
 };
 
+/// 현재 시간대에 맞는 인사말 반환
 String _getGreeting() {
   final hour = DateTime.now().hour;
   if (hour < 12) return 'Good morning';
@@ -27,6 +38,7 @@ String _getGreeting() {
   return 'Good evening';
 }
 
+/// 오늘 마감인 미완료 태스크 수 계산
 int _countDueToday(List<AdditionalTask> tasks) {
   final now = DateTime.now();
   return tasks.where((t) {
@@ -38,6 +50,7 @@ int _countDueToday(List<AdditionalTask> tasks) {
   }).length;
 }
 
+/// 홈 화면 메인 위젯
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 

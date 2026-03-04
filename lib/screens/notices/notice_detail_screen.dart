@@ -1,3 +1,8 @@
+/// 공지사항 상세 화면
+///
+/// 공지 제목, 본문, 작성자, 날짜, scope(매장/전체) 표시.
+/// 하단 섹션: 확인(Acknowledge) 토글 + 댓글 목록 + 댓글 입력.
+/// 확인 버튼 누르면 읽음 상태가 토글되고 확인한 사용자 목록이 표시됨.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +13,7 @@ import '../../utils/date_utils.dart';
 import '../../utils/toast_manager.dart';
 import '../../widgets/app_header.dart';
 
+/// 공지사항 상세 화면 위젯
 class NoticeDetailScreen extends ConsumerStatefulWidget {
   final String id;
   const NoticeDetailScreen({super.key, required this.id});

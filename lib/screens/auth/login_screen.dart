@@ -1,3 +1,8 @@
+/// 로그인 화면
+///
+/// 이메일/사용자명 + 비밀번호로 로그인.
+/// 성공 시 /home으로, 실패 시 에러 모달 표시.
+/// 하단에 회원가입 링크 제공.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +10,7 @@ import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/app_modal.dart';
 
+/// 로그인 화면 위젯 (Riverpod ConsumerStateful)
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -15,6 +21,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  /// 비밀번호 표시/숨김 토글
   bool _obscure = true;
   bool _loading = false;
 
@@ -25,6 +32,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
+  /// 로그인 실행 — authProvider를 통해 API 호출
   Future<void> _login() async {
     final email = _emailCtrl.text.trim();
     final password = _passwordCtrl.text.trim();
@@ -58,6 +66,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 80),
+              // 앱 로고 + 타이틀
               Text.rich(
                 TextSpan(children: [
                   TextSpan(text: '● ', style: TextStyle(color: AppColors.accent, fontSize: 32, fontWeight: FontWeight.w800)),
@@ -69,6 +78,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               Text('Staff App', textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
               const SizedBox(height: 48),
+              // 이메일/사용자명 입력
               TextField(
                 controller: _emailCtrl,
                 keyboardType: TextInputType.emailAddress,
@@ -79,6 +89,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              // 비밀번호 입력 + 표시 토글
               TextField(
                 controller: _passwordCtrl,
                 obscureText: _obscure,
@@ -94,6 +105,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 28),
+              // 로그인 버튼 (로딩 중 스피너 표시)
               SizedBox(
                 height: 52,
                 child: ElevatedButton(
@@ -104,6 +116,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 20),
+              // 회원가입 링크
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [

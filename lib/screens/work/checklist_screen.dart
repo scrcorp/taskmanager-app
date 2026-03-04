@@ -1,3 +1,15 @@
+/// 체크리스트 상세 화면
+///
+/// 특정 근무배정의 체크리스트 항목을 표시하고 완료/반려 응답 처리.
+///
+/// 주요 플로우:
+/// 1. 일반 항목 탭 → 완료 처리 (사진/메모 필요시 먼저 수집)
+/// 2. 반려된 항목 탭 → 재응답 (코멘트 + 선택적 사진)
+/// 3. 완료된 항목 탭 → 상세 정보 바텀시트 (타임라인 이벤트 포함)
+/// 4. 모든 항목 완료 시 → 축하 토스트 표시
+///
+/// 사진 업로드는 StorageService의 presigned URL 방식 사용.
+/// 각 항목에 requiresPhoto/requiresComment 플래그로 입력 요구사항 분기.
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +24,7 @@ import '../../utils/date_utils.dart';
 import '../../utils/toast_manager.dart';
 import '../../widgets/app_header.dart';
 
+/// 체크리스트 상세 화면 위젯
 class ChecklistScreen extends ConsumerStatefulWidget {
   final String id;
   const ChecklistScreen({super.key, required this.id});
