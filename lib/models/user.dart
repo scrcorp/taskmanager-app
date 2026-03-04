@@ -53,7 +53,7 @@ class User {
       email: json['email'] as String?,
       isActive: json['is_active'] as bool? ?? true,
       roleName: json['role_name'] as String? ?? '',
-      roleLevel: json['role_level'] as int? ?? 40,
+      roleLevel: json['role_priority'] as int? ?? json['role_level'] as int? ?? 40,
       organizationName: json['organization_name'] as String? ?? '',
       companyCode: json['company_code'] as String? ?? '',
     );
