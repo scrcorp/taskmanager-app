@@ -19,5 +19,8 @@ linux/
 macos/
 windows/
 
+# claude code
+.claude/
+
 # OS
 .DS_Store
