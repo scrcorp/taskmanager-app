@@ -18,6 +18,12 @@ class DailyReportService {
 
   DailyReportService(this._dio);
 
+  /// 내 매장 목록 조회 — user_stores 기반
+  Future<List<Map<String, dynamic>>> getMyStores() async {
+    final response = await _dio.get('/app/my/stores');
+    return (response.data as List).cast<Map<String, dynamic>>();
+  }
+
   /// 리포트 템플릿 조회 — 섹션 폼 렌더링용
   Future<DailyReportTemplate> getTemplate({String? storeId}) async {
     final params = <String, dynamic>{};

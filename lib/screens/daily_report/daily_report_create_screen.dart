@@ -4,8 +4,7 @@
 /// 2단계: 템플릿 섹션별 내용 작성
 /// "Save Draft" 또는 "Submit" 버튼으로 저장/제출
 ///
-/// 현재 사용자의 근무배정(assignment)에서 매장 목록을 추출하여
-/// 매장 선택 드롭다운을 제공.
+/// user_stores 기반으로 매장 목록을 API에서 가져와 드롭다운 제공.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -13,8 +12,8 @@ import 'package:intl/intl.dart';
 import '../../config/theme.dart';
 import '../../models/daily_report.dart';
 import '../../models/store.dart';
-import '../../providers/assignment_provider.dart';
 import '../../providers/daily_report_provider.dart';
+import '../../services/daily_report_service.dart';
 import '../../utils/toast_manager.dart';
 import '../../widgets/app_header.dart';
 
@@ -36,15 +35,28 @@ class _DailyReportCreateScreenState
   DailyReport? _createdReport;
   final Map<String, TextEditingController> _sectionControllers = {};
   bool _isCreating = false;
+  List<Store> _stores = [];
+  bool _isLoadingStores = true;
 
   @override
   void initState() {
     super.initState();
-    // 근무배정에서 매장 목록을 가져오기 위해 로드
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    Future.microtask(() {
-      ref.read(assignmentProvider.notifier).loadAssignments(today);
-    });
+    Future.microtask(() => _loadStores());
+  }
+
+  Future<void> _loadStores() async {
+    try {
+      final service = ref.read(dailyReportServiceProvider);
+      final data = await service.getMyStores();
+      if (mounted) {
+        setState(() {
+          _stores = data.map((e) => Store.fromJson(e)).toList();
+          _isLoadingStores = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingStores = false);
+    }
   }
 
   @override
@@ -53,16 +65,6 @@ class _DailyReportCreateScreenState
       c.dispose();
     }
     super.dispose();
-  }
-
-  /// 근무배정에서 고유 매장 목록 추출
-  List<Store> _getStoresFromAssignments() {
-    final assignments = ref.read(assignmentProvider).assignments;
-    final storeMap = <String, Store>{};
-    for (final a in assignments) {
-      storeMap[a.store.id] = a.store;
-    }
-    return storeMap.values.toList();
   }
 
   /// 리포트 생성 (draft) + 템플릿 로드
@@ -178,7 +180,7 @@ class _DailyReportCreateScreenState
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(dailyReportProvider);
-    final stores = _getStoresFromAssignments();
+    final stores = _stores;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -234,11 +236,20 @@ class _DailyReportCreateScreenState
               ),
             ),
           ),
-          if (stores.isEmpty)
+          if (_isLoadingStores)
+            const Padding(
+              padding: EdgeInsets.only(top: 8),
+              child: SizedBox(
+                height: 16,
+                width: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
+          else if (stores.isEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                'No stores found from your assignments',
+                'No stores assigned',
                 style: TextStyle(fontSize: 12, color: AppColors.textMuted),
               ),
             ),
