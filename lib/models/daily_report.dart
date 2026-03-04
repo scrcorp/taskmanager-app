@@ -55,32 +55,32 @@ class DailyReportTemplate {
   }
 }
 
-/// 일일 리포트 섹션 (작성된 내용 포함)
+/// 일일 리포트 섹션 (JSONB 스냅샷, sortOrder로 식별)
 class DailyReportSection {
-  final String id;
-  final String? templateSectionId;
   final String title;
   final String? description;
   final String? content;
   final int sortOrder;
+  final bool isRequired;
 
   const DailyReportSection({
-    required this.id,
-    this.templateSectionId,
     required this.title,
     this.description,
     this.content,
     required this.sortOrder,
+    this.isRequired = false,
   });
+
+  /// sortOrder를 문자열 키로 사용
+  String get key => sortOrder.toString();
 
   factory DailyReportSection.fromJson(Map<String, dynamic> json) {
     return DailyReportSection(
-      id: json['id'],
-      templateSectionId: json['template_section_id'],
-      title: json['title'],
+      title: json['title'] ?? '',
       description: json['description'],
       content: json['content'],
       sortOrder: json['sort_order'] ?? 0,
+      isRequired: json['is_required'] ?? false,
     );
   }
 }

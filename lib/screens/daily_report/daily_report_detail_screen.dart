@@ -170,7 +170,7 @@ class _DailyReportDetailScreenState
     }
     _controllers.clear();
     for (final section in sections) {
-      _controllers[section.id] =
+      _controllers[section.key] =
           TextEditingController(text: section.content ?? '');
     }
   }
@@ -190,8 +190,8 @@ class _DailyReportDetailScreenState
 
     final sections = report.sections.map((s) {
       return {
-        'section_id': s.id,
-        'content': _controllers[s.id]?.text,
+        'sort_order': s.sortOrder,
+        'content': _controllers[s.key]?.text,
       };
     }).toList();
 
@@ -217,10 +217,10 @@ class _DailyReportDetailScreenState
     final empty = <String>{};
     for (final section in report.sections) {
       final text = _isEditing
-          ? (_controllers[section.id]?.text.trim() ?? '')
+          ? (_controllers[section.key]?.text.trim() ?? '')
           : (section.content?.trim() ?? '');
       if (text.isEmpty) {
-        empty.add(section.id);
+        empty.add(section.key);
       }
     }
     if (empty.isNotEmpty) {
@@ -233,8 +233,8 @@ class _DailyReportDetailScreenState
     if (_isEditing) {
       final sections = report.sections.map((s) {
         return {
-          'section_id': s.id,
-          'content': _controllers[s.id]?.text,
+          'sort_order': s.sortOrder,
+          'content': _controllers[s.key]?.text,
         };
       }).toList();
 
@@ -261,6 +261,41 @@ class _DailyReportDetailScreenState
         if (mounted) context.pop();
       } else {
         ToastManager().error(context, 'Failed to submit');
+      }
+    }
+  }
+
+  Future<void> _deleteReport() async {
+    final report = _currentReport;
+    if (report == null) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Draft'),
+        content: const Text('Are you sure you want to delete this draft?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Color(0xFFDC2626))),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    final ok = await ref.read(dailyReportProvider.notifier).deleteReport(report.id);
+    if (mounted) {
+      if (ok) {
+        ToastManager().success(context, 'Draft deleted');
+        await ref.read(dailyReportProvider.notifier).loadReports();
+        if (mounted) context.pop();
+      } else {
+        ToastManager().error(context, 'Failed to delete');
       }
     }
   }
@@ -385,6 +420,18 @@ class _DailyReportDetailScreenState
                     )
                   : Row(
                       children: [
+                        IconButton(
+                          onPressed: state.isLoading ? null : _deleteReport,
+                          icon: const Icon(Icons.delete_outline, size: 22),
+                          color: const Color(0xFFDC2626),
+                          style: IconButton.styleFrom(
+                            side: const BorderSide(color: AppColors.border),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.all(12),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: () => _enterEditMode(report),
@@ -722,7 +769,7 @@ class _DailyReportDetailScreenState
           ),
           const SizedBox(height: 16),
           ...sections.map((section) {
-            final hasError = _emptySectionIds.contains(section.id);
+            final hasError = _emptySectionIds.contains(section.key);
             // Use snapshotted description from section
             final hintText = section.description ?? 'Enter content...';
 
@@ -742,7 +789,7 @@ class _DailyReportDetailScreenState
                   const SizedBox(height: 8),
                   if (_isEditing)
                     TextField(
-                      controller: _controllers[section.id],
+                      controller: _controllers[section.key],
                       maxLines: 5,
                       minLines: 3,
                       style: const TextStyle(
@@ -768,9 +815,9 @@ class _DailyReportDetailScreenState
                             : null,
                       ),
                       onChanged: (_) {
-                        if (_emptySectionIds.contains(section.id)) {
+                        if (_emptySectionIds.contains(section.key)) {
                           setState(
-                              () => _emptySectionIds.remove(section.id));
+                              () => _emptySectionIds.remove(section.key));
                         }
                       },
                     )

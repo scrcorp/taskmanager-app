@@ -113,7 +113,7 @@ class DailyReportNotifier extends StateNotifier<DailyReportState> {
   /// 리포트 섹션 내용 업데이트
   Future<bool> updateReport(
     String id,
-    List<Map<String, String?>> sections,
+    List<Map<String, dynamic>> sections,
   ) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
@@ -138,6 +138,22 @@ class DailyReportNotifier extends StateNotifier<DailyReportState> {
       state = state.copyWith(
         selected: report,
         reports: state.reports.map((r) => r.id == id ? report : r).toList(),
+        isLoading: false,
+      );
+      return true;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      return false;
+    }
+  }
+
+  /// 리포트 삭제 (draft만)
+  Future<bool> deleteReport(String id) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      await _service.deleteReport(id);
+      state = state.copyWith(
+        reports: state.reports.where((r) => r.id != id).toList(),
         isLoading: false,
       );
       return true;

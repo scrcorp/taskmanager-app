@@ -84,15 +84,20 @@ class DailyReportService {
     return DailyReport.fromJson(response.data);
   }
 
-  /// 리포트 섹션 내용 업데이트
+  /// 리포트 섹션 내용 업데이트 — sort_order 기반
   Future<DailyReport> updateReport(
     String id,
-    List<Map<String, String?>> sections,
+    List<Map<String, dynamic>> sections,
   ) async {
     final response = await _dio.put('/app/my/daily-reports/$id', data: {
       'sections': sections,
     });
     return DailyReport.fromJson(response.data);
+  }
+
+  /// 리포트 삭제 (draft만 가능)
+  Future<void> deleteReport(String id) async {
+    await _dio.delete('/app/my/daily-reports/$id');
   }
 
   /// 리포트 제출 (draft → submitted)
