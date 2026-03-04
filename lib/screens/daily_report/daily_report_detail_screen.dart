@@ -30,6 +30,7 @@ class _DailyReportDetailScreenState
     extends ConsumerState<DailyReportDetailScreen> {
   bool _isEditing = false;
   final Map<String, TextEditingController> _controllers = {};
+  Set<String> _emptySectionIds = {};
 
   @override
   void initState() {
@@ -82,6 +83,23 @@ class _DailyReportDetailScreenState
     final report = ref.read(dailyReportProvider).selected;
     if (report == null) return;
 
+    // Validate: check for empty sections
+    final empty = <String>{};
+    for (final section in report.sections) {
+      final text = _isEditing
+          ? (_controllers[section.id]?.text.trim() ?? '')
+          : (section.content?.trim() ?? '');
+      if (text.isEmpty) {
+        empty.add(section.id);
+      }
+    }
+    if (empty.isNotEmpty) {
+      // If not in edit mode, enter edit mode to show errors
+      if (!_isEditing) _enterEditMode(report);
+      setState(() => _emptySectionIds = empty);
+      return;
+    }
+
     // 편집 모드라면 먼저 저장
     if (_isEditing) {
       final sections = report.sections.map((s) {
@@ -105,8 +123,12 @@ class _DailyReportDetailScreenState
         .submitReport(report.id);
     if (mounted) {
       if (ok) {
-        setState(() => _isEditing = false);
+        setState(() {
+          _isEditing = false;
+          _emptySectionIds = {};
+        });
         ToastManager().success(context, 'Report submitted');
+        await ref.read(dailyReportProvider.notifier).loadReports();
       } else {
         ToastManager().error(context, 'Failed to submit');
       }
@@ -402,6 +424,7 @@ class _DailyReportDetailScreenState
           ),
           const SizedBox(height: 16),
           ...sections.map((section) {
+            final hasError = _emptySectionIds.contains(section.id);
             return Padding(
               padding: const EdgeInsets.only(bottom: 20),
               child: Column(
@@ -423,12 +446,31 @@ class _DailyReportDetailScreenState
                       minLines: 3,
                       style: const TextStyle(
                           fontSize: 14, color: AppColors.text),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         hintText: 'Enter content...',
-                        hintStyle: TextStyle(
+                        hintStyle: const TextStyle(
                             color: AppColors.textMuted, fontSize: 14),
                         alignLabelWithHint: true,
+                        enabledBorder: hasError
+                            ? OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(
+                                    color: Color(0xFFDC2626), width: 1.5),
+                              )
+                            : null,
+                        focusedBorder: hasError
+                            ? OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(
+                                    color: Color(0xFFDC2626), width: 2),
+                              )
+                            : null,
                       ),
+                      onChanged: (_) {
+                        if (_emptySectionIds.contains(section.id)) {
+                          setState(() => _emptySectionIds.remove(section.id));
+                        }
+                      },
                     )
                   else
                     Container(
@@ -437,6 +479,9 @@ class _DailyReportDetailScreenState
                       decoration: BoxDecoration(
                         color: AppColors.bg,
                         borderRadius: BorderRadius.circular(8),
+                        border: hasError
+                            ? Border.all(color: const Color(0xFFDC2626), width: 1.5)
+                            : null,
                       ),
                       child: Text(
                         section.content?.isNotEmpty == true
@@ -449,6 +494,15 @@ class _DailyReportDetailScreenState
                               ? AppColors.text
                               : AppColors.textMuted,
                         ),
+                      ),
+                    ),
+                  if (hasError)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Text(
+                        'Please fill in this section',
+                        style: TextStyle(
+                            fontSize: 12, color: Color(0xFFDC2626)),
                       ),
                     ),
                 ],
