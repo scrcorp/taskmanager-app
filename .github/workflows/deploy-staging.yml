@@ -23,4 +23,4 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-west-2
 
-      - run: aws s3 sync build/web/ s3://taskmanager-storage-staging/ --delete
+      - run: aws s3 sync build/web/ s3://taskmanager-staff-app-staging/ --delete

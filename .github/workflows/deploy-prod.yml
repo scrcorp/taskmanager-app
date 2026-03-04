@@ -12,7 +12,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.x'
+          flutter-version: "3.x"
 
       - run: flutter pub get
       - run: flutter build web --release --dart-define=API_BASE_URL=/api/v1
@@ -23,5 +23,5 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-west-2
 
-      - run: aws s3 sync build/web/ s3://taskmanager-storage-prod/ --delete
+      - run: aws s3 sync build/web/ s3://taskmanager-staff-app/ --delete
       - run: aws cloudfront create-invalidation --distribution-id ${{ secrets.CF_DISTRIBUTION_ID }} --paths "/*"
