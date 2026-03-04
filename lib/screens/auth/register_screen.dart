@@ -1,7 +1,7 @@
 /// 회원가입 화면 — 4단계 스텝 프로세스
 ///
 /// Step 1: 이용약관 동의 (필수 2개 + 선택 1개)
-/// Step 2: 이메일 인증 (현재 mock — TODO: 서버 API 연동)
+/// Step 2: 이메일 입력 (형식 검증만, 인증 없음)
 /// Step 3: 개인정보 입력 (이름, 사용자명 중복 확인, 비밀번호)
 /// Step 4: 가입 완료 및 서비스 시작
 ///
@@ -31,11 +31,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _term2 = false;
   bool _term3 = false;
 
-  // Step 2: Email verification
+  // Step 2: Email
   final _emailCtrl = TextEditingController();
-  final _codeCtrl = TextEditingController();
-  bool _codeSent = false;
-  bool _emailVerified = false;
 
   // Step 3: Info
   final _nameCtrl = TextEditingController();
@@ -57,7 +54,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   void dispose() {
     _emailCtrl.dispose();
-    _codeCtrl.dispose();
     _nameCtrl.dispose();
     _idCtrl.dispose();
     _pwCtrl.dispose();
@@ -84,43 +80,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _nextStep();
   }
 
-  // Step 2: Email verification
-  // TODO: Connect to server email verification API when available
-  Future<void> _sendCode() async {
-    if (_emailCtrl.text.trim().isEmpty) {
+  // Step 2: Email format validation
+  static final _emailRegex = RegExp(r'^[\w\-.]+@[\w\-]+(\.[\w\-]+)+$');
+
+  void _validateStep2() {
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty) {
       ToastManager().warning(context, 'Please enter your email.');
       return;
     }
-    setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (mounted) {
-      setState(() {
-        _codeSent = true;
-        _isLoading = false;
-      });
-      ToastManager().success(context, 'Verification code sent.');
-    }
-  }
-
-  Future<void> _verifyCode() async {
-    if (_codeCtrl.text.trim().isEmpty) {
-      ToastManager().warning(context, 'Please enter the verification code.');
-      return;
-    }
-    setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (mounted) {
-      setState(() {
-        _emailVerified = true;
-        _isLoading = false;
-      });
-      ToastManager().success(context, 'Email verified successfully.');
-    }
-  }
-
-  void _validateStep2() {
-    if (!_emailVerified) {
-      ToastManager().warning(context, 'Please complete email verification.');
+    if (!_emailRegex.hasMatch(email)) {
+      ToastManager().warning(context, 'Please enter a valid email address.');
       return;
     }
     _nextStep();
@@ -352,41 +322,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
   }
 
-  // Step 2: Email Verification
+  // Step 2: Email Input
   Widget _buildStep2() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Email Verification', style: Theme.of(context).textTheme.headlineLarge),
+          Text('Enter Your Email', style: Theme.of(context).textTheme.headlineLarge),
           const SizedBox(height: 8),
-          Text('Verify your identity via email.', style: Theme.of(context).textTheme.bodyMedium),
+          Text('Enter your email address to continue.', style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 32),
           const _FormLabel('Email'),
           const SizedBox(height: 8),
-          _FieldWithButton(
+          TextField(
             controller: _emailCtrl,
-            hint: 'example@email.com',
-            buttonLabel: _codeSent ? 'Resend' : 'Send Code',
-            onButtonTap: _emailVerified ? null : _sendCode,
             keyboardType: TextInputType.emailAddress,
-            isDone: _emailVerified,
-          ),
-          const SizedBox(height: 20),
-          const _FormLabel('Verification Code'),
-          const SizedBox(height: 8),
-          _FieldWithButton(
-            controller: _codeCtrl,
-            hint: '6-digit code',
-            buttonLabel: 'Verify',
-            onButtonTap: _codeSent && !_emailVerified ? _verifyCode : null,
-            isDone: _emailVerified,
+            decoration: const InputDecoration(hintText: 'example@email.com'),
           ),
           const Spacer(),
           _BottomButton(
             label: 'Continue',
-            onPressed: _emailVerified ? _validateStep2 : null,
+            onPressed: _validateStep2,
           ),
         ],
       ),
@@ -557,7 +514,7 @@ class _StepProgressBar extends StatelessWidget {
 
   const _StepProgressBar({required this.currentStep, required this.totalSteps});
 
-  static const _labels = ['Terms', 'Verify', 'Info', 'Complete'];
+  static const _labels = ['Terms', 'Email', 'Info', 'Complete'];
 
   @override
   Widget build(BuildContext context) {
