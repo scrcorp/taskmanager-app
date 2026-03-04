@@ -37,6 +37,7 @@ class _DailyReportCreateScreenState
   bool _isCreating = false;
   List<Store> _stores = [];
   bool _isLoadingStores = true;
+  Set<String> _emptySectionIds = {};
 
   @override
   void initState() {
@@ -146,6 +147,19 @@ class _DailyReportCreateScreenState
   /// 섹션 내용 저장 후 제출
   Future<void> _saveAndSubmit() async {
     if (_createdReport == null) return;
+
+    // Validate all sections have content
+    final empty = <String>{};
+    for (final section in _createdReport!.sections) {
+      final text = _sectionControllers[section.id]?.text.trim() ?? '';
+      if (text.isEmpty) {
+        empty.add(section.id);
+      }
+    }
+    if (empty.isNotEmpty) {
+      setState(() => _emptySectionIds = empty);
+      return;
+    }
 
     // 먼저 저장
     final sections = _createdReport!.sections.map((s) {
@@ -409,6 +423,8 @@ class _DailyReportCreateScreenState
                 }
               }
 
+              final hasError = _emptySectionIds.contains(section.id);
+
               return Padding(
                 padding: const EdgeInsets.only(bottom: 20),
                 child: Column(
@@ -434,8 +450,36 @@ class _DailyReportCreateScreenState
                         hintStyle: const TextStyle(
                             color: AppColors.textMuted, fontSize: 14),
                         alignLabelWithHint: true,
+                        enabledBorder: hasError
+                            ? OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(
+                                    color: Color(0xFFDC2626), width: 1.5),
+                              )
+                            : null,
+                        focusedBorder: hasError
+                            ? OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                borderSide: const BorderSide(
+                                    color: Color(0xFFDC2626), width: 2),
+                              )
+                            : null,
                       ),
+                      onChanged: (_) {
+                        if (_emptySectionIds.contains(section.id)) {
+                          setState(() => _emptySectionIds.remove(section.id));
+                        }
+                      },
                     ),
+                    if (hasError)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 4),
+                        child: Text(
+                          'Please fill in this section',
+                          style: TextStyle(
+                              fontSize: 12, color: Color(0xFFDC2626)),
+                        ),
+                      ),
                   ],
                 ),
               );
