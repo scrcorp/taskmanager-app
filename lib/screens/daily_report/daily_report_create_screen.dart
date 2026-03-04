@@ -5,6 +5,7 @@
 /// "Save Draft" 또는 "Submit" 버튼으로 저장/제출
 ///
 /// user_stores 기반으로 매장 목록을 API에서 가져와 드롭다운 제공.
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -68,6 +69,32 @@ class _DailyReportCreateScreenState
     super.dispose();
   }
 
+  /// 중복 리포트 존재 시 이동 확인 다이얼로그
+  Future<void> _showDuplicateDialog(String existingId) async {
+    final go = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Report Exists'),
+        content: const Text(
+          'A report already exists for this store/date/period.\nWould you like to view the existing report?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Go to Report'),
+          ),
+        ],
+      ),
+    );
+    if (go == true && mounted) {
+      context.pushReplacement('/daily-reports/$existingId');
+    }
+  }
+
   /// 리포트 생성 (draft) + 템플릿 로드
   Future<void> _createAndLoadTemplate() async {
     if (_selectedStore == null) {
@@ -90,19 +117,32 @@ class _DailyReportCreateScreenState
       return;
     }
 
-    // 리포트 생성
-    final report = await ref.read(dailyReportProvider.notifier).createReport(
-          storeId: _selectedStore!.id,
-          reportDate: DateFormat('yyyy-MM-dd').format(_selectedDate),
-          period: _selectedPeriod,
-          templateId: template.id,
-        );
-
-    if (report == null) {
-      if (mounted) {
-        final error = ref.read(dailyReportProvider).error ?? 'Failed to create report';
-        ToastManager().error(context, error);
+    // 리포트 생성 — 409 시 기존 리포트로 이동 제안
+    DailyReport? report;
+    try {
+      final service = ref.read(dailyReportServiceProvider);
+      report = await service.createReport(
+        storeId: _selectedStore!.id,
+        reportDate: DateFormat('yyyy-MM-dd').format(_selectedDate),
+        period: _selectedPeriod,
+        templateId: template.id,
+      );
+    } on DioException catch (e) {
+      if (!mounted) return;
+      if (e.response?.statusCode == 409) {
+        final detail = e.response?.data['detail'];
+        final existingId = detail is Map ? detail['existing_report_id'] : null;
+        if (existingId != null) {
+          setState(() => _isCreating = false);
+          await _showDuplicateDialog(existingId as String);
+          return;
+        }
       }
+      ToastManager().error(context, 'Failed to create report');
+      setState(() => _isCreating = false);
+      return;
+    } catch (_) {
+      if (mounted) ToastManager().error(context, 'Failed to create report');
       setState(() => _isCreating = false);
       return;
     }
