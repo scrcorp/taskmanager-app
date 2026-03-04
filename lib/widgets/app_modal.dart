@@ -1,9 +1,22 @@
+/// 앱 모달 다이얼로그 — 공통 알림/확인 팝업
+///
+/// 4가지 타입: error(빨강), warning(노랑), confirm(파랑+취소), info(파랑)
+/// confirm 타입만 취소 버튼이 함께 표시됨.
+/// `AppModal.show()` 정적 메서드로 호출하며 bool? 반환
+/// (confirm: true=확인/false=취소, 나머지: true=OK).
 import 'package:flutter/material.dart';
 import '../config/theme.dart';
 
+/// 모달 타입 열거형
 enum ModalType { error, warning, confirm, info }
 
+/// 모달 다이얼로그 유틸리티 클래스
 class AppModal {
+  /// 모달 표시 — 타입에 따른 아이콘/색상 자동 적용
+  ///
+  /// [type]: 모달 스타일 결정 (아이콘, 색상)
+  /// [confirmText]: 확인 버튼 라벨 (기본: OK/Confirm)
+  /// [cancelText]: 취소 버튼 라벨 (기본: Cancel, confirm 타입에서만 표시)
   static Future<bool?> show(
     BuildContext context, {
     required String title,
@@ -29,6 +42,7 @@ class AppModal {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // 타입별 아이콘
                 Container(
                   width: 48,
                   height: 48,
@@ -59,6 +73,7 @@ class AppModal {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
+                // 취소+확인 또는 확인만
                 if (hasCancel)
                   Row(
                     children: [
@@ -117,6 +132,7 @@ class AppModal {
     );
   }
 
+  /// 타입별 아이콘/색상 설정
   static _ModalConfig _modalConfig(ModalType type) {
     switch (type) {
       case ModalType.error:
@@ -151,6 +167,7 @@ class AppModal {
   }
 }
 
+/// 모달 타입별 스타일 설정 데이터
 class _ModalConfig {
   final IconData icon;
   final Color iconColor;

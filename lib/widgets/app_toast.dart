@@ -1,13 +1,24 @@
+/// 토스트 알림 위젯 — 애니메이션 포함
+///
+/// 우측에서 슬라이드+페이드 인 되며 표시되고
+/// 지정된 duration 후 자동으로 슬라이드+페이드 아웃.
+/// success(녹)/error(빨)/warning(노)/info(파) 4가지 타입.
+/// X 버튼으로 수동 닫기도 가능.
+/// ToastManager에 의해 Overlay에 삽입되어 사용됨.
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../config/theme.dart';
 
+/// 토스트 타입 열거형
 enum ToastType { success, error, warning, info }
 
+/// 토스트 알림 위젯 — 슬라이드+페이드 애니메이션
 class AppToast extends StatefulWidget {
   final String message;
   final ToastType type;
+  /// 소멸 시 ToastManager에 알리는 콜백
   final VoidCallback onDismiss;
+  /// 자동 소멸까지의 대기 시간
   final Duration duration;
 
   const AppToast({
@@ -24,6 +35,7 @@ class AppToast extends StatefulWidget {
 
 class _AppToastState extends State<AppToast> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
+  /// 우측에서 슬라이드 인 애니메이션
   late final Animation<Offset> _slideAnimation;
   late final Animation<double> _fadeAnimation;
   Timer? _autoTimer;
@@ -43,9 +55,11 @@ class _AppToastState extends State<AppToast> with SingleTickerProviderStateMixin
         .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     _controller.forward();
+    // 지정 시간 후 자동 소멸
     _autoTimer = Timer(widget.duration, _dismiss);
   }
 
+  /// 소멸 애니메이션 후 콜백 호출
   void _dismiss() {
     _autoTimer?.cancel();
     _controller.reverse().then((_) {
@@ -109,6 +123,7 @@ class _AppToastState extends State<AppToast> with SingleTickerProviderStateMixin
     );
   }
 
+  /// 타입별 아이콘/색상 설정
   _ToastConfig get _typeConfig {
     switch (widget.type) {
       case ToastType.success:
@@ -143,6 +158,7 @@ class _AppToastState extends State<AppToast> with SingleTickerProviderStateMixin
   }
 }
 
+/// 토스트 타입별 스타일 설정 데이터
 class _ToastConfig {
   final IconData icon;
   final Color iconColor;
