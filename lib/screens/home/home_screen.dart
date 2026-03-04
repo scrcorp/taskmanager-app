@@ -245,7 +245,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           const SizedBox(height: 16),
 
-          // ── Quick actions (Notices + OJT) ──
+          // ── Quick actions (Notices + OJT + Daily Reports) ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(
@@ -267,6 +267,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: _QuickActionCard(
+              icon: Icons.summarize_rounded,
+              label: 'Daily Reports',
+              onTap: () => context.push('/daily-reports'),
             ),
           ),
           const SizedBox(height: 32),
