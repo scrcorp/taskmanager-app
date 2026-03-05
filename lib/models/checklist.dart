@@ -24,8 +24,9 @@ class ChecklistSnapshot {
 
   /// 전체 항목 수
   int get totalItems => items.length;
-  /// 완료된 항목 수
-  int get completedItems => items.where((i) => i.isCompleted).length;
+  /// 완료된 항목 수 (미해결 반려 항목 제외)
+  int get completedItems =>
+      items.where((i) => i.isCompleted && !i.hasUnresolvedRejection).length;
   /// 완료 비율 (0.0 ~ 1.0)
   double get progress => totalItems == 0 ? 0 : completedItems / totalItems;
   /// 전체 완료 여부
@@ -72,7 +73,8 @@ class ChecklistSnapshot {
 
 /// 체크리스트 항목의 개별 이벤트 (타임라인 기록)
 ///
-/// type: 'completed'(완료), 'rejected'(반려), 'responded'(재응답), 'pending'(대기)
+/// type: 'completed'(완료), 'rejected'(반려), 'responded'(재응답),
+///       'approved'(승인), 'pending'(대기)
 class ChecklistItemEvent {
   final String type;
   final String? comment;
@@ -121,6 +123,8 @@ class ChecklistItemEvent {
 ///
 /// 인증 유형(verificationType)에 따라 사진/코멘트 입력이 필요할 수 있다.
 /// 관리자가 반려(reject)하면 직원이 재응답(respond)하는 흐름을 지원.
+///
+/// 서버 review_status 값: null(리뷰없음), "pass", "fail", "caution", "pending_re_review"
 class ChecklistItem {
   /// 목록 내 순서 인덱스 (API 호출 시 사용)
   final int index;
@@ -138,12 +142,13 @@ class ChecklistItem {
   final String? comment;
   final String? completedBy;
 
-  // ── 반려(Rejection) 관련 필드 ──
-  final bool isRejected;
-  final String? rejectionComment;
-  final List<String> rejectionPhotoUrls;
-  final String? rejectedBy;
-  final String? rejectedAt;
+  // ── 리뷰 상태 (통합 필드) ──
+  /// null(리뷰없음), "pass", "fail", "caution", "pending_re_review"
+  final String? reviewStatus;
+  final String? reviewComment;
+  final List<String> reviewPhotoUrls;
+  final String? reviewedBy;
+  final String? reviewedAt;
 
   // ── 반려에 대한 재응답(Response) 관련 필드 ──
   final String? responseComment;
@@ -166,11 +171,11 @@ class ChecklistItem {
     this.photoUrl,
     this.comment,
     this.completedBy,
-    this.isRejected = false,
-    this.rejectionComment,
-    this.rejectionPhotoUrls = const [],
-    this.rejectedBy,
-    this.rejectedAt,
+    this.reviewStatus,
+    this.reviewComment,
+    this.reviewPhotoUrls = const [],
+    this.reviewedBy,
+    this.reviewedAt,
     this.responseComment,
     this.respondedAt,
     this.respondedBy,
@@ -184,8 +189,32 @@ class ChecklistItem {
   /// 어떤 형태든 인증이 필요한 항목인지
   bool get requiresVerification => verificationType != 'none';
 
+  // ── 리뷰 상태 computed getters ──
+  /// 반려 상태인지 (fail만 해당, pending_re_review는 재검토 대기)
+  bool get isRejected => reviewStatus == 'fail';
+  /// 승인 상태인지
+  bool get isApproved => reviewStatus == 'pass';
+  /// 주의(caution) 상태인지
+  bool get isCaution => reviewStatus == 'caution';
+  /// 재검토 대기 상태인지 (재응답 후 관리자 재검토 대기)
+  bool get isPendingReReview => reviewStatus == 'pending_re_review';
+
+  // ── 호환성 alias (UI에서 사용) ──
+  String? get rejectionComment => isRejected ? reviewComment : null;
+  List<String> get rejectionPhotoUrls => isRejected ? reviewPhotoUrls : [];
+  String? get rejectedBy => isRejected ? reviewedBy : null;
+  String? get rejectedAt => isRejected ? reviewedAt : null;
+  String? get approvalComment => isApproved ? reviewComment : null;
+  List<String> get approvalPhotoUrls => isApproved ? reviewPhotoUrls : [];
+  String? get approvedBy => isApproved ? reviewedBy : null;
+  String? get approvedAt => isApproved ? reviewedAt : null;
+
   /// 반려에 대한 재응답이 완료되었는지
   bool get isResolved => respondedAt != null;
+
+  /// 미해결 반려 상태인지 (반려됐지만 아직 재응답 안 함)
+  /// pending_re_review는 이미 재응답 완료 상태이므로 해당 없음
+  bool get hasUnresolvedRejection => isRejected && !isResolved;
 
   /// 전체 이벤트 타임라인 (서버에서 history를 제공하지 않을 경우 개별 필드로 재구성)
   List<ChecklistItemEvent> get fullHistory {
@@ -201,13 +230,13 @@ class ChecklistItem {
         at: completedAt,
       ));
     }
-    if (rejectedAt != null) {
+    if (isRejected && reviewedAt != null) {
       events.add(ChecklistItemEvent(
         type: 'rejected',
-        comment: rejectionComment,
-        photoUrls: rejectionPhotoUrls,
-        by: rejectedBy,
-        at: rejectedAt,
+        comment: reviewComment,
+        photoUrls: reviewPhotoUrls,
+        by: reviewedBy,
+        at: reviewedAt,
       ));
     }
     if (respondedAt != null) {
@@ -217,6 +246,15 @@ class ChecklistItem {
         photoUrls: photoUrl != null && isResolved ? [photoUrl!] : [],
         by: respondedBy,
         at: respondedAt,
+      ));
+    }
+    if (isApproved && reviewedAt != null) {
+      events.add(ChecklistItemEvent(
+        type: 'approved',
+        comment: reviewComment,
+        photoUrls: reviewPhotoUrls,
+        by: reviewedBy,
+        at: reviewedAt,
       ));
     }
     if (events.isEmpty && !isCompleted) {
@@ -249,10 +287,10 @@ class ChecklistItem {
     return completedTz != null ? '$completedAt $completedTz' : completedAt;
   }
 
-  /// 반려 시각 표시 문자열
-  String? get rejectedAtDisplay {
-    if (rejectedAt == null) return null;
-    final parsed = DateTime.tryParse(rejectedAt!);
+  /// 리뷰 시각 표시 문자열
+  String? get reviewedAtDisplay {
+    if (reviewedAt == null) return null;
+    final parsed = DateTime.tryParse(reviewedAt!);
     if (parsed != null) {
       final mm = parsed.month.toString().padLeft(2, '0');
       final dd = parsed.day.toString().padLeft(2, '0');
@@ -260,8 +298,11 @@ class ChecklistItem {
       final mi = parsed.minute.toString().padLeft(2, '0');
       return '$mm/$dd $hh:$mi';
     }
-    return rejectedAt;
+    return reviewedAt;
   }
+
+  /// 반려 시각 표시 문자열 (호환성 alias)
+  String? get rejectedAtDisplay => isRejected ? reviewedAtDisplay : null;
 
   /// 재응답 시각 표시 문자열
   String? get respondedAtDisplay {
@@ -285,11 +326,11 @@ class ChecklistItem {
     String? photoUrl,
     String? comment,
     String? completedBy,
-    bool? isRejected,
-    String? rejectionComment,
-    List<String>? rejectionPhotoUrls,
-    String? rejectedBy,
-    String? rejectedAt,
+    String? reviewStatus,
+    String? reviewComment,
+    List<String>? reviewPhotoUrls,
+    String? reviewedBy,
+    String? reviewedAt,
     String? responseComment,
     String? respondedAt,
     String? respondedBy,
@@ -308,11 +349,11 @@ class ChecklistItem {
       photoUrl: photoUrl ?? this.photoUrl,
       comment: comment ?? this.comment,
       completedBy: completedBy ?? this.completedBy,
-      isRejected: isRejected ?? this.isRejected,
-      rejectionComment: rejectionComment ?? this.rejectionComment,
-      rejectionPhotoUrls: rejectionPhotoUrls ?? this.rejectionPhotoUrls,
-      rejectedBy: rejectedBy ?? this.rejectedBy,
-      rejectedAt: rejectedAt ?? this.rejectedAt,
+      reviewStatus: reviewStatus ?? this.reviewStatus,
+      reviewComment: reviewComment ?? this.reviewComment,
+      reviewPhotoUrls: reviewPhotoUrls ?? this.reviewPhotoUrls,
+      reviewedBy: reviewedBy ?? this.reviewedBy,
+      reviewedAt: reviewedAt ?? this.reviewedAt,
       responseComment: responseComment ?? this.responseComment,
       respondedAt: respondedAt ?? this.respondedAt,
       respondedBy: respondedBy ?? this.respondedBy,
@@ -323,6 +364,16 @@ class ChecklistItem {
   /// 서버 JSON → ChecklistItem 변환
   /// [index]: 목록 내 순서 (API 호출 시 itemIndex로 사용)
   factory ChecklistItem.fromJson(Map<String, dynamic> json, int index) {
+    // review_status 통합 필드 우선, 구버전 is_rejected/is_approved 폴백
+    String? reviewStatus = json['review_status'];
+    if (reviewStatus == null) {
+      if (json['is_rejected'] == true) {
+        reviewStatus = 'fail';
+      } else if (json['is_approved'] == true) {
+        reviewStatus = 'pass';
+      }
+    }
+
     return ChecklistItem(
       index: index,
       templateItemId: json['template_item_id'],
@@ -336,14 +387,20 @@ class ChecklistItem {
       photoUrl: json['photo_url'],
       comment: json['comment'] ?? json['note'],
       completedBy: json['completed_by'] ?? json['completed_by_name'],
-      isRejected: json['is_rejected'] ?? false,
-      rejectionComment: json['rejection_comment'],
-      rejectionPhotoUrls: (json['rejection_photo_urls'] as List<dynamic>?)
+      reviewStatus: reviewStatus,
+      reviewComment: json['review_comment'] ?? json['rejection_comment'] ?? json['approval_comment'],
+      reviewPhotoUrls: (json['review_photo_urls'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          (json['rejection_photo_urls'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          (json['approval_photo_urls'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
-      rejectedBy: json['rejected_by'],
-      rejectedAt: json['rejected_at'],
+      reviewedBy: json['reviewed_by'] ?? json['rejected_by'] ?? json['approved_by'],
+      reviewedAt: json['reviewed_at'] ?? json['rejected_at'] ?? json['approved_at'],
       responseComment: json['response_comment'],
       respondedAt: json['responded_at'],
       respondedBy: json['responded_by'],
