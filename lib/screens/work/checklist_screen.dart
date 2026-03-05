@@ -539,26 +539,33 @@ class _ChecklistItemTile extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: item.isRejected
                       ? AppColors.warningBg
-                      : item.isCompleted
+                      : item.isApproved
                           ? AppColors.success
-                          : Colors.transparent,
+                          : item.isCompleted
+                              ? AppColors.success
+                              : Colors.transparent,
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(
                     color: item.isRejected
                         ? AppColors.warning
-                        : item.isCompleted
+                        : item.isApproved
                             ? AppColors.success
-                            : AppColors.border,
+                            : item.isCompleted
+                                ? AppColors.success
+                                : AppColors.border,
                     width: 2,
                   ),
                 ),
                 child: item.isRejected
                     ? const Icon(Icons.refresh,
                         size: 14, color: AppColors.warning)
-                    : item.isCompleted
-                        ? const Icon(Icons.check,
+                    : item.isApproved
+                        ? const Icon(Icons.check_circle,
                             size: 16, color: Colors.white)
-                        : null,
+                        : item.isCompleted
+                            ? const Icon(Icons.check,
+                                size: 16, color: Colors.white)
+                            : null,
               ),
             ),
             const SizedBox(width: 12),
@@ -584,7 +591,24 @@ class _ChecklistItemTile extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (item.isRejected && !item.isResolved)
+                      if (item.isApproved)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.successBg,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text(
+                            'Approved',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.success,
+                            ),
+                          ),
+                        )
+                      else if (item.isRejected && !item.isResolved)
                         Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
@@ -623,6 +647,59 @@ class _ChecklistItemTile extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 11,
                         color: AppColors.success,
+                      ),
+                    ),
+                  ],
+                  // Inline approval feedback
+                  if (item.isApproved &&
+                      (item.approvalComment != null ||
+                          item.approvalPhotoUrls.isNotEmpty)) ...[
+                    const SizedBox(height: 8),
+                    GestureDetector(
+                      onTap: onTapDetail,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.successBg,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: AppColors.success.withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.check_circle_outline,
+                                    size: 12, color: AppColors.success),
+                                const SizedBox(width: 4),
+                                if (item.approvedBy != null)
+                                  Text(
+                                    item.approvedBy!,
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.success,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            if (item.approvalComment != null) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                item.approvalComment!,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.text,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -916,7 +993,12 @@ class _ItemDetailSheet extends StatelessWidget {
     final Color bg;
     final IconData icon;
 
-    if (item.isRejected && !item.isResolved) {
+    if (item.isApproved) {
+      label = 'Approved';
+      color = const Color(0xFF10B981);
+      bg = const Color(0xFFD1FAE5);
+      icon = Icons.check_circle;
+    } else if (item.isRejected && !item.isResolved) {
       label = 'Revision Requested';
       color = const Color(0xFFF59E0B);
       bg = const Color(0xFFFFFBEB);
@@ -989,6 +1071,8 @@ class _TimelineStepCard extends StatelessWidget {
   static const _changeReqBg = Color(0xFFFFFBEB);
   static const _resubmitColor = Color(0xFF6C5CE7);
   static const _resubmitBg = Color(0xFFF0EEFF);
+  static const _approvedColor = Color(0xFF10B981);
+  static const _approvedBg = Color(0xFFD1FAE5);
   static const _pendingColor = Color(0xFF9CA3AF);
   static const _pendingBg = Color(0xFFF9FAFB);
 
@@ -1000,6 +1084,8 @@ class _TimelineStepCard extends StatelessWidget {
         return _changeReqColor;
       case 'responded':
         return _resubmitColor;
+      case 'approved':
+        return _approvedColor;
       case 'pending':
         return _pendingColor;
       default:
@@ -1015,6 +1101,8 @@ class _TimelineStepCard extends StatelessWidget {
         return _changeReqBg;
       case 'responded':
         return _resubmitBg;
+      case 'approved':
+        return _approvedBg;
       case 'pending':
         return _pendingBg;
       default:
@@ -1030,6 +1118,8 @@ class _TimelineStepCard extends StatelessWidget {
         return 'Revision Requested';
       case 'responded':
         return 'Resubmitted';
+      case 'approved':
+        return 'Approved';
       case 'pending':
         return 'Pending';
       default:
@@ -1045,6 +1135,8 @@ class _TimelineStepCard extends StatelessWidget {
         return Icons.edit_note;
       case 'responded':
         return Icons.replay;
+      case 'approved':
+        return Icons.check_circle;
       case 'pending':
         return Icons.schedule;
       default:
