@@ -3,13 +3,25 @@
 /// Flutter + Riverpod 기반의 직원용 모바일 앱.
 /// ProviderScope로 전역 상태관리를 초기화하고,
 /// 앱 시작 시 저장된 토큰으로 인증 상태를 자동 확인한다.
+import 'dart:html' as html;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'config/router.dart';
 import 'config/theme.dart';
 import 'providers/auth_provider.dart';
 
+// 환경별 브라우저 탭 타이틀
+const _appEnv = String.fromEnvironment('APP_ENV');
+const appTitle = _appEnv == 'production'
+    ? 'TaskManager'
+    : _appEnv == 'staging'
+        ? '[STG] TaskManager'
+        : '[DEV] TaskManager';
+
 void main() {
+  html.document.title = appTitle;
+
   // Flutter 엔진 바인딩 초기화 (runApp 전에 플러그인 사용 시 필요)
   WidgetsFlutterBinding.ensureInitialized();
   // Riverpod ProviderScope로 전체 앱을 감싸서 상태관리 활성화
@@ -42,7 +54,7 @@ class _TaskManagerAppState extends ConsumerState<TaskManagerApp> {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'TaskManager',
+      title: appTitle,
       theme: AppTheme.light,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
