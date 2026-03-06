@@ -63,18 +63,18 @@ class AssignmentService {
   ///
   /// [itemIndex]: 체크리스트 내 항목 인덱스 (0부터)
   /// [photoUrl]/[note]: 사진/메모가 필요한 항목의 경우 선택적 첨부
-  /// [timezone]: 완료 시각 기록용 타임존 (기본: LA 시간)
+  /// [timezone]: 완료 시각 기록용 타임존 (미지정 시 서버가 매장 타임존 사용)
   Future<void> toggleChecklistItem(
     String assignmentId,
     int itemIndex,
     bool isCompleted, {
-    String timezone = 'America/Los_Angeles',
+    String? timezone,
     String? photoUrl,
     String? note,
   }) async {
     await _dio.patch('/app/my/work-assignments/$assignmentId/checklist/$itemIndex', data: {
       'is_completed': isCompleted,
-      'timezone': timezone,
+      if (timezone != null) 'timezone': timezone,
       if (photoUrl != null) 'photo_url': photoUrl,
       if (note != null) 'note': note,
     });
@@ -88,10 +88,10 @@ class AssignmentService {
     int itemIndex, {
     String? responseComment,
     String? photoUrl,
-    String timezone = 'America/Los_Angeles',
+    String? timezone,
   }) async {
     await _dio.patch('/app/my/work-assignments/$assignmentId/checklist/$itemIndex/respond', data: {
-      'timezone': timezone,
+      if (timezone != null) 'timezone': timezone,
       if (responseComment != null) 'response_comment': responseComment,
       if (photoUrl != null) 'photo_url': photoUrl,
     });
