@@ -15,7 +15,7 @@ jobs:
           flutter-version: '3.x'
 
       - run: flutter pub get
-      - run: flutter build web --release --dart-define=API_BASE_URL=http://35.91.205.208:28000/api/v1
+      - run: flutter build web --release --dart-define=API_BASE_URL=http://35.91.205.208:28000/api/v1 --dart-define=APP_ENV=staging
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
