@@ -15,7 +15,7 @@ jobs:
           flutter-version: "3.x"
 
       - run: flutter pub get
-      - run: flutter build web --release --dart-define=API_BASE_URL=/api/v1
+      - run: flutter build web --release --dart-define=API_BASE_URL=/api/v1 --dart-define=APP_ENV=production
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
