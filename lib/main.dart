@@ -11,14 +11,16 @@ import 'config/router.dart';
 import 'config/theme.dart';
 import 'providers/auth_provider.dart';
 
+// 환경별 브라우저 탭 타이틀
+const _appEnv = String.fromEnvironment('APP_ENV');
+const appTitle = _appEnv == 'production'
+    ? 'TaskManager'
+    : _appEnv == 'staging'
+        ? '[STG] TaskManager'
+        : '[DEV] TaskManager';
+
 void main() {
-  // 환경별 브라우저 탭 타이틀 설정
-  const appEnv = String.fromEnvironment('APP_ENV');
-  html.document.title = appEnv == 'production'
-      ? 'TaskManager'
-      : appEnv == 'staging'
-          ? '[STG] TaskManager'
-          : '[DEV] TaskManager';
+  html.document.title = appTitle;
 
   // Flutter 엔진 바인딩 초기화 (runApp 전에 플러그인 사용 시 필요)
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,7 +54,7 @@ class _TaskManagerAppState extends ConsumerState<TaskManagerApp> {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'TaskManager',
+      title: appTitle,
       theme: AppTheme.light,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
