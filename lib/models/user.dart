@@ -15,6 +15,8 @@ class User {
   final int roleLevel;
   final String organizationName;
   final String companyCode;
+  /// 조직의 기본 타임존 (예: 'America/Los_Angeles')
+  final String? organizationTimezone;
 
   const User({
     required this.id,
@@ -27,6 +29,7 @@ class User {
     required this.roleLevel,
     required this.organizationName,
     required this.companyCode,
+    this.organizationTimezone,
   });
 
   /// fullName에서 첫 단어만 추출 (인사말 등에 사용)
@@ -56,6 +59,7 @@ class User {
       roleLevel: json['role_priority'] as int? ?? json['role_level'] as int? ?? 40,
       organizationName: json['organization_name'] as String? ?? '',
       companyCode: json['company_code'] as String? ?? '',
+      organizationTimezone: json['organization_timezone'] as String?,
     );
   }
 }
