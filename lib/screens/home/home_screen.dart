@@ -20,6 +20,7 @@ import '../../providers/announcement_provider.dart';
 import '../../providers/voice_provider.dart';
 import '../../models/announcement.dart';
 import '../../utils/toast_manager.dart';
+import 'widgets/schedule_summary_card.dart';
 
 /// 의견 제출 카테고리 맵 (키: API 값, 값: 표시 라벨)
 const _voiceCategories = <String, String>{
@@ -241,6 +242,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ],
               ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ── Schedule summary ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: ScheduleSummaryCard(
+              onViewAll: () => context.push('/schedule'),
+              onResubmit: () => context.push('/schedule'),
             ),
           ),
           const SizedBox(height: 16),
