@@ -20,19 +20,22 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../../config/theme.dart';
-import '../../models/assignment.dart';
+import '../../models/my_schedule.dart';
 import '../../models/checklist.dart';
 import '../../models/task.dart';
 import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/assignment_provider.dart';
+import '../../providers/my_schedule_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../services/storage_service.dart';
 import '../../utils/toast_manager.dart';
 
 /// 근무 화면 메인 위젯 — Today/Past 체크리스트 + 추가 업무
 class WorkScreen extends ConsumerStatefulWidget {
-  const WorkScreen({super.key});
+  final String? initialTab; // "past" → Past 탭으로 시작
+  final String? scheduleId; // 특정 스케줄의 체크리스트 자동 열기
+
+  const WorkScreen({super.key, this.initialTab, this.scheduleId});
 
   @override
   ConsumerState<WorkScreen> createState() => _WorkScreenState();
@@ -48,10 +51,21 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
   @override
   void initState() {
     super.initState();
+    // initialTab이 "past"이면 Past 탭으로 시작
+    if (widget.initialTab == 'past') {
+      _selectedTab = 1;
+      _pastLoaded = true; // Past 데이터 로드 트리거
+    }
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
     Future.microtask(() {
-      ref.read(assignmentProvider.notifier).loadAssignments(today);
+      ref.read(myScheduleProvider.notifier).loadSchedules(today);
       ref.read(taskProvider.notifier).loadTasks();
+      // scheduleId가 있으면 해당 체크리스트 자동 열기
+      if (widget.scheduleId != null) {
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) _openChecklist(context, widget.scheduleId!);
+        });
+      }
     });
   }
 
@@ -76,12 +90,12 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
     });
   }
 
-  void _openChecklist(BuildContext context, String assignmentId) {
+  void _openChecklist(BuildContext context, String scheduleId) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _ChecklistBottomSheet(assignmentId: assignmentId),
+      builder: (_) => _ChecklistBottomSheet(scheduleId: scheduleId),
     );
   }
 
@@ -89,14 +103,14 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
     setState(() => _selectedTab = index);
     if (index == 1 && !_pastLoaded) {
       _pastLoaded = true;
-      ref.read(assignmentProvider.notifier).loadPastAssignments();
+      ref.read(myScheduleProvider.notifier).loadPastSchedules();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
-    final assignments = ref.watch(assignmentProvider);
+    final scheduleState = ref.watch(myScheduleProvider);
     final tasks = ref.watch(taskProvider);
 
     // Handle scrollTo query parameter
@@ -106,9 +120,9 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
     }
 
     final tags = <String>{};
-    for (final a in assignments.assignments) {
-      if (a.store.name.isNotEmpty) tags.add(a.store.name);
-      if (a.shift.name.isNotEmpty) tags.add(a.shift.name);
+    for (final s in scheduleState.schedules) {
+      if (s.store.name.isNotEmpty) tags.add(s.store.name);
+      if (s.workRoleName.isNotEmpty) tags.add(s.workRoleName);
     }
 
     return RefreshIndicator(
@@ -116,11 +130,11 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
         if (_selectedTab == 0) {
           final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
           await Future.wait([
-            ref.read(assignmentProvider.notifier).loadAssignments(today),
+            ref.read(myScheduleProvider.notifier).loadSchedules(today),
             ref.read(taskProvider.notifier).loadTasks(),
           ]);
         } else {
-          await ref.read(assignmentProvider.notifier).loadPastAssignments();
+          await ref.read(myScheduleProvider.notifier).loadPastSchedules();
         }
       },
       child: ListView(
@@ -176,13 +190,13 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
                 ),
                 const SizedBox(height: 12),
                 if (_selectedTab == 0)
-                  _TodayAssignmentList(
-                    assignments: assignments,
+                  _TodayScheduleList(
+                    scheduleState: scheduleState,
                     onOpenChecklist: _openChecklist,
                   )
                 else
                   _PastContent(
-                    assignments: assignments,
+                    scheduleState: scheduleState,
                     onOpenChecklist: _openChecklist,
                   ),
               ],
@@ -299,27 +313,27 @@ class _TabToggle extends StatelessWidget {
   }
 }
 
-// ─── Today assignment list ───────────────────────────────────────────────────
+// ─── Today schedule list ─────────────────────────────────────────────────────
 
-class _TodayAssignmentList extends StatelessWidget {
-  final AssignmentState assignments;
+class _TodayScheduleList extends StatelessWidget {
+  final MyScheduleState scheduleState;
   final void Function(BuildContext, String) onOpenChecklist;
 
-  const _TodayAssignmentList({
-    required this.assignments,
+  const _TodayScheduleList({
+    required this.scheduleState,
     required this.onOpenChecklist,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (assignments.isLoading) {
+    if (scheduleState.isLoading) {
       return const SizedBox(
         height: 72,
         child: Center(child: CircularProgressIndicator()),
       );
     }
 
-    if (assignments.assignments.isEmpty) {
+    if (scheduleState.schedules.isEmpty) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 12),
         child: Center(
@@ -332,12 +346,12 @@ class _TodayAssignmentList extends StatelessWidget {
     }
 
     return Column(
-      children: assignments.assignments.map((a) {
+      children: scheduleState.schedules.map((s) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: _TodayAssignmentCard(
-            assignment: a,
-            onTap: () => onOpenChecklist(context, a.id),
+          child: _TodayScheduleCard(
+            schedule: s,
+            onTap: () => onOpenChecklist(context, s.id),
           ),
         );
       }).toList(),
@@ -345,159 +359,203 @@ class _TodayAssignmentList extends StatelessWidget {
   }
 }
 
-// ─── Today assignment card (with shift-time coloring) ────────────────────────
+// ─── Today schedule card (with work-time coloring) ──────────────────────────
 
-class _TodayAssignmentCard extends StatelessWidget {
-  final Assignment assignment;
+/// 날짜 비교 헬퍼: workDate가 오늘/과거/미래 중 무엇인지 반환
+enum _ScheduleDateKind { today, past, future }
+
+_ScheduleDateKind _classifyDate(DateTime workDate) {
+  final now = DateTime.now();
+  final today = DateTime(now.year, now.month, now.day);
+  final d = DateTime(workDate.year, workDate.month, workDate.day);
+  if (d == today) return _ScheduleDateKind.today;
+  if (d.isBefore(today)) return _ScheduleDateKind.past;
+  return _ScheduleDateKind.future;
+}
+
+class _TodayScheduleCard extends StatelessWidget {
+  final MySchedule schedule;
   final VoidCallback onTap;
 
-  const _TodayAssignmentCard({
-    required this.assignment,
+  const _TodayScheduleCard({
+    required this.schedule,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final a = assignment;
+    final a = schedule;
     final total = a.checklistSnapshot?.totalItems ?? a.totalItems;
     final completed = a.checklistSnapshot?.completedItems ?? a.completedItems;
     final isDone = total > 0 && completed == total;
-    final isWithinShift = a.shift.isWithinShiftHours(DateTime.now());
+    final isWithinShift = a.isWithinWorkHours(DateTime.now());
     final unresolvedList = a.checklistSnapshot?.unresolvedRejections ?? [];
     final hasUnresolved = unresolvedList.isNotEmpty;
+    final kind = _classifyDate(a.workDate);
+    final isFuture = kind == _ScheduleDateKind.future;
 
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppColors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: hasUnresolved
-                ? AppColors.warning.withValues(alpha: 0.4)
-                : isDone
-                    ? AppColors.success.withValues(alpha: 0.4)
-                    : isWithinShift
-                        ? AppColors.accent.withValues(alpha: 0.3)
-                        : AppColors.border,
+      onTap: isFuture ? null : onTap,
+      child: Opacity(
+        opacity: isFuture ? 0.45 : 1.0,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isFuture
+                  ? AppColors.border
+                  : hasUnresolved
+                      ? AppColors.warning.withValues(alpha: 0.4)
+                      : isDone
+                          ? AppColors.success.withValues(alpha: 0.4)
+                          : isWithinShift
+                              ? AppColors.accent.withValues(alpha: 0.3)
+                              : AppColors.border,
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            // Date badge
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: hasUnresolved
-                    ? AppColors.warningBg
-                    : isDone
-                        ? AppColors.successBg
-                        : isWithinShift
-                            ? AppColors.accentBg
-                            : AppColors.bg,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(
-                child: Text(
-                  DateFormat('dd').format(a.workDate),
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: hasUnresolved
-                        ? AppColors.warning
-                        : isDone
-                            ? AppColors.success
-                            : isWithinShift
-                                ? AppColors.accent
-                                : AppColors.textSecondary,
+          child: Row(
+            children: [
+              // Date badge
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: isFuture
+                      ? AppColors.bg
+                      : hasUnresolved
+                          ? AppColors.warningBg
+                          : isDone
+                              ? AppColors.successBg
+                              : isWithinShift
+                                  ? AppColors.accentBg
+                                  : AppColors.bg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Center(
+                  child: Text(
+                    DateFormat('dd').format(a.workDate),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: isFuture
+                          ? AppColors.textMuted
+                          : hasUnresolved
+                              ? AppColors.warning
+                              : isDone
+                                  ? AppColors.success
+                                  : isWithinShift
+                                      ? AppColors.accent
+                                      : AppColors.textSecondary,
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            // Store name + shift
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    a.store.name,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.text,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        a.shift.name,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textMuted,
-                        ),
+              const SizedBox(width: 12),
+              // Store name + shift
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      a.store.name,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.text,
                       ),
-                      if (hasUnresolved) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 1),
-                          decoration: BoxDecoration(
-                            color: AppColors.warningBg,
-                            borderRadius: BorderRadius.circular(4),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Text(
+                          a.workRoleName,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
                           ),
-                          child: Text(
-                            'Unresolved ${unresolvedList.length}',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.warning,
+                        ),
+                        if (!isFuture && hasUnresolved) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: AppColors.warningBg,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Unresolved ${unresolvedList.length}',
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.warning,
+                              ),
                             ),
                           ),
-                        ),
+                        ],
+                        if (isFuture) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: AppColors.bg,
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: AppColors.border),
+                            ),
+                            child: const Text(
+                              'Upcoming',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            // Completion badge
-            if (total > 0)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: hasUnresolved
-                      ? AppColors.warningBg
-                      : isDone
-                          ? AppColors.successBg
-                          : AppColors.accentBg,
-                  borderRadius: BorderRadius.circular(8),
+                    ),
+                  ],
                 ),
-                child: Text(
-                  '$completed/$total',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+              ),
+              // Completion badge (오늘/과거만 표시)
+              if (!isFuture && total > 0)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
                     color: hasUnresolved
-                        ? AppColors.warning
+                        ? AppColors.warningBg
                         : isDone
-                            ? AppColors.success
-                            : AppColors.accent,
+                            ? AppColors.successBg
+                            : AppColors.accentBg,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '$completed/$total',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: hasUnresolved
+                          ? AppColors.warning
+                          : isDone
+                              ? AppColors.success
+                              : AppColors.accent,
+                    ),
                   ),
                 ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.chevron_right,
+                size: 20,
+                color: isFuture ? AppColors.border : AppColors.textMuted,
               ),
-            const SizedBox(width: 4),
-            const Icon(
-              Icons.chevron_right,
-              size: 20,
-              color: AppColors.textMuted,
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1197,11 +1255,11 @@ class _FilterIconButton extends StatelessWidget {
 // ─── Past content (with filter chips + pagination) ───────────────────────────
 
 class _PastContent extends StatefulWidget {
-  final AssignmentState assignments;
+  final MyScheduleState scheduleState;
   final void Function(BuildContext, String) onOpenChecklist;
 
   const _PastContent({
-    required this.assignments,
+    required this.scheduleState,
     required this.onOpenChecklist,
   });
 
@@ -1216,7 +1274,7 @@ class _PastContentState extends State<_PastContent> {
   int _currentPage = 0;
   static const _pageSize = 5;
 
-  List<Assignment> get _allPast => widget.assignments.pastAssignments;
+  List<MySchedule> get _allPast => widget.scheduleState.pastSchedules;
 
   List<DateTime> get _workDates {
     final seen = <String>{};
@@ -1228,17 +1286,17 @@ class _PastContentState extends State<_PastContent> {
     return dates;
   }
 
-  List<Assignment> get _unresolvedAssignments => _allPast
+  List<MySchedule> get _unresolvedSchedules => _allPast
       .where((a) => (a.checklistSnapshot?.unresolvedRejections ?? []).isNotEmpty)
       .toList();
 
   bool get _hasActiveFilter => _showAll || _unresolvedOnly || _selectedDate != null;
 
-  List<Assignment> get _filteredAssignments {
-    var list = List<Assignment>.from(_allPast);
+  List<MySchedule> get _filteredSchedules {
+    var list = List<MySchedule>.from(_allPast);
     if (_showAll) return list;
     if (_unresolvedOnly) {
-      list = _unresolvedAssignments;
+      list = _unresolvedSchedules;
     }
     if (_selectedDate != null) {
       list = list
@@ -1251,7 +1309,7 @@ class _PastContentState extends State<_PastContent> {
     return list;
   }
 
-  List<Assignment> get _latestDateAssignments {
+  List<MySchedule> get _latestDateSchedules {
     if (_allPast.isEmpty) return [];
     final latestDate = _allPast.first.workDate;
     return _allPast
@@ -1321,7 +1379,7 @@ class _PastContentState extends State<_PastContent> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.assignments.isPastLoading) {
+    if (widget.scheduleState.isPastLoading) {
       return const SizedBox(
         height: 120,
         child: Center(child: CircularProgressIndicator()),
@@ -1362,11 +1420,11 @@ class _PastContentState extends State<_PastContent> {
           onTap: _toggleShowAll,
         ),
         const SizedBox(width: 6),
-        if (_unresolvedAssignments.isNotEmpty)
+        if (_unresolvedSchedules.isNotEmpty)
           Padding(
             padding: const EdgeInsets.only(right: 6),
             child: _FilterChip(
-              label: 'Unresolved ${_unresolvedAssignments.length}',
+              label: 'Unresolved ${_unresolvedSchedules.length}',
               isActive: _unresolvedOnly,
               color: AppColors.warning,
               onTap: _toggleUnresolvedFilter,
@@ -1404,18 +1462,18 @@ class _PastContentState extends State<_PastContent> {
   }
 
   Widget _buildDefaultView() {
-    final latestAssignments = _latestDateAssignments;
-    final latestIds = latestAssignments.map((a) => a.id).toSet();
+    final latestSchedules = _latestDateSchedules;
+    final latestIds = latestSchedules.map((a) => a.id).toSet();
     final otherUnresolved =
-        _unresolvedAssignments.where((a) => !latestIds.contains(a.id)).toList();
+        _unresolvedSchedules.where((a) => !latestIds.contains(a.id)).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ...latestAssignments.map((a) => Padding(
+        ...latestSchedules.map((a) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: _PastAssignmentCard(
-                assignment: a,
+              child: _PastScheduleCard(
+                schedule: a,
                 onTap: () => widget.onOpenChecklist(context, a.id),
               ),
             )),
@@ -1443,8 +1501,8 @@ class _PastContentState extends State<_PastContent> {
           const SizedBox(height: 4),
           ...otherUnresolved.map((a) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: _PastAssignmentCard(
-                  assignment: a,
+                child: _PastScheduleCard(
+                  schedule: a,
                   onTap: () => widget.onOpenChecklist(context, a.id),
                 ),
               )),
@@ -1454,7 +1512,7 @@ class _PastContentState extends State<_PastContent> {
   }
 
   Widget _buildFilteredView() {
-    final filtered = _filteredAssignments;
+    final filtered = _filteredSchedules;
 
     if (filtered.isEmpty) {
       return const Padding(
@@ -1477,8 +1535,8 @@ class _PastContentState extends State<_PastContent> {
       children: [
         ...pageItems.map((a) => Padding(
               padding: const EdgeInsets.only(bottom: 8),
-              child: _PastAssignmentCard(
-                assignment: a,
+              child: _PastScheduleCard(
+                schedule: a,
                 onTap: () => widget.onOpenChecklist(context, a.id),
               ),
             )),
@@ -1549,20 +1607,20 @@ class _PastContentState extends State<_PastContent> {
   }
 }
 
-// ─── Past assignment card ────────────────────────────────────────────────────
+// ─── Past schedule card ──────────────────────────────────────────────────────
 
-class _PastAssignmentCard extends StatelessWidget {
-  final Assignment assignment;
+class _PastScheduleCard extends StatelessWidget {
+  final MySchedule schedule;
   final VoidCallback onTap;
 
-  const _PastAssignmentCard({
-    required this.assignment,
+  const _PastScheduleCard({
+    required this.schedule,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final a = assignment;
+    final a = schedule;
     final total = a.checklistSnapshot?.totalItems ?? a.totalItems;
     final completed = a.checklistSnapshot?.completedItems ?? a.completedItems;
     final isDone = total > 0 && completed == total;
@@ -1624,7 +1682,7 @@ class _PastAssignmentCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${a.store.name} · ${a.shift.name}',
+                        a.label,
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -2050,9 +2108,9 @@ class _WorkDatePickerSheetState extends State<_WorkDatePickerSheet> {
 // ─── Checklist bottom sheet ───────────────────────────────────────────────────
 
 class _ChecklistBottomSheet extends ConsumerStatefulWidget {
-  final String assignmentId;
+  final String scheduleId;
 
-  const _ChecklistBottomSheet({required this.assignmentId});
+  const _ChecklistBottomSheet({required this.scheduleId});
 
   @override
   ConsumerState<_ChecklistBottomSheet> createState() =>
@@ -2070,8 +2128,8 @@ class _ChecklistBottomSheetState
     super.initState();
     Future.microtask(
       () => ref
-          .read(assignmentProvider.notifier)
-          .loadAssignment(widget.assignmentId),
+          .read(myScheduleProvider.notifier)
+          .loadSchedule(widget.scheduleId),
     );
   }
 
@@ -2112,13 +2170,13 @@ class _ChecklistBottomSheetState
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (_) => _VerificationBottomSheet(
-          assignmentId: widget.assignmentId,
+          scheduleId: widget.scheduleId,
           item: item,
         ),
       );
     } else {
-      ref.read(assignmentProvider.notifier).toggleChecklistItem(
-            widget.assignmentId,
+      ref.read(myScheduleProvider.notifier).toggleChecklistItem(
+            widget.scheduleId,
             item.index,
             true,
           );
@@ -2140,8 +2198,8 @@ class _ChecklistBottomSheetState
     );
     if (responseComment == null) return;
 
-    ref.read(assignmentProvider.notifier).respondToRejection(
-          widget.assignmentId,
+    ref.read(myScheduleProvider.notifier).respondToRejection(
+          widget.scheduleId,
           item.index,
           responseComment: responseComment,
           photoUrl: photoUrl,
@@ -2279,11 +2337,11 @@ class _ChecklistBottomSheetState
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(assignmentProvider);
-    final assignment = state.selected;
+    final state = ref.watch(myScheduleProvider);
+    final schedule = state.selected;
 
-    if (assignment != null &&
-        assignment.checklistSnapshot?.isAllCompleted == true &&
+    if (schedule != null &&
+        schedule.checklistSnapshot?.isAllCompleted == true &&
         !_celebrationShown) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -2299,7 +2357,7 @@ class _ChecklistBottomSheetState
       });
     }
 
-    final snapshot = assignment?.checklistSnapshot;
+    final snapshot = schedule?.checklistSnapshot;
     final total = snapshot?.totalItems ?? 0;
     final completed = snapshot?.completedItems ?? 0;
     final progress = total > 0 ? completed / total : 0.0;
@@ -2381,7 +2439,7 @@ class _ChecklistBottomSheetState
 
               // Checklist items
               Expanded(
-                child: state.isLoading && assignment == null
+                child: state.isLoading && schedule == null
                     ? const Center(child: CircularProgressIndicator())
                     : snapshot == null || snapshot.items.isEmpty
                         ? const Center(
@@ -2783,11 +2841,11 @@ class _ChecklistItemTile extends StatelessWidget {
 // ─── Verification bottom sheet ──────────────────────────────────────────────
 
 class _VerificationBottomSheet extends ConsumerStatefulWidget {
-  final String assignmentId;
+  final String scheduleId;
   final ChecklistItem item;
 
   const _VerificationBottomSheet({
-    required this.assignmentId,
+    required this.scheduleId,
     required this.item,
   });
 
@@ -2872,8 +2930,8 @@ class _VerificationBottomSheetState
     if (!_canSubmit) return;
     setState(() => _isSubmitting = true);
 
-    await ref.read(assignmentProvider.notifier).toggleChecklistItem(
-      widget.assignmentId,
+    await ref.read(myScheduleProvider.notifier).toggleChecklistItem(
+      widget.scheduleId,
       widget.item.index,
       true,
       photoUrl: _uploadedFileUrl,

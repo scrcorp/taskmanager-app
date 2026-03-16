@@ -8,7 +8,7 @@ class AppNotification {
   final String type;
   /// 사용자에게 표시할 알림 메시지
   final String message;
-  /// 참조 리소스 유형 (예: 'work_assignment', 'additional_task', 'announcement')
+  /// 참조 리소스 유형 (예: 'schedule', 'work_assignment', 'additional_task', 'announcement')
   final String? referenceType;
   /// 참조 리소스 ID (해당 화면으로 이동 시 사용)
   final String? referenceId;

@@ -31,7 +31,8 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
   void _navigateToReference(String? type, String? id) {
     if (type == null || id == null) return;
     switch (type) {
-      case 'work_assignment':
+      case 'schedule':
+      case 'work_assignment': // backward compat
         context.push('/work/$id');
       case 'additional_task':
         context.push('/tasks/$id');

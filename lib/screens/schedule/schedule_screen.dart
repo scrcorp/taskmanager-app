@@ -6,6 +6,7 @@
 /// Tap date → bottom sheet detail, request icon → request tab.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
 import '../../models/schedule.dart';
 import '../../providers/schedule_provider.dart';
@@ -1058,7 +1059,7 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         ...grouped
-                            .map((g) => _confirmedSection(g, dayEntries)),
+                            .map((g) => _confirmedSection(context, g, dayEntries)),
                         if (grouped.isNotEmpty && dayRequests.isNotEmpty)
                           const SizedBox(height: 16),
                         ...dayRequests.map((r) => _requestSection(r)),
@@ -1073,7 +1074,7 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
   }
 
   Widget _confirmedSection(
-      _EntryGroup group, List<ScheduleEntry> dayEntries) {
+      BuildContext context, _EntryGroup group, List<ScheduleEntry> dayEntries) {
     final groupEntries = dayEntries
         .where((e) =>
             (e.storeName ?? '') == group.storeName &&
@@ -1084,6 +1085,12 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
     final h = totalMinutes ~/ 60;
     final m = totalMinutes % 60;
     final totalDisplay = m > 0 ? '${h}h ${m}m' : '${h}h';
+
+    // 첫 번째 entry의 ID를 사용해 checklist 화면으로 이동
+    // totalItems > 0 이거나 checklistInstanceId가 있으면 체크리스트 존재
+    final firstEntry = groupEntries.isNotEmpty ? groupEntries.first : null;
+    final hasChecklist = firstEntry != null &&
+        (firstEntry.totalItems > 0 || firstEntry.checklistInstanceId != null);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1135,30 +1142,54 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
                   fontWeight: FontWeight.w500,
                   color: AppColors.textSecondary)),
         ),
-        const SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          padding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: AppColors.bg,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(children: [
-            const Icon(Icons.checklist_outlined,
-                size: 18, color: AppColors.textSecondary),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: Text('Start Checklist',
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                      color: AppColors.accent)),
-            ),
-            const Icon(Icons.chevron_right,
-                size: 18, color: AppColors.textMuted),
-          ]),
-        ),
+        if (hasChecklist) ...[
+          const SizedBox(height: 12),
+          Builder(builder: (ctx) {
+            final now = DateTime.now();
+            final today = DateTime(now.year, now.month, now.day);
+            final entryDate = DateTime(firstEntry!.workDate.year, firstEntry.workDate.month, firstEntry.workDate.day);
+            final isFuture = entryDate.isAfter(today);
+            final isPast = entryDate.isBefore(today);
+
+            final label = isFuture ? 'Upcoming Checklist' : 'View Checklist';
+            final color = isFuture ? AppColors.textMuted : AppColors.accent;
+            final bg = isFuture ? AppColors.bg : AppColors.accentBg;
+
+            return GestureDetector(
+              onTap: isFuture ? null : () {
+                Navigator.of(ctx).pop(); // 바텀시트 닫기
+                if (isPast) {
+                  // Past 탭으로 이동 후 해당 체크리스트 열기
+                  context.go('/work?tab=past&scheduleId=${firstEntry.id}');
+                } else {
+                  // Today 탭 → 해당 체크리스트로 이동
+                  context.go('/work?scheduleId=${firstEntry.id}');
+                }
+              },
+              child: Opacity(
+                opacity: isFuture ? 0.5 : 1.0,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: bg,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(children: [
+                    Icon(Icons.checklist_outlined, size: 18, color: color),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(label,
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: color)),
+                    ),
+                    if (!isFuture)
+                      Icon(Icons.chevron_right, size: 18, color: color),
+                  ]),
+                ),
+              ),
+            );
+          }),
+        ],
       ],
     );
   }

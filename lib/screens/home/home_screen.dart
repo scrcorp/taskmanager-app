@@ -14,7 +14,7 @@ import 'package:intl/intl.dart';
 import '../../config/theme.dart';
 import '../../models/task.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/assignment_provider.dart';
+import '../../providers/my_schedule_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/announcement_provider.dart';
 import '../../providers/voice_provider.dart';
@@ -68,7 +68,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.initState();
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
     Future.microtask(() {
-      ref.read(assignmentProvider.notifier).loadAssignments(today);
+      ref.read(myScheduleProvider.notifier).loadSchedules(today);
       ref.read(taskProvider.notifier).loadTasks();
       ref.read(announcementProvider.notifier).loadAnnouncements();
     });
@@ -100,7 +100,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
-    final assignments = ref.watch(assignmentProvider);
+    final scheduleState = ref.watch(myScheduleProvider);
     final tasks = ref.watch(taskProvider);
     final announcements = ref.watch(announcementProvider);
     final today = DateTime.now();
@@ -108,9 +108,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final firstName = user?.firstName ?? 'Staff';
     final fullName = user?.fullName ?? 'Staff';
     final dueTodayCount = _countDueToday(tasks.tasks);
-    final totalAssignments = assignments.assignments.length;
-    final completedAssignments = assignments.assignments.where((a) {
-      final snap = a.checklistSnapshot;
+    final totalSchedules = scheduleState.schedules.length;
+    final completedSchedules = scheduleState.schedules.where((s) {
+      final snap = s.checklistSnapshot;
       return snap != null && snap.totalItems > 0 && snap.completedItems == snap.totalItems;
     }).length;
     final totalTasks = tasks.tasks.length;
@@ -122,7 +122,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       onRefresh: () async {
         final dateStr = DateFormat('yyyy-MM-dd').format(today);
         await Future.wait([
-          ref.read(assignmentProvider.notifier).loadAssignments(dateStr),
+          ref.read(myScheduleProvider.notifier).loadSchedules(dateStr),
           ref.read(taskProvider.notifier).loadTasks(),
           ref.read(announcementProvider.notifier).loadAnnouncements(),
         ]);
@@ -215,10 +215,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     children: [
                       _StatItem(
                         label: 'Checklist',
-                        value: assignments.isLoading
+                        value: scheduleState.isLoading
                             ? '-'
-                            : '$completedAssignments/$totalAssignments',
-                        color: totalAssignments > 0 && completedAssignments == totalAssignments
+                            : '$completedSchedules/$totalSchedules',
+                        color: totalSchedules > 0 && completedSchedules == totalSchedules
                             ? AppColors.success
                             : AppColors.accent,
                       ),

@@ -72,7 +72,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, state, child) => AppShell(child: child),
         routes: [
           GoRoute(path: '/home', builder: (_, __) => const HomeScreen()),
-          GoRoute(path: '/work', builder: (_, __) => const WorkScreen()),
+          GoRoute(path: '/work', builder: (_, state) => WorkScreen(
+            initialTab: state.uri.queryParameters['tab'],
+            scheduleId: state.uri.queryParameters['scheduleId'],
+          )),
           GoRoute(path: '/clock', builder: (_, __) => const ClockScreen()),
           GoRoute(path: '/schedule', builder: (_, __) => const ScheduleScreen()),
         ],
