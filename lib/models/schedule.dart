@@ -143,7 +143,10 @@ class ScheduleEntry {
   final int netWorkMinutes;
   final String status;
   final String? note;
+  final String? requestId; // 신청 기반 엔트리의 원본 request ID (중복 제거용)
   final DateTime createdAt;
+  final String? checklistInstanceId; // 배정된 체크리스트 인스턴스 ID
+  final int totalItems; // 체크리스트 총 항목 수 (0이면 체크리스트 없음)
 
   const ScheduleEntry({
     required this.id,
@@ -161,7 +164,10 @@ class ScheduleEntry {
     required this.netWorkMinutes,
     required this.status,
     this.note,
+    this.requestId,
     required this.createdAt,
+    this.checklistInstanceId,
+    this.totalItems = 0,
   });
 
   String get timeRange => '$startTime - $endTime';
@@ -190,7 +196,10 @@ class ScheduleEntry {
       netWorkMinutes: json['net_work_minutes'] ?? 0,
       status: json['status'] ?? 'draft',
       note: json['note'],
+      requestId: json['request_id'],
       createdAt: DateTime.parse(json['created_at']),
+      checklistInstanceId: json['checklist_instance_id'],
+      totalItems: json['total_items'] ?? 0,
     );
   }
 }
@@ -200,12 +209,14 @@ class ScheduleTemplate {
   final String id;
   final String name;
   final bool isDefault;
+  final String? storeId;
   final List<ScheduleTemplateItem> items;
 
   const ScheduleTemplate({
     required this.id,
     required this.name,
     this.isDefault = false,
+    this.storeId,
     required this.items,
   });
 
@@ -214,6 +225,7 @@ class ScheduleTemplate {
       id: json['id'],
       name: json['name'],
       isDefault: json['is_default'] ?? json['isDefault'] ?? false,
+      storeId: json['store_id'] ?? json['storeId'],
       items: (json['items'] as List? ?? [])
           .map((e) => ScheduleTemplateItem.fromJson(e as Map<String, dynamic>))
           .toList(),

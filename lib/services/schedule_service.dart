@@ -1,8 +1,10 @@
 /// 스케줄 API 서비스
 ///
-/// 업무역할 조회, 신청 CRUD, 확정 스케줄 조회, 템플릿 관리를 담당.
+/// 업무역할 조회, 신청 CRUD, 확정 스케줄 조회, 템플릿 관리,
+/// 내 스케줄(체크리스트 포함) 조회/완료/반려응답을 담당.
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/my_schedule.dart';
 import '../models/schedule.dart';
 import 'api_client.dart';
 
@@ -97,6 +99,20 @@ class ScheduleService {
     await _dio.delete('/app/my/schedule-requests/$requestId');
   }
 
+  /// 배치 제출 — 여러 신청을 한번에 생성/수정/삭제
+  Future<Map<String, dynamic>> batchSubmit({
+    List<Map<String, dynamic>> creates = const [],
+    List<Map<String, dynamic>> updates = const [],
+    List<String> deletes = const [],
+  }) async {
+    final response = await _dio.post('/app/my/schedule-requests/batch', data: {
+      'creates': creates,
+      'updates': updates,
+      'deletes': deletes,
+    });
+    return response.data as Map<String, dynamic>;
+  }
+
   /// 내 확정 스케줄 조회
   Future<List<ScheduleEntry>> getMyEntries({
     String? dateFrom,
@@ -156,6 +172,128 @@ class ScheduleService {
   /// 템플릿 삭제
   Future<void> deleteTemplate(String templateId) async {
     await _dio.delete('/app/my/schedule-templates/$templateId');
+  }
+
+  /// 템플릿으로 신청 일괄 생성
+  ///
+  /// [weekStartDate] — 적용할 주 시작일 (yyyy-MM-dd)
+  /// [templateId] — 적용할 템플릿 ID
+  /// [onConflict] — 중복 처리: "skip" (기본) | "replace"
+  ///
+  /// 응답: { created: [...], skipped: [...], replaced: [...] }
+  Future<Map<String, dynamic>> createRequestsFromTemplate({
+    required String templateId,
+    required String storeId,
+    required String dateFrom,
+    required String dateTo,
+    String onConflict = 'skip',
+  }) async {
+    final response = await _dio.post(
+      '/app/my/schedule-requests/from-template',
+      data: {
+        'template_id': templateId,
+        'store_id': storeId,
+        'date_from': dateFrom,
+        'date_to': dateTo,
+        'on_conflict': onConflict,
+      },
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// 지난 주 신청 복사
+  ///
+  /// [weekStartDate] — 복사할 대상 주 시작일 (yyyy-MM-dd)
+  /// [onConflict] — 중복 처리: "skip" (기본) | "replace"
+  ///
+  /// 응답: { created: [...], skipped: [...], replaced: [...] }
+  Future<Map<String, dynamic>> copyLastPeriod({
+    required String storeId,
+    required String dateFrom,
+    required String dateTo,
+    String onConflict = 'skip',
+  }) async {
+    final response = await _dio.post(
+      '/app/my/schedule-requests/copy-last-period',
+      data: {
+        'store_id': storeId,
+        'date_from': dateFrom,
+        'date_to': dateTo,
+        'on_conflict': onConflict,
+      },
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  // ── 내 스케줄 (체크리스트 포함, 기존 work-assignments 대체) ──
+
+  /// 내 스케줄 목록 조회 — 날짜/상태 필터 지원
+  ///
+  /// 응답 형식이 배열 또는 { items/data: [...] } 모두 대응.
+  Future<List<MySchedule>> getMySchedules({String? workDate, String? status}) async {
+    final params = <String, dynamic>{};
+    if (workDate != null) params['work_date'] = workDate;
+    if (status != null) params['status'] = status;
+
+    final response = await _dio.get('/app/my/schedules', queryParameters: params);
+    final list = response.data is List ? response.data : response.data['items'] ?? response.data['data'] ?? [];
+    return (list as List).map((e) => MySchedule.fromJson(e)).toList();
+  }
+
+  /// 스케줄 상세 조회 — 체크리스트, 매장 정보 포함
+  Future<MySchedule> getMyScheduleDetail(String id) async {
+    final response = await _dio.get('/app/my/schedules/$id');
+    return MySchedule.fromJson(response.data);
+  }
+
+  /// 과거 스케줄 조회 — 날짜 범위 + 페이지네이션
+  Future<PaginatedMySchedules> getPastMySchedules({
+    required String dateTo,
+    String? dateFrom,
+    int page = 1,
+    int perPage = 20,
+  }) async {
+    final params = <String, dynamic>{
+      'date_to': dateTo,
+      'page': page,
+      'per_page': perPage,
+    };
+    if (dateFrom != null) params['date_from'] = dateFrom;
+
+    final response = await _dio.get('/app/my/schedules', queryParameters: params);
+    return PaginatedMySchedules.fromJson(response.data as Map<String, dynamic>);
+  }
+
+  /// 체크리스트 항목 완료/미완료 토글
+  Future<void> toggleChecklistItem(
+    String scheduleId,
+    int itemIndex,
+    bool isCompleted, {
+    String? timezone,
+    String? photoUrl,
+    String? note,
+  }) async {
+    await _dio.patch('/app/my/schedules/$scheduleId/checklist/$itemIndex', data: {
+      'is_completed': isCompleted,
+      if (timezone != null) 'timezone': timezone,
+      if (photoUrl != null) 'photo_url': photoUrl,
+      if (note != null) 'note': note,
+    });
+  }
+
+  /// 반려된 체크리스트 항목에 재응답
+  Future<void> respondToRejection(
+    String scheduleId,
+    int itemIndex, {
+    String? responseComment,
+    String? photoUrl,
+    String? timezone,
+  }) async {
+    await _dio.patch('/app/my/schedules/$scheduleId/checklist/$itemIndex/respond', data: {
+      if (timezone != null) 'timezone': timezone,
+      if (responseComment != null) 'response_comment': responseComment,
+      if (photoUrl != null) 'photo_url': photoUrl,
+    });
   }
 
   static String _formatDate(DateTime d) =>

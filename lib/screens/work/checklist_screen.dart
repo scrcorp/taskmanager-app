@@ -16,9 +16,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../config/theme.dart';
-import '../../models/assignment.dart';
+import '../../models/my_schedule.dart';
 import '../../models/checklist.dart';
-import '../../providers/assignment_provider.dart';
+import '../../providers/my_schedule_provider.dart';
 import '../../services/storage_service.dart';
 import '../../utils/date_utils.dart';
 import '../../utils/toast_manager.dart';
@@ -41,7 +41,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
   void initState() {
     super.initState();
     Future.microtask(
-        () => ref.read(assignmentProvider.notifier).loadAssignment(widget.id));
+        () => ref.read(myScheduleProvider.notifier).loadSchedule(widget.id));
   }
 
   void _showCompletionToast() {
@@ -79,7 +79,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
       if (note == null) return;
     }
 
-    ref.read(assignmentProvider.notifier).toggleChecklistItem(
+    ref.read(myScheduleProvider.notifier).toggleChecklistItem(
           widget.id,
           item.index,
           true,
@@ -103,7 +103,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
     );
     if (responseComment == null) return;
 
-    ref.read(assignmentProvider.notifier).respondToRejection(
+    ref.read(myScheduleProvider.notifier).respondToRejection(
           widget.id,
           item.index,
           responseComment: responseComment,
@@ -244,12 +244,12 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(assignmentProvider);
-    final assignment = state.selected;
+    final state = ref.watch(myScheduleProvider);
+    final schedule = state.selected;
 
-    if (assignment != null &&
-        assignment.checklistSnapshot != null &&
-        assignment.checklistSnapshot!.isAllCompleted &&
+    if (schedule != null &&
+        schedule.checklistSnapshot != null &&
+        schedule.checklistSnapshot!.isAllCompleted &&
         !_celebrationShown) {
       WidgetsBinding.instance
           .addPostFrameCallback((_) => _showCompletionToast());
@@ -262,14 +262,14 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
           body: Column(
             children: [
               AppHeader(
-                title: assignment?.store.name ?? 'Checklist',
+                title: schedule?.store.name ?? 'Checklist',
                 isDetail: true,
                 onBack: () => context.pop(),
               ),
-              if (state.isLoading && assignment == null)
+              if (state.isLoading && schedule == null)
                 const Expanded(
                     child: Center(child: CircularProgressIndicator()))
-              else if (state.error != null && assignment == null)
+              else if (state.error != null && schedule == null)
                 Expanded(
                   child: Center(
                     child: Padding(
@@ -278,7 +278,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Text(
-                            'Failed to load assignment',
+                            'Failed to load schedule',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -288,8 +288,8 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                           const SizedBox(height: 12),
                           TextButton(
                             onPressed: () => ref
-                                .read(assignmentProvider.notifier)
-                                .loadAssignment(widget.id),
+                                .read(myScheduleProvider.notifier)
+                                .loadSchedule(widget.id),
                             child: const Text('Retry'),
                           ),
                         ],
@@ -297,21 +297,21 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                     ),
                   ),
                 )
-              else if (assignment == null)
+              else if (schedule == null)
                 const Expanded(
-                    child: Center(child: Text('Assignment not found')))
+                    child: Center(child: Text('Schedule not found')))
               else
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: () async {
                       await ref
-                          .read(assignmentProvider.notifier)
-                          .loadAssignment(widget.id);
+                          .read(myScheduleProvider.notifier)
+                          .loadSchedule(widget.id);
                     },
                     child: ListView(
                       padding: const EdgeInsets.all(16),
                       children: [
-                        // Assignment header card
+                        // Schedule header card
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -323,7 +323,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                assignment.label,
+                                schedule.label,
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
@@ -332,14 +332,14 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                formatFixedDateWithDay(assignment.workDate),
+                                formatFixedDateWithDay(schedule.workDate),
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: AppColors.textSecondary,
                                 ),
                               ),
                               const SizedBox(height: 12),
-                              _buildProgressSection(assignment),
+                              _buildProgressSection(schedule),
                             ],
                           ),
                         ),
@@ -357,7 +357,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            if (assignment.checklistSnapshot != null)
+                            if (schedule.checklistSnapshot != null)
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 2),
@@ -366,7 +366,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Text(
-                                  '${assignment.checklistSnapshot!.totalItems}',
+                                  '${schedule.checklistSnapshot!.totalItems}',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
@@ -379,8 +379,8 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                         const SizedBox(height: 12),
 
                         // Checklist items
-                        if (assignment.checklistSnapshot == null ||
-                            assignment.checklistSnapshot!.items.isEmpty)
+                        if (schedule.checklistSnapshot == null ||
+                            schedule.checklistSnapshot!.items.isEmpty)
                           Container(
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
@@ -405,9 +405,9 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                             ),
                             child: Column(
                               children: List.generate(
-                                assignment.checklistSnapshot!.items.length,
+                                schedule.checklistSnapshot!.items.length,
                                 (index) {
-                                  final item = assignment
+                                  final item = schedule
                                       .checklistSnapshot!.items[index];
                                   return Column(
                                     children: [
@@ -460,8 +460,8 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
     );
   }
 
-  Widget _buildProgressSection(Assignment assignment) {
-    final snapshot = assignment.checklistSnapshot;
+  Widget _buildProgressSection(MySchedule schedule) {
+    final snapshot = schedule.checklistSnapshot;
     final completed = snapshot?.completedItems ?? 0;
     final total = snapshot?.totalItems ?? 0;
     final progress = total > 0 ? completed / total : 0.0;
