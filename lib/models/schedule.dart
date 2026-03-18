@@ -90,13 +90,13 @@ class ScheduleRequest {
   String get statusLabel {
     switch (status) {
       case 'submitted':
-        return '제출됨';
+        return 'Submitted';
       case 'accepted':
-        return '승인';
+        return 'Approved';
       case 'modified':
-        return '수정됨';
+        return 'Modified';
       case 'rejected':
-        return '반려';
+        return 'Rejected';
       default:
         return status;
     }

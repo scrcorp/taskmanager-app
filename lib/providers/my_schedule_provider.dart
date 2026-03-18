@@ -105,38 +105,93 @@ class MyScheduleNotifier extends StateNotifier<MyScheduleState> {
     }
   }
 
-  /// 체크리스트 항목 완료/미완료 토글
+  /// 체크리스트 항목 완료 처리
+  ///
+  /// instanceId가 있으면 새 API (POST /checklist-instances/.../complete),
+  /// 없으면 구 API (PATCH /schedules/.../checklist/...) 사용.
   Future<void> toggleChecklistItem(
     String scheduleId,
     int itemIndex,
     bool isCompleted, {
-    String? photoUrl,
+    List<String>? photoUrls,
     String? note,
   }) async {
-    await _service.toggleChecklistItem(
-      scheduleId,
-      itemIndex,
-      isCompleted,
-      photoUrl: photoUrl,
-      note: note,
-    );
+    if (isCompleted) {
+      // 완료 처리: instanceId 조회 후 새 API 사용
+      final instanceId = state.selected?.checklistInstanceId;
+      if (instanceId != null) {
+        await _service.completeChecklistItem(
+          instanceId,
+          itemIndex,
+          photoUrls: photoUrls,
+          note: note,
+        );
+      } else {
+        // fallback: 구 API
+        await _service.toggleChecklistItem(
+          scheduleId,
+          itemIndex,
+          isCompleted,
+          photoUrls: photoUrls,
+          note: note,
+        );
+      }
+    } else {
+      // 미완료 처리: 구 API
+      await _service.toggleChecklistItem(
+        scheduleId,
+        itemIndex,
+        isCompleted,
+        photoUrls: photoUrls,
+        note: note,
+      );
+    }
     await _reloadSchedule(scheduleId);
   }
 
   /// 반려된 체크리스트 항목에 재응답
+  ///
+  /// instanceId가 있으면 새 API (PUT /checklist-instances/.../resubmit) 사용.
   Future<void> respondToRejection(
     String scheduleId,
     int itemIndex, {
     String? responseComment,
-    String? photoUrl,
+    List<String>? photoUrls,
   }) async {
+    final instanceId = state.selected?.checklistInstanceId;
     await _service.respondToRejection(
       scheduleId,
       itemIndex,
+      instanceId: instanceId,
       responseComment: responseComment,
-      photoUrl: photoUrl,
+      photoUrls: photoUrls,
     );
     await _reloadSchedule(scheduleId);
+  }
+
+  /// 완료된 항목 미완료로 되돌리기 (리뷰 없을 때만 허용)
+  /// [instanceId] = checklist_instance_id (schedule_id가 아님)
+  Future<void> uncompleteItem(String instanceId, int itemIndex, {required String scheduleId}) async {
+    await _service.uncompleteItem(instanceId, itemIndex);
+    await _reloadSchedule(scheduleId);
+  }
+
+  /// 리포트 제출 (모든 항목 완료 후)
+  /// [instanceId] = checklist_instance_id
+  Future<void> sendReport(String instanceId, {required String scheduleId}) async {
+    await _service.sendReport(instanceId);
+    await _reloadSchedule(scheduleId);
+  }
+
+  /// 리뷰 채팅 콘텐츠 추가
+  /// [instanceId] = checklist_instance_id
+  Future<void> addReviewContent(
+    String instanceId,
+    int itemIndex, {
+    required String type,
+    required String content,
+  }) async {
+    await _service.addReviewContent(instanceId, itemIndex, type: type, content: content);
   }
 
   /// 스케줄 리로드 후 목록과 상세 상태 모두 업데이트

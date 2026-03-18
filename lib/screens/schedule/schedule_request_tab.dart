@@ -3400,7 +3400,7 @@ class _ConflictDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('일부 항목이 중복됩니다'),
+      title: const Text('Some items are duplicates'),
       content: SizedBox(
         width: double.maxFinite,
         child: Column(
@@ -3413,22 +3413,22 @@ class _ConflictDialog extends StatelessWidget {
                 style: const TextStyle(fontSize: 14, color: AppColors.text),
                 children: [
                   TextSpan(
-                    text: '$createdCount건 생성',
+                    text: '$createdCount created',
                     style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.success),
                   ),
                   const TextSpan(text: ', '),
                   TextSpan(
-                    text: '${skippedItems.length}건 건너뜀',
+                    text: '${skippedItems.length} skipped',
                     style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.warning),
                   ),
-                  const TextSpan(text: ' (이미 존재)'),
+                  const TextSpan(text: ' (already exists)'),
                 ],
               ),
             ),
             const SizedBox(height: 12),
             // 건너뛴 항목 상세
             const Text(
-              '건너뛴 항목:',
+              'Skipped items:',
               style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 6),
@@ -3459,7 +3459,7 @@ class _ConflictDialog extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             const Text(
-              '기존 신청을 대체하시겠습니까?',
+              'Replace existing requests?',
               style: TextStyle(fontSize: 13, color: AppColors.text),
             ),
           ],
@@ -3468,11 +3468,11 @@ class _ConflictDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(null),
-          child: const Text('취소'),
+          child: const Text('Cancel'),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop('skip'),
-          child: const Text('건너뜀 유지'),
+          child: const Text('Keep Skipped'),
         ),
         ElevatedButton(
           onPressed: () => Navigator.of(context).pop('replace'),
@@ -3480,7 +3480,7 @@ class _ConflictDialog extends StatelessWidget {
             backgroundColor: AppColors.accent,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           ),
-          child: const Text('기존 것 대체', style: TextStyle(color: Colors.white)),
+          child: const Text('Replace Existing', style: TextStyle(color: Colors.white)),
         ),
       ],
     );

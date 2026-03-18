@@ -257,6 +257,7 @@ class ScheduleService {
       'date_to': dateTo,
       'page': page,
       'per_page': perPage,
+      'sort': 'desc',
     };
     if (dateFrom != null) params['date_from'] = dateFrom;
 
@@ -264,36 +265,85 @@ class ScheduleService {
     return PaginatedMySchedules.fromJson(response.data as Map<String, dynamic>);
   }
 
-  /// 체크리스트 항목 완료/미완료 토글
+  /// 체크리스트 항목 완료 처리 (새 API: POST /checklist-instances/{instanceId}/items/{idx}/complete)
+  Future<void> completeChecklistItem(
+    String instanceId,
+    int itemIndex, {
+    String? timezone,
+    List<String>? photoUrls,
+    String? note,
+  }) async {
+    await _dio.post('/app/my/checklist-instances/$instanceId/items/$itemIndex/complete', data: {
+      if (timezone != null) 'timezone': timezone,
+      if (photoUrls != null && photoUrls.isNotEmpty) 'photo_urls': photoUrls,
+      if (note != null) 'note': note,
+    });
+  }
+
+  /// 체크리스트 항목 완료/미완료 토글 (구 API — uncomplete는 별도 엔드포인트)
   Future<void> toggleChecklistItem(
     String scheduleId,
     int itemIndex,
     bool isCompleted, {
     String? timezone,
-    String? photoUrl,
+    List<String>? photoUrls,
     String? note,
   }) async {
     await _dio.patch('/app/my/schedules/$scheduleId/checklist/$itemIndex', data: {
       'is_completed': isCompleted,
       if (timezone != null) 'timezone': timezone,
-      if (photoUrl != null) 'photo_url': photoUrl,
+      if (photoUrls != null && photoUrls.isNotEmpty) 'photo_urls': photoUrls,
       if (note != null) 'note': note,
     });
   }
 
-  /// 반려된 체크리스트 항목에 재응답
+  /// 반려된 체크리스트 항목에 재응답 (새 API: PUT /checklist-instances/{instanceId}/items/{idx}/resubmit)
   Future<void> respondToRejection(
     String scheduleId,
     int itemIndex, {
+    String? instanceId,
     String? responseComment,
-    String? photoUrl,
+    List<String>? photoUrls,
     String? timezone,
   }) async {
-    await _dio.patch('/app/my/schedules/$scheduleId/checklist/$itemIndex/respond', data: {
-      if (timezone != null) 'timezone': timezone,
-      if (responseComment != null) 'response_comment': responseComment,
-      if (photoUrl != null) 'photo_url': photoUrl,
-    });
+    if (instanceId != null) {
+      // 새 API 사용
+      await _dio.put('/app/my/checklist-instances/$instanceId/items/$itemIndex/resubmit', data: {
+        if (timezone != null) 'client_timezone': timezone,
+        if (responseComment != null) 'note': responseComment,
+        if (photoUrls != null && photoUrls.isNotEmpty) 'photo_urls': photoUrls,
+      });
+    } else {
+      // 구 API fallback
+      await _dio.patch('/app/my/schedules/$scheduleId/checklist/$itemIndex/respond', data: {
+        if (timezone != null) 'timezone': timezone,
+        if (responseComment != null) 'response_comment': responseComment,
+        if (photoUrls != null && photoUrls.isNotEmpty) 'photo_urls': photoUrls,
+      });
+    }
+  }
+
+  /// 완료된 체크리스트 항목 미완료로 되돌리기 (리뷰 없을 때만 가능)
+  Future<void> uncompleteItem(String instanceId, int itemIndex) async {
+    await _dio.delete('/app/my/checklist-instances/$instanceId/items/$itemIndex/uncomplete');
+  }
+
+  /// 체크리스트 완료 리포트 제출
+  Future<void> sendReport(String instanceId) async {
+    await _dio.post('/app/my/checklist-instances/$instanceId/report');
+  }
+
+  /// 리뷰 채팅에 콘텐츠 추가 (텍스트/사진)
+  Future<void> addReviewContent(
+    String instanceId,
+    int itemIndex, {
+    required String type,
+    required String content,
+  }) async {
+    await _dio.post(
+      '/app/my/checklist-instances/$instanceId/items/$itemIndex/review/contents',
+      data: {'type': type, 'content': content},
+    );
   }
 
   static String _formatDate(DateTime d) =>

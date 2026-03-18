@@ -27,6 +27,7 @@ import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/my_schedule_provider.dart';
 import '../../providers/task_provider.dart';
+import 'checklist_chat_screen.dart';
 import '../../services/storage_service.dart';
 import '../../utils/toast_manager.dart';
 
@@ -90,13 +91,17 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
     });
   }
 
-  void _openChecklist(BuildContext context, String scheduleId) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _ChecklistBottomSheet(scheduleId: scheduleId),
-    );
+  void _openChecklist(BuildContext context, String scheduleId) async {
+    await context.push('/work/$scheduleId');
+    // 체크리스트에서 돌아오면 목록 새로고침
+    if (mounted) {
+      final today = DateTime.now();
+      final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+      ref.read(myScheduleProvider.notifier).loadSchedules(todayStr);
+      if (_pastLoaded) {
+        ref.read(myScheduleProvider.notifier).loadPastSchedules();
+      }
+    }
   }
 
   void _switchTab(int index) {
@@ -387,10 +392,11 @@ class _TodayScheduleCard extends StatelessWidget {
     final a = schedule;
     final total = a.checklistSnapshot?.totalItems ?? a.totalItems;
     final completed = a.checklistSnapshot?.completedItems ?? a.completedItems;
-    final isDone = total > 0 && completed == total;
+    final cardStatus = a.checklistStatus;
+    final isDone = cardStatus == ChecklistCardStatus.done;
     final isWithinShift = a.isWithinWorkHours(DateTime.now());
     final unresolvedList = a.checklistSnapshot?.unresolvedRejections ?? [];
-    final hasUnresolved = unresolvedList.isNotEmpty;
+    final hasUnresolved = cardStatus == ChecklistCardStatus.rejected;
     final kind = _classifyDate(a.workDate);
     final isFuture = kind == _ScheduleDateKind.future;
 
@@ -406,13 +412,11 @@ class _TodayScheduleCard extends StatelessWidget {
             border: Border.all(
               color: isFuture
                   ? AppColors.border
-                  : hasUnresolved
-                      ? AppColors.warning.withValues(alpha: 0.4)
-                      : isDone
-                          ? AppColors.success.withValues(alpha: 0.4)
-                          : isWithinShift
-                              ? AppColors.accent.withValues(alpha: 0.3)
-                              : AppColors.border,
+                  : cardStatus != ChecklistCardStatus.notStarted
+                      ? cardStatus.color.withOpacity(0.3)
+                      : isWithinShift
+                          ? AppColors.accent.withOpacity(0.3)
+                          : AppColors.border,
             ),
           ),
           child: Row(
@@ -424,13 +428,11 @@ class _TodayScheduleCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: isFuture
                       ? AppColors.bg
-                      : hasUnresolved
-                          ? AppColors.warningBg
-                          : isDone
-                              ? AppColors.successBg
-                              : isWithinShift
-                                  ? AppColors.accentBg
-                                  : AppColors.bg,
+                      : cardStatus != ChecklistCardStatus.notStarted
+                          ? cardStatus.bgColor
+                          : isWithinShift
+                              ? AppColors.accentBg
+                              : AppColors.bg,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Center(
@@ -441,13 +443,11 @@ class _TodayScheduleCard extends StatelessWidget {
                       fontWeight: FontWeight.w700,
                       color: isFuture
                           ? AppColors.textMuted
-                          : hasUnresolved
-                              ? AppColors.warning
-                              : isDone
-                                  ? AppColors.success
-                                  : isWithinShift
-                                      ? AppColors.accent
-                                      : AppColors.textSecondary,
+                          : cardStatus != ChecklistCardStatus.notStarted
+                              ? cardStatus.color
+                              : isWithinShift
+                                  ? AppColors.accent
+                                  : AppColors.textSecondary,
                     ),
                   ),
                 ),
@@ -528,11 +528,9 @@ class _TodayScheduleCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: hasUnresolved
-                        ? AppColors.warningBg
-                        : isDone
-                            ? AppColors.successBg
-                            : AppColors.accentBg,
+                    color: cardStatus != ChecklistCardStatus.notStarted
+                        ? cardStatus.bgColor
+                        : AppColors.accentBg,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -540,11 +538,9 @@ class _TodayScheduleCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: hasUnresolved
-                          ? AppColors.warning
-                          : isDone
-                              ? AppColors.success
-                              : AppColors.accent,
+                      color: cardStatus != ChecklistCardStatus.notStarted
+                          ? cardStatus.color
+                          : AppColors.accent,
                     ),
                   ),
                 ),
@@ -1623,9 +1619,9 @@ class _PastScheduleCard extends StatelessWidget {
     final a = schedule;
     final total = a.checklistSnapshot?.totalItems ?? a.totalItems;
     final completed = a.checklistSnapshot?.completedItems ?? a.completedItems;
-    final isDone = total > 0 && completed == total;
+    final cardStatus = a.checklistStatus;
     final unresolvedList = a.checklistSnapshot?.unresolvedRejections ?? [];
-    final hasUnresolved = unresolvedList.isNotEmpty;
+    final hasUnresolved = cardStatus == ChecklistCardStatus.rejected;
     const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final wd = weekdays[a.workDate.weekday - 1];
     final dateStr = '${DateFormat('MM/dd').format(a.workDate)} ($wd)';
@@ -1638,9 +1634,11 @@ class _PastScheduleCard extends StatelessWidget {
           color: AppColors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: hasUnresolved
-                ? AppColors.warning.withValues(alpha: 0.4)
-                : AppColors.border,
+            color: cardStatus == ChecklistCardStatus.rejected
+                ? AppColors.danger.withOpacity(0.4)
+                : cardStatus == ChecklistCardStatus.done
+                    ? AppColors.success.withOpacity(0.4)
+                    : AppColors.border,
           ),
         ),
         child: Column(
@@ -1653,11 +1651,7 @@ class _PastScheduleCard extends StatelessWidget {
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: hasUnresolved
-                        ? AppColors.warningBg
-                        : isDone
-                            ? AppColors.successBg
-                            : AppColors.bg,
+                    color: cardStatus.bgColor,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Center(
@@ -1666,11 +1660,7 @@ class _PastScheduleCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
-                        color: hasUnresolved
-                            ? AppColors.warning
-                            : isDone
-                                ? AppColors.success
-                                : AppColors.textSecondary,
+                        color: cardStatus.color,
                       ),
                     ),
                   ),
@@ -1701,21 +1691,21 @@ class _PastScheduleCard extends StatelessWidget {
                               color: AppColors.textMuted,
                             ),
                           ),
-                          if (hasUnresolved) ...[
+                          if (cardStatus != ChecklistCardStatus.notStarted) ...[
                             const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 6, vertical: 1),
                               decoration: BoxDecoration(
-                                color: AppColors.warningBg,
+                                color: cardStatus.bgColor,
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                'Unresolved ${unresolvedList.length}',
-                                style: const TextStyle(
+                                cardStatus.label,
+                                style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.warning,
+                                  color: cardStatus.color,
                                 ),
                               ),
                             ),
@@ -1731,7 +1721,7 @@ class _PastScheduleCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isDone ? AppColors.successBg : AppColors.warningBg,
+                      color: cardStatus.bgColor,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
@@ -1739,7 +1729,7 @@ class _PastScheduleCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: isDone ? AppColors.success : AppColors.warning,
+                        color: cardStatus.color,
                       ),
                     ),
                   ),
@@ -2151,13 +2141,13 @@ class _ChecklistBottomSheetState
   void _onItemTap(ChecklistItem item) async {
     if (_isUploading) return;
 
-    // Rejected → respond to rejection
+    // Rejected → 채팅 화면에서 재제출
     if (item.isRejected && !item.isResolved) {
-      await _handleRespondToRejection(item);
+      _showItemDetailSheet(item);
       return;
     }
 
-    // Already completed → show detail sheet
+    // Already completed → 채팅 화면
     if (item.isCompleted) {
       _showItemDetailSheet(item);
       return;
@@ -2202,7 +2192,7 @@ class _ChecklistBottomSheetState
           widget.scheduleId,
           item.index,
           responseComment: responseComment,
-          photoUrl: photoUrl,
+          photoUrls: photoUrl != null ? [photoUrl] : null,
         );
   }
 
@@ -2327,12 +2317,18 @@ class _ChecklistBottomSheetState
   }
 
   void _showItemDetailSheet(ChecklistItem item) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _ItemDetailSheet(item: item),
-    );
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChecklistChatScreen(
+          scheduleId: widget.scheduleId,
+          item: item,
+        ),
+      ),
+    ).then((_) {
+      // 채팅 화면에서 돌아오면 데이터 새로고침
+      ref.read(myScheduleProvider.notifier).loadSchedule(widget.scheduleId);
+    });
   }
 
   @override
@@ -2340,9 +2336,11 @@ class _ChecklistBottomSheetState
     final state = ref.watch(myScheduleProvider);
     final schedule = state.selected;
 
-    if (schedule != null &&
-        schedule.checklistSnapshot?.isAllCompleted == true &&
-        !_celebrationShown) {
+    final isAllDoneCheck = schedule != null &&
+        (schedule.checklistSnapshot?.isAllCompleted == true ||
+            (schedule.totalItems > 0 &&
+                schedule.completedItems == schedule.totalItems));
+    if (isAllDoneCheck && !_celebrationShown) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           setState(() => _celebrationShown = true);
@@ -2358,8 +2356,8 @@ class _ChecklistBottomSheetState
     }
 
     final snapshot = schedule?.checklistSnapshot;
-    final total = snapshot?.totalItems ?? 0;
-    final completed = snapshot?.completedItems ?? 0;
+    final total = snapshot?.totalItems ?? schedule?.totalItems ?? 0;
+    final completed = snapshot?.completedItems ?? schedule?.completedItems ?? 0;
     final progress = total > 0 ? completed / total : 0.0;
     final isAllDone = total > 0 && completed == total;
 
@@ -2934,7 +2932,7 @@ class _VerificationBottomSheetState
       widget.scheduleId,
       widget.item.index,
       true,
-      photoUrl: _uploadedFileUrl,
+      photoUrls: _uploadedFileUrl != null ? [_uploadedFileUrl!] : null,
       note: _noteController.text.trim().isNotEmpty
           ? _noteController.text.trim()
           : null,
@@ -3388,7 +3386,7 @@ class _ItemDetailSheet extends StatelessWidget {
                             size: 14, color: AppColors.textSecondary),
                         const SizedBox(width: 4),
                         Text(
-                          item.completedBy ?? '-',
+                          item.completedByName ?? item.completedBy ?? '-',
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
@@ -3565,14 +3563,19 @@ class _TimelineStepCard extends StatelessWidget {
 
   Color get _dotColor {
     switch (type) {
-      case 'completed':
+      case 'submitted':
         return _submitColor;
+      case 'resubmitted':
+        return _resubmitColor;
       case 'rejected':
         return _changeReqColor;
-      case 'responded':
-        return _resubmitColor;
       case 'approved':
         return _approvedColor;
+      case 'pending_re_review':
+        return _changeReqColor;
+      case 'message':
+      case 'message_photo':
+        return _submitColor;
       case 'pending':
         return _pendingColor;
       default:
@@ -3582,14 +3585,19 @@ class _TimelineStepCard extends StatelessWidget {
 
   Color get _cardBg {
     switch (type) {
-      case 'completed':
+      case 'submitted':
         return _submitBg;
+      case 'resubmitted':
+        return _resubmitBg;
       case 'rejected':
         return _changeReqBg;
-      case 'responded':
-        return _resubmitBg;
       case 'approved':
         return _approvedBg;
+      case 'pending_re_review':
+        return _changeReqBg;
+      case 'message':
+      case 'message_photo':
+        return _submitBg;
       case 'pending':
         return _pendingBg;
       default:
@@ -3599,14 +3607,20 @@ class _TimelineStepCard extends StatelessWidget {
 
   String get _label {
     switch (type) {
-      case 'completed':
+      case 'submitted':
         return 'Submitted';
+      case 'resubmitted':
+        return 'Resubmitted';
       case 'rejected':
         return 'Revision Requested';
-      case 'responded':
-        return 'Resubmitted';
       case 'approved':
         return 'Approved';
+      case 'pending_re_review':
+        return 'Pending Re-review';
+      case 'message':
+        return 'Message';
+      case 'message_photo':
+        return 'Photo';
       case 'pending':
         return 'Pending';
       default:
@@ -3616,14 +3630,20 @@ class _TimelineStepCard extends StatelessWidget {
 
   IconData get _icon {
     switch (type) {
-      case 'completed':
+      case 'submitted':
         return Icons.upload_file;
+      case 'resubmitted':
+        return Icons.replay;
       case 'rejected':
         return Icons.edit_note;
-      case 'responded':
-        return Icons.replay;
       case 'approved':
         return Icons.check_circle;
+      case 'pending_re_review':
+        return Icons.hourglass_top;
+      case 'message':
+        return Icons.chat_bubble_outline;
+      case 'message_photo':
+        return Icons.image_outlined;
       case 'pending':
         return Icons.schedule;
       default:
@@ -3720,7 +3740,7 @@ class _TimelineStepCard extends StatelessWidget {
                             size: 13, color: AppColors.textSecondary),
                         const SizedBox(width: 4),
                         Text(
-                          by!,
+                          by ?? '-',
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
