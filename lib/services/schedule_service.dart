@@ -114,16 +114,24 @@ class ScheduleService {
   }
 
   /// 내 확정 스케줄 조회
+  ///
+  /// 서버가 페이지네이션 응답 { items, total, page, per_page } 형식으로 반환하므로
+  /// items 배열을 추출한다. 날짜 범위가 좁으므로 per_page를 크게 설정.
   Future<List<ScheduleEntry>> getMyEntries({
     String? dateFrom,
     String? dateTo,
   }) async {
-    final params = <String, dynamic>{};
+    final params = <String, dynamic>{
+      'per_page': 100, // 주간/월간 범위는 최대 ~35일이므로 100으로 충분
+    };
     if (dateFrom != null) params['date_from'] = dateFrom;
     if (dateTo != null) params['date_to'] = dateTo;
     final response =
         await _dio.get('/app/my/schedules', queryParameters: params);
-    return (response.data as List)
+    // 서버 응답이 페이지네이션 객체 { items: [...], total, page, per_page }
+    final data = response.data;
+    final list = data is Map ? (data['items'] ?? data['data'] ?? []) : data;
+    return (list as List)
         .map((e) => ScheduleEntry.fromJson(e as Map<String, dynamic>))
         .toList();
   }
