@@ -1,28 +1,30 @@
-/// 체크리스트 상세 화면
+/// 체크리스트 상세 화면 (개선)
 ///
-/// 특정 근무배정의 체크리스트 항목을 표시하고 완료/반려 응답 처리.
+/// 필터 탭 (전체/미완료/완료/반려)으로 항목 필터링.
+/// 항목 탭: 완료 다이얼로그 or 채팅 화면 이동 (두 경로).
+/// 항목 롱프레스: 체크 해제 (리뷰 없을 때만).
+/// 모든 항목 완료 시 Send Report 버튼 활성화.
 ///
-/// 주요 플로우:
-/// 1. 일반 항목 탭 → 완료 처리 (사진/메모 필요시 먼저 수집)
-/// 2. 반려된 항목 탭 → 재응답 (코멘트 + 선택적 사진)
-/// 3. 완료된 항목 탭 → 상세 정보 바텀시트 (타임라인 이벤트 포함)
-/// 4. 모든 항목 완료 시 → 축하 토스트 표시
-///
-/// 사진 업로드는 StorageService의 presigned URL 방식 사용.
-/// 각 항목에 requiresPhoto/requiresComment 플래그로 입력 요구사항 분기.
-import 'package:flutter/foundation.dart';
+/// 사진 업로드: StorageService presigned URL 방식 (다중 사진 지원).
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../config/theme.dart';
-import '../../models/assignment.dart';
 import '../../models/checklist.dart';
-import '../../providers/assignment_provider.dart';
+import '../../models/my_schedule.dart';
+import '../../providers/my_schedule_provider.dart';
 import '../../services/storage_service.dart';
 import '../../utils/date_utils.dart';
 import '../../utils/toast_manager.dart';
 import '../../widgets/app_header.dart';
+import 'checklist_chat_screen.dart';
+
+/// 체크리스트 필터 탭
+enum _ChecklistFilter { all, todo, done, rejected }
 
 /// 체크리스트 상세 화면 위젯
 class ChecklistScreen extends ConsumerStatefulWidget {
@@ -33,82 +35,361 @@ class ChecklistScreen extends ConsumerStatefulWidget {
   ConsumerState<ChecklistScreen> createState() => _ChecklistScreenState();
 }
 
-class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
+class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
+    with SingleTickerProviderStateMixin {
   bool _celebrationShown = false;
   bool _isUploading = false;
+  _ChecklistFilter _filter = _ChecklistFilter.all;
+  late final TabController _tabController;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 4, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) return;
+      setState(() {
+        _filter = _ChecklistFilter.values[_tabController.index];
+      });
+    });
+    // If checklist is already complete on load, suppress the celebration toast
+    final schedule = ref.read(myScheduleProvider).selected;
+    if (schedule?.checklistSnapshot?.isAllCompleted == true) {
+      _celebrationShown = true;
+    }
     Future.microtask(
-        () => ref.read(assignmentProvider.notifier).loadAssignment(widget.id));
+        () => ref.read(myScheduleProvider.notifier).loadSchedule(widget.id));
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   void _showCompletionToast() {
     if (_celebrationShown) return;
     _celebrationShown = true;
-    ToastManager().success(context, 'All tasks completed! Great work!');
+    ToastManager().success(context, 'All items completed! Great work.');
   }
 
-  void _onItemTap(ChecklistItem item) async {
+  List<ChecklistItem> _applyFilter(List<ChecklistItem> items) {
+    List<ChecklistItem> filtered;
+    switch (_filter) {
+      case _ChecklistFilter.all:
+        filtered = List<ChecklistItem>.from(items);
+        break;
+      case _ChecklistFilter.todo:
+        filtered = items.where((i) => !i.isCompleted).toList();
+        break;
+      case _ChecklistFilter.done:
+        filtered = items.where((i) => i.isCompleted && !i.isRejected).toList();
+        break;
+      case _ChecklistFilter.rejected:
+        filtered = items.where((i) => i.isRejected && !i.isResolved).toList();
+        break;
+    }
+    // Sort: incomplete first, then completed
+    if (_filter == _ChecklistFilter.all) {
+      filtered.sort((a, b) {
+        if (!a.isCompleted && b.isCompleted) return -1;
+        if (a.isCompleted && !b.isCompleted) return 1;
+        return 0;
+      });
+    }
+    return filtered;
+  }
+
+  /// 항목 체크박스 영역 탭 → 미완료: 완료 다이얼로그 / 완료: undo 플로우
+  void _onCheckTap(ChecklistItem item) async {
     if (_isUploading) return;
 
-    // Rejected item → respond to rejection flow
+    // 반려 미해결 → resubmit 다이얼로그 (이전 제출 내용 미리 채움)
     if (item.isRejected && !item.isResolved) {
-      await _handleRespondToRejection(item);
+      await _handleResubmit(item);
       return;
     }
 
-    // Already completed → show detail sheet
+    // 완료 항목 → 제출 내역 다이얼로그 (체크 아이콘은 undo, 나머지는 여기)
     if (item.isCompleted) {
-      _showItemDetailSheet(context, item);
+      _showSubmittedDialog(item);
       return;
     }
 
-    // Normal completion flow
-    String? photoUrl;
-    String? note;
-
-    if (item.requiresPhoto) {
-      photoUrl = await _handlePhotoCapture();
-      if (photoUrl == null) return;
-    }
-
-    if (item.requiresComment) {
-      note = await _showNoteDialog();
-      if (note == null) return;
-    }
-
-    ref.read(assignmentProvider.notifier).toggleChecklistItem(
-          widget.id,
-          item.index,
-          true,
-          photoUrl: photoUrl,
-          note: note,
-        );
+    // 미완료 → 완료 처리 다이얼로그
+    await _handleCompletion(item);
   }
 
-  Future<void> _handleRespondToRejection(ChecklistItem item) async {
-    String? photoUrl;
-    String? responseComment;
-
-    if (item.requiresPhoto) {
-      photoUrl = await _handlePhotoCapture();
-      if (photoUrl == null) return;
-    }
-
-    responseComment = await _showNoteDialog(
-      title: 'Response',
-      hint: 'Enter your response to the rejection...',
+  /// 채팅 아이콘 버튼 탭 → 채팅 화면으로 이동
+  Future<void> _openChatScreen(ChecklistItem item) async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChecklistChatScreen(
+          scheduleId: widget.id,
+          item: item,
+        ),
+      ),
     );
-    if (responseComment == null) return;
+    // 채팅 화면에서 돌아오면 데이터 새로고침
+    if (mounted) {
+      ref.read(myScheduleProvider.notifier).loadSchedule(widget.id);
+    }
+  }
 
-    ref.read(assignmentProvider.notifier).respondToRejection(
-          widget.id,
-          item.index,
-          responseComment: responseComment,
-          photoUrl: photoUrl,
-        );
+  /// 재제출 — 이전 제출 내용 미리 채운 다이얼로그
+  Future<void> _handleResubmit(ChecklistItem item) async {
+    final result = await showDialog<_CompletionResult>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _CompletionFormDialog(
+        item: item,
+        storageProvider: ref.read(storageServiceProvider),
+        scheduleId: widget.id,
+        isResubmit: true,
+        initialPhotoUrls: item.photoUrls,
+        initialNote: item.note,
+      ),
+    );
+    if (result == null) return;
+
+    try {
+      await ref.read(myScheduleProvider.notifier).respondToRejection(
+            widget.id,
+            item.index,
+            responseComment: result.note,
+            photoUrls: result.photoUrls,
+          );
+      if (mounted) ToastManager().success(context, 'Resubmitted.');
+    } catch (e) {
+      if (mounted) ToastManager().error(context, 'Failed to resubmit. Please try again.');
+    }
+  }
+
+  /// 항목 완료 처리 — 자기완결형 다이얼로그에서 사진+텍스트 수집+확인
+  Future<void> _handleCompletion(ChecklistItem item) async {
+    final result = await showDialog<_CompletionResult>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _CompletionFormDialog(
+        item: item,
+        storageProvider: ref.read(storageServiceProvider),
+        scheduleId: widget.id,
+      ),
+    );
+    if (result == null) return; // cancelled
+
+    try {
+      await ref.read(myScheduleProvider.notifier).toggleChecklistItem(
+            widget.id,
+            item.index,
+            true,
+            photoUrls: result.photoUrls.isEmpty ? null : result.photoUrls,
+            note: result.note,
+          );
+    } catch (e) {
+      if (mounted) {
+        ToastManager().error(context, 'Failed to complete item. Please try again.');
+      }
+    }
+  }
+
+  /// 항목 롱프레스 → 체크 해제 옵션 (리뷰 없거나 pending_re_review 이고 미재검토 시만)
+  void _onItemLongPress(ChecklistItem item) async {
+    if (!item.isCompleted) return;
+    // pass/fail 리뷰가 존재하면 해제 불가
+    // pending_re_review는 아직 재검토 전이므로 해제 허용
+    final canUncomplete = item.reviewResult == null ||
+        (item.isPendingReReview && item.reviewsLog.isEmpty);
+    if (!canUncomplete) {
+      _showBlockedUncompleteDialog(item);
+      return;
+    }
+    final confirmed = await _showUncompleteDialog(item);
+    if (!confirmed) return;
+
+    try {
+      final schedule = ref.read(myScheduleProvider).selected;
+      final instanceId = schedule?.checklistInstanceId;
+      if (instanceId == null) return;
+      await ref.read(myScheduleProvider.notifier).uncompleteItem(
+            instanceId,
+            item.index,
+            scheduleId: widget.id,
+          );
+    } catch (e) {
+      if (mounted) {
+        ToastManager().error(context, 'Failed to undo. Please try again.');
+      }
+    }
+  }
+
+  // _showConfirmDialog, _showCompletionDialog 제거됨 → _CompletionFormDialog로 통합
+
+  /// 체크 해제 확인 다이얼로그
+  Future<bool> _showUncompleteDialog(ChecklistItem item) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            contentPadding: EdgeInsets.zero,
+            content: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.warningBg,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.undo_rounded, color: AppColors.warning),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Undo Complete',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Are you sure you want to undo this item?',
+                    style: const TextStyle(
+                        fontSize: 14, color: AppColors.textSecondary, height: 1.5),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Undo', style: TextStyle(color: AppColors.warning)),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
+  /// 리뷰 존재로 해제 불가 안내 다이얼로그
+  void _showBlockedUncompleteDialog(ChecklistItem item) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        contentPadding: EdgeInsets.zero,
+        content: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppColors.warningBg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.lock_rounded, color: AppColors.warning),
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Cannot Uncheck',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Reviewed items cannot be unchecked.',
+                style: TextStyle(
+                    fontSize: 14, color: AppColors.textSecondary, height: 1.5),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Confirm'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 리포트 제출 확인 다이얼로그
+  Future<void> _onSendReport() async {
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            contentPadding: EdgeInsets.zero,
+            content: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.accentBg,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.send_rounded, color: AppColors.accent),
+                  ),
+                  const SizedBox(height: 14),
+                  const Text(
+                    'Submit Report',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Submit checklist completion report? Changes may be restricted after submission.',
+                    style: TextStyle(
+                        fontSize: 14, color: AppColors.textSecondary, height: 1.5),
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Submit', style: TextStyle(color: AppColors.accent)),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed) return;
+
+    try {
+      final schedule = ref.read(myScheduleProvider).selected;
+      final instanceId = schedule?.checklistInstanceId;
+      if (instanceId == null) return;
+      await ref.read(myScheduleProvider.notifier).sendReport(instanceId, scheduleId: widget.id);
+      if (mounted) {
+        ToastManager().success(context, 'Report submitted.');
+      }
+    } catch (e) {
+      if (mounted) {
+        ToastManager().error(context, 'Failed to submit report. Please try again.');
+      }
+    }
   }
 
   Future<String?> _handlePhotoCapture() async {
@@ -116,23 +397,16 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
     if (source == null) return null;
 
     final picker = ImagePicker();
-    final XFile? picked;
-    if (source == ImageSource.camera) {
-      picked =
-          await picker.pickImage(source: ImageSource.camera, imageQuality: 80);
-    } else {
-      picked = await picker.pickImage(
-          source: ImageSource.gallery, imageQuality: 80);
-    }
+    final XFile? picked = source == ImageSource.camera
+        ? await picker.pickImage(source: ImageSource.camera, imageQuality: 80)
+        : await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
     if (picked == null) return null;
 
     setState(() => _isUploading = true);
     try {
       final bytes = await picked.readAsBytes();
-      final filename =
-          'checklist_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final filename = 'checklist_${DateTime.now().millisecondsSinceEpoch}.jpg';
       const contentType = 'image/jpeg';
-
       final storage = ref.read(storageServiceProvider);
       final urls = await storage.getPresignedUrl(filename, contentType);
       await storage.uploadFile(urls['upload_url']!, bytes, contentType);
@@ -147,113 +421,217 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
     }
   }
 
-  Future<ImageSource?> _showPhotoSourceSheet() {
-    return showModalBottomSheet<ImageSource>(
+  /// 완료 항목 탭 → 제출 내역 보기 다이얼로그
+  void _showSubmittedDialog(ChecklistItem item) {
+    final photos = item.photoUrls;
+    final note = item.note;
+    final reviewStatus = item.reviewResult;
+
+    showDialog(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(2),
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                children: [
+                  Container(
+                    width: 48, height: 48,
+                    decoration: BoxDecoration(
+                      color: item.isApproved
+                          ? AppColors.success.withOpacity(0.15)
+                          : item.isRejected
+                              ? AppColors.danger.withOpacity(0.15)
+                              : AppColors.accentBg,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      item.isApproved ? Icons.check_circle : item.isRejected ? Icons.cancel : Icons.info_outline,
+                      color: item.isApproved ? AppColors.success : item.isRejected ? AppColors.danger : AppColors.accent,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(item.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                        if (reviewStatus != null)
+                          Text(
+                            reviewStatus == 'pass' ? 'Approved' : reviewStatus == 'fail' ? 'Rejected' : 'Pending Re-review',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: reviewStatus == 'pass' ? AppColors.success : reviewStatus == 'fail' ? AppColors.danger : AppColors.warning,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Add Photo',
-              style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.text),
-            ),
-            const SizedBox(height: 8),
-            ListTile(
-              leading: const Icon(Icons.camera_alt, color: AppColors.accent),
-              title: const Text('Take Photo'),
-              onTap: () => Navigator.pop(ctx, ImageSource.camera),
-            ),
-            ListTile(
-              leading:
-                  const Icon(Icons.photo_library, color: AppColors.accent),
-              title: const Text('Choose from Gallery'),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
-            ),
-            const SizedBox(height: 8),
-          ],
+              const SizedBox(height: 16),
+
+              // Photos
+              if (photos.isNotEmpty) ...[
+                SizedBox(
+                  height: 80,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: photos.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (_, i) => ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Image.network(
+                        photos[i], width: 80, height: 80, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 80, height: 80,
+                          color: AppColors.bg,
+                          child: const Icon(Icons.broken_image, color: AppColors.textMuted),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              // Note
+              if (note != null && note.isNotEmpty) ...[
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.bg,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(note, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              if (photos.isEmpty && (note == null || note.isEmpty))
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: Text('No attachments', style: TextStyle(fontSize: 14, color: AppColors.textMuted)),
+                ),
+
+              // Close button
+              SizedBox(
+                width: double.infinity,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(ctx),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 13),
+                    decoration: BoxDecoration(
+                      color: AppColors.bg,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text('Close', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Future<String?> _showNoteDialog({
-    String title = 'Add Note',
-    String hint = 'Enter verification note...',
-  }) {
-    final controller = TextEditingController();
-    return showDialog<String>(
+  Future<ImageSource?> _showPhotoSourceSheet() {
+    return showDialog<ImageSource>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Text(title,
-            style: const TextStyle(
-                fontSize: 16, fontWeight: FontWeight.w700)),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLines: 3,
-          decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: const TextStyle(color: AppColors.textMuted),
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.accentBg,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.camera_alt_rounded,
+                    color: AppColors.accent, size: 28),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Add Photo',
+                style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.text),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                leading: const Icon(Icons.camera_alt_outlined,
+                    color: AppColors.accent),
+                title: const Text('Take Photo'),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+              ListTile(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+                leading: const Icon(Icons.photo_library_outlined,
+                    color: AppColors.accent),
+                title: const Text('Choose from Gallery'),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+              const SizedBox(height: 4),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+            ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              final text = controller.text.trim();
-              if (text.isEmpty) return;
-              Navigator.pop(ctx, text);
-            },
-            child: const Text('Submit'),
-          ),
-        ],
       ),
-    );
-  }
-
-  void _showItemDetailSheet(BuildContext context, ChecklistItem item) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _ItemDetailSheet(item: item),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(assignmentProvider);
-    final assignment = state.selected;
+    final state = ref.watch(myScheduleProvider);
+    final schedule = state.selected;
 
-    if (assignment != null &&
-        assignment.checklistSnapshot != null &&
-        assignment.checklistSnapshot!.isAllCompleted &&
+    if (schedule != null &&
+        schedule.checklistSnapshot != null &&
+        schedule.checklistSnapshot!.isAllCompleted &&
         !_celebrationShown) {
       WidgetsBinding.instance
           .addPostFrameCallback((_) => _showCompletionToast());
     }
+
+    final snapshot = schedule?.checklistSnapshot;
+    final allItems = snapshot?.items ?? [];
+    final filteredItems = _applyFilter(allItems);
+
+    final todoCount = allItems.where((i) => !i.isCompleted).length;
+    final doneCount = allItems.where((i) => i.isCompleted && !i.isRejected).length;
+    final rejectedCount = allItems.where((i) => i.isRejected && !i.isResolved).length;
+
+    final isAllDone = snapshot?.isAllCompleted ?? false;
+    final isAllPassed = snapshot?.isAllPassed ?? false;
+    final hasUnresolvedRejection = snapshot?.unresolvedRejections.isNotEmpty ?? false;
+    final isReported = schedule?.isReported ?? false;
+    // all done (모든 리뷰 pass) → report 버튼 숨김
+    // report 가능: 전부 완료 + 미해결 반려 없음 + 아직 report 안 보냄
+    final canReport = isAllDone && !hasUnresolvedRejection && !isReported;
+    final hideReport = isAllPassed; // 모든 리뷰 통과 → 완전 종료
 
     return Stack(
       children: [
@@ -262,14 +640,13 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
           body: Column(
             children: [
               AppHeader(
-                title: assignment?.store.name ?? 'Checklist',
+                title: schedule?.store.name ?? 'Checklist',
                 isDetail: true,
                 onBack: () => context.pop(),
               ),
-              if (state.isLoading && assignment == null)
-                const Expanded(
-                    child: Center(child: CircularProgressIndicator()))
-              else if (state.error != null && assignment == null)
+              if (state.isLoading && schedule == null)
+                const Expanded(child: Center(child: CircularProgressIndicator()))
+              else if (state.error != null && schedule == null)
                 Expanded(
                   child: Center(
                     child: Padding(
@@ -278,7 +655,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           const Text(
-                            'Failed to load assignment',
+                            'Failed to load schedule',
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
@@ -288,8 +665,8 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                           const SizedBox(height: 12),
                           TextButton(
                             onPressed: () => ref
-                                .read(assignmentProvider.notifier)
-                                .loadAssignment(widget.id),
+                                .read(myScheduleProvider.notifier)
+                                .loadSchedule(widget.id),
                             child: const Text('Retry'),
                           ),
                         ],
@@ -297,142 +674,67 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
                     ),
                   ),
                 )
-              else if (assignment == null)
-                const Expanded(
-                    child: Center(child: Text('Assignment not found')))
-              else
+              else if (schedule == null)
+                const Expanded(child: Center(child: Text('Schedule not found.')))
+              else ...[
+                // Progress section
+                _ProgressSection(schedule: schedule),
+                // Filter tab bar
+                _FilterTabBar(
+                  controller: _tabController,
+                  allCount: allItems.length,
+                  todoCount: todoCount,
+                  doneCount: doneCount,
+                  rejectedCount: rejectedCount,
+                ),
+                // Item list
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: () async {
                       await ref
-                          .read(assignmentProvider.notifier)
-                          .loadAssignment(widget.id);
+                          .read(myScheduleProvider.notifier)
+                          .loadSchedule(widget.id);
                     },
-                    child: ListView(
-                      padding: const EdgeInsets.all(16),
-                      children: [
-                        // Assignment header card
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: AppColors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.border),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    child: filteredItems.isEmpty
+                        ? ListView(
                             children: [
-                              Text(
-                                assignment.label,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.text,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                formatFixedDateWithDay(assignment.workDate),
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              _buildProgressSection(assignment),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Checklist items header
-                        Row(
-                          children: [
-                            const Text(
-                              'Checklist Items',
-                              style: TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.text,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            if (assignment.checklistSnapshot != null)
-                              Container(
+                              Padding(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: AppColors.accentBg,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  '${assignment.checklistSnapshot!.totalItems}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.accent,
+                                    horizontal: 16, vertical: 40),
+                                child: Center(
+                                  child: Text(
+                                    _emptyMessage(_filter),
+                                    style: const TextStyle(
+                                        color: AppColors.textMuted, fontSize: 14),
                                   ),
                                 ),
                               ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Checklist items
-                        if (assignment.checklistSnapshot == null ||
-                            assignment.checklistSnapshot!.items.isEmpty)
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              color: AppColors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: const Center(
-                              child: Text(
-                                'No checklist items',
-                                style: TextStyle(
-                                    color: AppColors.textMuted, fontSize: 14),
-                              ),
-                            ),
+                            ],
                           )
-                        else
-                          Container(
-                            decoration: BoxDecoration(
-                              color: AppColors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: AppColors.border),
-                            ),
-                            child: Column(
-                              children: List.generate(
-                                assignment.checklistSnapshot!.items.length,
-                                (index) {
-                                  final item = assignment
-                                      .checklistSnapshot!.items[index];
-                                  return Column(
-                                    children: [
-                                      if (index > 0)
-                                        const Divider(
-                                            height: 1,
-                                            color: AppColors.border),
-                                      _ChecklistItemTile(
-                                        item: item,
-                                        onToggle: () => _onItemTap(item),
-                                        onTapDetail: () =>
-                                            _showItemDetailSheet(
-                                                context, item),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ),
+                        : ListView.builder(
+                            padding: const EdgeInsets.only(
+                                top: 4, left: 0, right: 0, bottom: 8),
+                            itemCount: filteredItems.length,
+                            itemBuilder: (ctx, i) {
+                              final item = filteredItems[i];
+                              return _ChecklistItemTile(
+                                item: item,
+                                onCheckTap: () => _onCheckTap(item),
+                                onChatTap: () => _openChatScreen(item),
+                                onLongPress: () => _onItemLongPress(item),
+                              );
+                            },
                           ),
-                        const SizedBox(height: 20),
-                      ],
-                    ),
                   ),
                 ),
+                // Send Report bottom bar
+                _SendReportBar(
+                  isEnabled: canReport,
+                  isReported: isReported,
+                  isAllPassed: isAllPassed,
+                  onTap: _onSendReport,
+                ),
+              ],
             ],
           ),
         ),
@@ -460,1085 +762,1000 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen> {
     );
   }
 
-  Widget _buildProgressSection(Assignment assignment) {
-    final snapshot = assignment.checklistSnapshot;
+  String _emptyMessage(_ChecklistFilter filter) {
+    switch (filter) {
+      case _ChecklistFilter.todo:
+        return 'No pending items.';
+      case _ChecklistFilter.done:
+        return 'No completed items.';
+      case _ChecklistFilter.rejected:
+        return 'No rejected items.';
+      case _ChecklistFilter.all:
+        return 'No checklist items.';
+    }
+  }
+}
+
+// ─── Progress Section ──────────────────────────────────────────────────────
+
+class _ProgressSection extends StatelessWidget {
+  final MySchedule schedule;
+
+  const _ProgressSection({required this.schedule});
+
+  @override
+  Widget build(BuildContext context) {
+    final snapshot = schedule.checklistSnapshot;
     final completed = snapshot?.completedItems ?? 0;
     final total = snapshot?.totalItems ?? 0;
     final progress = total > 0 ? completed / total : 0.0;
     final isComplete = progress >= 1.0;
 
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              isComplete ? 'Completed' : 'In Progress',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: isComplete ? AppColors.success : AppColors.accent,
-              ),
-            ),
-            Text(
-              '$completed/$total items',
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: LinearProgressIndicator(
-            value: progress,
-            minHeight: 8,
-            backgroundColor: AppColors.border,
-            valueColor: AlwaysStoppedAnimation(
-              isComplete ? AppColors.success : AppColors.accent,
+    return Container(
+      color: AppColors.white,
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            schedule.label,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AppColors.text,
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 2),
+          Text(
+            formatFixedDateWithDay(schedule.workDate),
+            style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                isComplete ? 'Complete' : 'In Progress',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isComplete ? AppColors.success : AppColors.accent,
+                ),
+              ),
+              Text(
+                '$completed/$total items',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 6,
+              backgroundColor: AppColors.border,
+              valueColor: AlwaysStoppedAnimation(
+                isComplete ? AppColors.success : AppColors.accent,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-// ─── Checklist item tile with rejection support ──────────────────────────────
+// ─── Filter Tab Bar ─────────────────────────────────────────────────────────
 
-class _ChecklistItemTile extends StatelessWidget {
-  final ChecklistItem item;
-  final VoidCallback onToggle;
-  final VoidCallback onTapDetail;
+class _FilterTabBar extends StatelessWidget {
+  final TabController controller;
+  final int allCount;
+  final int todoCount;
+  final int doneCount;
+  final int rejectedCount;
 
-  const _ChecklistItemTile({
-    required this.item,
-    required this.onToggle,
-    required this.onTapDetail,
+  const _FilterTabBar({
+    required this.controller,
+    required this.allCount,
+    required this.todoCount,
+    required this.doneCount,
+    required this.rejectedCount,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onToggle,
-      onLongPress: onTapDetail,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+    return Container(
+      color: AppColors.white,
+      child: TabBar(
+        controller: controller,
+        labelColor: AppColors.accent,
+        unselectedLabelColor: AppColors.textMuted,
+        indicatorColor: AppColors.accent,
+        indicatorSize: TabBarIndicatorSize.tab,
+        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        unselectedLabelStyle:
+            const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        tabs: [
+          _TabItem(label: 'All', count: allCount, isDanger: false),
+          _TabItem(label: 'Todo', count: todoCount, isDanger: false),
+          _TabItem(label: 'Done', count: doneCount, isDanger: false),
+          _TabItem(label: 'Rejected', count: rejectedCount, isDanger: rejectedCount > 0),
+        ],
+      ),
+    );
+  }
+}
+
+class _TabItem extends StatelessWidget {
+  final String label;
+  final int count;
+  final bool isDanger;
+
+  const _TabItem({
+    required this.label,
+    required this.count,
+    required this.isDanger,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tab(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label),
+          const SizedBox(width: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+            decoration: BoxDecoration(
+              color: isDanger ? AppColors.dangerBg : AppColors.border,
+              borderRadius: BorderRadius.circular(99),
+            ),
+            child: Text(
+              '$count',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: isDanger ? AppColors.danger : AppColors.textMuted,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Checklist Item Tile ──────────────────────────────────────────────────
+
+class _ChecklistItemTile extends StatelessWidget {
+  final ChecklistItem item;
+  final VoidCallback onCheckTap;
+  final VoidCallback onChatTap;
+  final VoidCallback onLongPress;
+
+  const _ChecklistItemTile({
+    required this.item,
+    required this.onCheckTap,
+    required this.onChatTap,
+    required this.onLongPress,
+  });
+
+  Color get _tileBgColor {
+    if (item.isRejected && !item.isResolved) return const Color(0xFFFFF5F5);
+    if (item.isPendingReReview) return const Color(0xFFFFFBF0);
+    if (item.isApproved) return const Color(0xFFF0FFF9);
+    if (item.isCompleted) return const Color(0xFFFBF8FC);
+    return AppColors.white;
+  }
+
+  Color get _tileBorderColor {
+    if (item.isRejected && !item.isResolved) return AppColors.danger.withOpacity(0.4);
+    if (item.isPendingReReview) return AppColors.warning.withOpacity(0.4);
+    if (item.isApproved) return AppColors.success.withOpacity(0.4);
+    return AppColors.border;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: InkWell(
+      onTap: onCheckTap,
+      onLongPress: item.isCompleted ? onLongPress : null,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        decoration: BoxDecoration(
+          color: _tileBgColor,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: _tileBorderColor, width: 1),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Checkbox
-            Padding(
-              padding: const EdgeInsets.only(top: 2),
-              child: Container(
-                width: 24,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: item.isRejected
-                      ? AppColors.warningBg
-                      : item.isApproved
-                          ? AppColors.success
-                          : item.isCompleted
-                              ? AppColors.success
-                              : Colors.transparent,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: item.isRejected
-                        ? AppColors.warning
-                        : item.isApproved
-                            ? AppColors.success
-                            : item.isCompleted
-                                ? AppColors.success
-                                : AppColors.border,
-                    width: 2,
-                  ),
-                ),
-                child: item.isRejected
-                    ? const Icon(Icons.refresh,
-                        size: 14, color: AppColors.warning)
-                    : item.isApproved
-                        ? const Icon(Icons.check_circle,
-                            size: 16, color: Colors.white)
-                        : item.isCompleted
-                            ? const Icon(Icons.check,
-                                size: 16, color: Colors.white)
-                            : null,
-              ),
+            // Status icon — 완료 항목은 체크 아이콘 탭 시 undo
+            GestureDetector(
+              onTap: item.isCompleted ? onLongPress : null,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+              padding: const EdgeInsets.only(top: 1, right: 8),
+              child: _buildStatusIcon(),
             ),
-            const SizedBox(width: 12),
-            // Content
+            ),
+            const SizedBox(width: 4),
+            // Body
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.title,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: item.isCompleted && !item.isRejected
-                                ? AppColors.textMuted
-                                : AppColors.text,
-                            decoration: item.isCompleted && !item.isRejected
-                                ? TextDecoration.lineThrough
-                                : TextDecoration.none,
-                          ),
-                        ),
-                      ),
-                      if (item.isApproved)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.successBg,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'Approved',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.success,
-                            ),
-                          ),
-                        )
-                      else if (item.isRejected && !item.isResolved)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.warningBg,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'Action Required',
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.warning,
-                            ),
-                          ),
-                        ),
-                    ],
+                  Text(
+                    item.title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.text,
+                      decoration: (item.isCompleted && !item.isRejected)
+                          ? TextDecoration.lineThrough
+                          : null,
+                      decorationColor: AppColors.textMuted,
+                    ),
                   ),
-                  if (item.description != null &&
-                      item.description!.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  // Badges row
+                  _buildBadgesRow(),
+                  // Review comment preview
+                  if (item.reviewComment != null) ...[
                     const SizedBox(height: 4),
-                    Text(
-                      item.description!,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ],
-                  if (item.isCompleted &&
-                      !item.isRejected &&
-                      item.completedAtDisplay != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      'Completed ${item.completedAtDisplay}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.success,
-                      ),
-                    ),
-                  ],
-                  // Inline approval feedback
-                  if (item.isApproved &&
-                      (item.approvalComment != null ||
-                          item.approvalPhotoUrls.isNotEmpty)) ...[
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: onTapDetail,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.successBg,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: AppColors.success.withValues(alpha: 0.3),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '›',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.textMuted),
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            item.reviewComment!,
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                                height: 1.4),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.check_circle_outline,
-                                    size: 12, color: AppColors.success),
-                                const SizedBox(width: 4),
-                                if (item.approvedBy != null)
-                                  Text(
-                                    item.approvedBy!,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.success,
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            if (item.approvalComment != null) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                item.approvalComment!,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.text,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
+                      ],
                     ),
                   ],
-                  // Inline rejection feedback
-                  if (item.isRejected &&
-                      (item.rejectionComment != null ||
-                          item.rejectionPhotoUrls.isNotEmpty)) ...[
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: onTapDetail,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.warningBg,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: AppColors.warning.withValues(alpha: 0.3),
+                  // Rejected resubmit badge
+                  if (item.isRejected && !item.isResolved) ...[
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.dangerBg,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                            color: AppColors.danger.withOpacity(0.3)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.redo_rounded,
+                              size: 12, color: AppColors.danger),
+                          SizedBox(width: 4),
+                          Text(
+                            'Resubmit Required',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.danger),
                           ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.chat_bubble_outline,
-                                    size: 12, color: AppColors.warning),
-                                const SizedBox(width: 4),
-                                if (item.rejectedBy != null)
-                                  Text(
-                                    item.rejectedBy!,
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.warning,
-                                    ),
-                                  ),
-                                const Spacer(),
-                                if (item.rejectedAtDisplay != null)
-                                  Text(
-                                    item.rejectedAtDisplay!,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: AppColors.warning
-                                          .withValues(alpha: 0.7),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            if (item.rejectionComment != null) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                item.rejectionComment!,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.text,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                            if (item.rejectionPhotoUrls.isNotEmpty) ...[
-                              const SizedBox(height: 6),
-                              SizedBox(
-                                height: 48,
-                                child: ListView.separated(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: item.rejectionPhotoUrls.length,
-                                  separatorBuilder: (_, __) =>
-                                      const SizedBox(width: 4),
-                                  itemBuilder: (context, i) => ClipRRect(
-                                    borderRadius: BorderRadius.circular(6),
-                                    child: Image.network(
-                                      item.rejectionPhotoUrls[i],
-                                      width: 48,
-                                      height: 48,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Container(
-                                        width: 48,
-                                        height: 48,
-                                        color: AppColors.border,
-                                        child: const Icon(Icons.broken_image,
-                                            size: 16,
-                                            color: AppColors.textSecondary),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
+                        ],
                       ),
                     ),
                   ],
                 ],
               ),
             ),
-            // Verification type icons
-            if (item.requiresVerification &&
-                !item.isCompleted &&
-                !item.isRejected) ...[
-              const SizedBox(width: 8),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (item.requiresPhoto)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 4),
-                      child: Icon(Icons.camera_alt_outlined,
-                          size: 16,
-                          color: AppColors.accent.withValues(alpha: 0.7)),
-                    ),
-                  if (item.requiresComment)
-                    Icon(Icons.edit_note,
-                        size: 18,
-                        color: AppColors.accent.withValues(alpha: 0.7)),
-                ],
+            // Chat button
+            GestureDetector(
+              onTap: onChatTap,
+              child: Container(
+                width: 32,
+                height: 32,
+                margin: const EdgeInsets.only(left: 4, top: 1),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFAF5F7),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: const Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
               ),
-            ],
+            ),
           ],
         ),
       ),
-    );
-  }
-}
-
-// ─── Item detail bottom sheet with timeline ──────────────────────────────────
-
-class _ItemDetailSheet extends StatelessWidget {
-  final ChecklistItem item;
-
-  const _ItemDetailSheet({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    final events = item.fullHistory;
-    final hasPending = item.isRejected && !item.isResolved;
-    final totalSteps = events.length + (hasPending ? 1 : 0);
-
-    return DraggableScrollableSheet(
-      initialChildSize: 0.75,
-      maxChildSize: 0.92,
-      minChildSize: 0.4,
-      builder: (context, scrollController) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            children: [
-              // Handle
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppColors.border,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-
-              // Status header
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.text,
-                      ),
-                    ),
-                    if (item.description != null &&
-                        item.description!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        item.description!,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    _buildCurrentStatusBadge(),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        const Icon(Icons.person_outline,
-                            size: 14, color: AppColors.textSecondary),
-                        const SizedBox(width: 4),
-                        Text(
-                          item.completedBy ?? '-',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        const Icon(Icons.access_time,
-                            size: 14, color: AppColors.textSecondary),
-                        const SizedBox(width: 4),
-                        Text(
-                          item.completedAtDisplay ?? '-',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const Divider(height: 1, color: AppColors.border),
-
-              // Timeline
-              Expanded(
-                child: ListView.builder(
-                  controller: scrollController,
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-                  itemCount: totalSteps,
-                  itemBuilder: (context, index) {
-                    if (hasPending && index == events.length) {
-                      return const _TimelineStepCard(
-                        type: 'pending',
-                        comment: 'Awaiting resubmission',
-                        isLast: true,
-                      );
-                    }
-                    final event = events[index];
-                    return _TimelineStepCard(
-                      type: event.type,
-                      by: event.by,
-                      at: event.atDisplay,
-                      comment: event.comment,
-                      photoUrls: event.photoUrls,
-                      isLast: index == totalSteps - 1,
-                    );
-                  },
-                ),
-              ),
-
-              // Close button
-              SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: TextButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        backgroundColor: AppColors.bg,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text(
-                        'Close',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+      ),
     );
   }
 
-  Widget _buildCurrentStatusBadge() {
-    final String label;
-    final Color color;
-    final Color bg;
-    final IconData icon;
+  Widget _buildStatusIcon() {
+    Color bgColor;
+    Color borderColor;
+    Widget child;
+
+    if (item.isRejected) {
+      bgColor = AppColors.dangerBg;
+      borderColor = AppColors.danger;
+      child = const Icon(Icons.close_rounded, size: 14, color: AppColors.danger);
+    } else if (item.isPendingReReview) {
+      bgColor = AppColors.warningBg;
+      borderColor = AppColors.warning;
+      child = const Icon(Icons.hourglass_top_rounded,
+          size: 14, color: AppColors.warning);
+    } else if (item.isApproved) {
+      bgColor = AppColors.success;
+      borderColor = AppColors.success;
+      child = const Icon(Icons.check_rounded, size: 14, color: AppColors.white);
+    } else if (item.isCompleted) {
+      bgColor = AppColors.accent;
+      borderColor = AppColors.accent;
+      child = const Icon(Icons.check_rounded, size: 14, color: AppColors.white);
+    } else {
+      bgColor = Colors.transparent;
+      borderColor = AppColors.border;
+      child = const SizedBox.shrink();
+    }
+
+    return Container(
+      width: 24,
+      height: 24,
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: borderColor, width: 2),
+      ),
+      child: Center(child: child),
+    );
+  }
+
+  Widget _buildBadgesRow() {
+    final badges = <Widget>[];
+
+    if (item.requiresPhoto) {
+      badges.add(_Badge(
+        label: '📷 Photo',
+        bgColor: item.hasPhotos ? AppColors.successBg : AppColors.border,
+        textColor: item.hasPhotos ? const Color(0xFF008F76) : AppColors.textMuted,
+      ));
+    }
+
+    if (item.requiresComment) {
+      badges.add(_Badge(
+        label: '📝 Text',
+        bgColor: (item.note?.isNotEmpty == true)
+            ? AppColors.successBg
+            : AppColors.border,
+        textColor: (item.note?.isNotEmpty == true)
+            ? const Color(0xFF008F76)
+            : AppColors.textMuted,
+      ));
+    }
 
     if (item.isApproved) {
-      label = 'Approved';
-      color = const Color(0xFF10B981);
-      bg = const Color(0xFFD1FAE5);
-      icon = Icons.check_circle;
-    } else if (item.isRejected && !item.isResolved) {
-      label = 'Revision Requested';
-      color = const Color(0xFFF59E0B);
-      bg = const Color(0xFFFFFBEB);
-      icon = Icons.edit_note;
-    } else if (item.isResolved) {
-      label = 'Resubmitted';
-      color = const Color(0xFF6C5CE7);
-      bg = const Color(0xFFF0EEFF);
-      icon = Icons.replay;
-    } else if (item.isCompleted) {
-      label = 'Submitted';
-      color = const Color(0xFF10B981);
-      bg = const Color(0xFFD1FAE5);
-      icon = Icons.check_circle;
-    } else {
-      label = 'Not Submitted';
-      color = const Color(0xFF9CA3AF);
-      bg = const Color(0xFFF9FAFB);
-      icon = Icons.schedule;
+      badges.add(const _Badge(
+        label: 'Approved',
+        bgColor: AppColors.successBg,
+        textColor: Color(0xFF008F76),
+      ));
+    } else if (item.isPendingReReview) {
+      badges.add(const _Badge(
+        label: 'Re-review Pending',
+        bgColor: AppColors.warningBg,
+        textColor: Color(0xFFC07C00),
+      ));
     }
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: color,
-            ),
-          ),
-        ],
-      ),
+    if (badges.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: Wrap(spacing: 5, runSpacing: 4, children: badges),
     );
   }
 }
 
-// ─── Timeline step card ─────────────────────────────────────────────────────
+class _Badge extends StatelessWidget {
+  final String label;
+  final Color bgColor;
+  final Color textColor;
 
-class _TimelineStepCard extends StatelessWidget {
-  final String type;
-  final String? by;
-  final String? at;
-  final String? comment;
-  final List<String> photoUrls;
-  final bool isLast;
-
-  const _TimelineStepCard({
-    required this.type,
-    this.by,
-    this.at,
-    this.comment,
-    this.photoUrls = const [],
-    this.isLast = false,
-  });
-
-  static const _submitColor = Color(0xFF3B82F6);
-  static const _submitBg = Color(0xFFEFF6FF);
-  static const _changeReqColor = Color(0xFFF59E0B);
-  static const _changeReqBg = Color(0xFFFFFBEB);
-  static const _resubmitColor = Color(0xFF6C5CE7);
-  static const _resubmitBg = Color(0xFFF0EEFF);
-  static const _approvedColor = Color(0xFF10B981);
-  static const _approvedBg = Color(0xFFD1FAE5);
-  static const _pendingColor = Color(0xFF9CA3AF);
-  static const _pendingBg = Color(0xFFF9FAFB);
-
-  Color get _dotColor {
-    switch (type) {
-      case 'completed':
-        return _submitColor;
-      case 'rejected':
-        return _changeReqColor;
-      case 'responded':
-        return _resubmitColor;
-      case 'approved':
-        return _approvedColor;
-      case 'pending':
-        return _pendingColor;
-      default:
-        return _pendingColor;
-    }
-  }
-
-  Color get _cardBg {
-    switch (type) {
-      case 'completed':
-        return _submitBg;
-      case 'rejected':
-        return _changeReqBg;
-      case 'responded':
-        return _resubmitBg;
-      case 'approved':
-        return _approvedBg;
-      case 'pending':
-        return _pendingBg;
-      default:
-        return _pendingBg;
-    }
-  }
-
-  String get _label {
-    switch (type) {
-      case 'completed':
-        return 'Submitted';
-      case 'rejected':
-        return 'Revision Requested';
-      case 'responded':
-        return 'Resubmitted';
-      case 'approved':
-        return 'Approved';
-      case 'pending':
-        return 'Pending';
-      default:
-        return type;
-    }
-  }
-
-  IconData get _icon {
-    switch (type) {
-      case 'completed':
-        return Icons.upload_file;
-      case 'rejected':
-        return Icons.edit_note;
-      case 'responded':
-        return Icons.replay;
-      case 'approved':
-        return Icons.check_circle;
-      case 'pending':
-        return Icons.schedule;
-      default:
-        return Icons.circle;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            width: 24,
-            child: Column(
-              children: [
-                const SizedBox(height: 6),
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: _dotColor,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                if (!isLast)
-                  Expanded(
-                    child: Container(
-                      width: 1.5,
-                      margin: const EdgeInsets.only(top: 4),
-                      color: AppColors.border,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Container(
-              margin: EdgeInsets.only(bottom: isLast ? 0 : 16),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: _cardBg,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: _dotColor.withValues(alpha: 0.25),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: _dotColor.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(_icon, size: 12, color: _dotColor),
-                            const SizedBox(width: 4),
-                            Text(
-                              _label,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700,
-                                color: _dotColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Spacer(),
-                      if (at != null)
-                        Text(
-                          at!,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textMuted,
-                          ),
-                        ),
-                    ],
-                  ),
-                  if (by != null) ...[
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        const Icon(Icons.person_outline,
-                            size: 13, color: AppColors.textSecondary),
-                        const SizedBox(width: 4),
-                        Text(
-                          by!,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  if (comment != null && comment!.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AppColors.white,
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        comment!,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.text,
-                          height: 1.5,
-                        ),
-                      ),
-                    ),
-                  ],
-                  if (photoUrls.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    _PhotoCarousel(photoUrls: photoUrls),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Photo carousel ─────────────────────────────────────────────────────────
-
-class _PhotoCarousel extends StatefulWidget {
-  final List<String> photoUrls;
-
-  const _PhotoCarousel({required this.photoUrls});
-
-  @override
-  State<_PhotoCarousel> createState() => _PhotoCarouselState();
-}
-
-class _PhotoCarouselState extends State<_PhotoCarousel> {
-  int _currentPage = 0;
-
-  @override
-  Widget build(BuildContext context) {
-    if (widget.photoUrls.length == 1) {
-      return _buildSinglePhoto(context, widget.photoUrls[0]);
-    }
-    return Column(
-      children: [
-        SizedBox(
-          height: 160,
-          child: PageView.builder(
-            itemCount: widget.photoUrls.length,
-            onPageChanged: (page) => setState(() => _currentPage = page),
-            itemBuilder: (context, index) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: _buildPhoto(context, widget.photoUrls[index], index),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 6),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(
-            widget.photoUrls.length,
-            (i) => Container(
-              width: i == _currentPage ? 16 : 6,
-              height: 6,
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              decoration: BoxDecoration(
-                color:
-                    i == _currentPage ? AppColors.accent : AppColors.border,
-                borderRadius: BorderRadius.circular(3),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSinglePhoto(BuildContext context, String url) {
-    return GestureDetector(
-      onTap: () => _openFullScreen(context, widget.photoUrls, 0),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          url,
-          width: double.infinity,
-          height: 160,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _photoErrorWidget(),
-          loadingBuilder: _photoLoadingBuilder,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPhoto(BuildContext context, String url, int index) {
-    return GestureDetector(
-      onTap: () => _openFullScreen(context, widget.photoUrls, index),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          url,
-          width: double.infinity,
-          height: 160,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _photoErrorWidget(),
-          loadingBuilder: _photoLoadingBuilder,
-        ),
-      ),
-    );
-  }
-
-  void _openFullScreen(
-      BuildContext context, List<String> urls, int initialIndex) {
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        opaque: false,
-        barrierColor: Colors.black87,
-        pageBuilder: (_, __, ___) => _FullScreenPhotoViewer(
-          photoUrls: urls,
-          initialIndex: initialIndex,
-        ),
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-      ),
-    );
-  }
-
-  Widget _photoErrorWidget() {
-    return Container(
-      width: double.infinity,
-      height: 160,
-      decoration: BoxDecoration(
-        color: AppColors.bg,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: const Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.broken_image_outlined,
-              size: 28, color: AppColors.textMuted),
-          SizedBox(height: 4),
-          Text('Failed to load image',
-              style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
-        ],
-      ),
-    );
-  }
-
-  Widget _photoLoadingBuilder(
-      BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
-    if (loadingProgress == null) return child;
-    return Container(
-      width: double.infinity,
-      height: 160,
-      color: AppColors.bg,
-      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-    );
-  }
-}
-
-// ─── Full screen photo viewer ───────────────────────────────────────────────
-
-class _FullScreenPhotoViewer extends StatefulWidget {
-  final List<String> photoUrls;
-  final int initialIndex;
-
-  const _FullScreenPhotoViewer({
-    required this.photoUrls,
-    this.initialIndex = 0,
+  const _Badge({
+    required this.label,
+    required this.bgColor,
+    required this.textColor,
   });
 
   @override
-  State<_FullScreenPhotoViewer> createState() => _FullScreenPhotoViewerState();
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: textColor),
+      ),
+    );
+  }
 }
 
-class _FullScreenPhotoViewerState extends State<_FullScreenPhotoViewer> {
-  late PageController _pageController;
-  late int _currentIndex;
+// ─── Send Report Bottom Bar ──────────────────────────────────────────────────
+
+class _SendReportBar extends StatelessWidget {
+  final bool isEnabled;
+  final bool isReported;
+  final bool isAllPassed;
+  final VoidCallback onTap;
+
+  const _SendReportBar({
+    required this.isEnabled,
+    this.isReported = false,
+    this.isAllPassed = false,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final label = isAllPassed
+        ? 'All Reviewed'
+        : isReported
+            ? 'Report Submitted'
+            : 'Submit Report';
+    final icon = isAllPassed
+        ? Icons.verified_rounded
+        : isReported
+            ? Icons.check_circle_outline
+            : Icons.send_rounded;
+    final bgColor = isAllPassed
+        ? AppColors.success.withOpacity(0.15)
+        : isReported
+            ? AppColors.success.withOpacity(0.15)
+            : isEnabled
+                ? AppColors.accent
+                : const Color(0xFFEDE6E9);
+    final fgColor = isAllPassed
+        ? AppColors.success
+        : isReported
+            ? AppColors.success
+            : isEnabled
+                ? AppColors.white
+                : AppColors.textMuted;
+
+    return Container(
+      color: AppColors.white,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: isEnabled ? onTap : null,
+            icon: Icon(icon, size: 18),
+            label: Text(label),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: bgColor,
+              foregroundColor: fgColor,
+              disabledBackgroundColor: isReported
+                  ? AppColors.success.withOpacity(0.15)
+                  : const Color(0xFFEDE6E9),
+              disabledForegroundColor: isReported
+                  ? AppColors.success
+                  : AppColors.textMuted,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14)),
+              textStyle:
+                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Completion Dialog (no note) ─────────────────────────────────────────────
+
+/// 완료 다이얼로그 반환값
+class _CompletionResult {
+  final List<String> photoUrls;
+  final String? note;
+  _CompletionResult({required this.photoUrls, this.note});
+}
+
+/// 자기완결형 완료 다이얼로그 — 사진 추가/삭제/미리보기 + 텍스트 입력 모두 내장
+/// 채팅 화면과 같은 SharedPreferences 키를 사용하여 draft 공유
+class _CompletionFormDialog extends StatefulWidget {
+  final ChecklistItem item;
+  final StorageService storageProvider;
+  final String scheduleId;
+  final bool isResubmit;
+  final List<String>? initialPhotoUrls;
+  final String? initialNote;
+
+  const _CompletionFormDialog({
+    required this.item,
+    required this.storageProvider,
+    required this.scheduleId,
+    this.isResubmit = false,
+    this.initialPhotoUrls,
+    this.initialNote,
+  });
+
+  @override
+  State<_CompletionFormDialog> createState() => _CompletionFormDialogState();
+}
+
+class _CompletionFormDialogState extends State<_CompletionFormDialog> {
+  final _noteController = TextEditingController();
+  final List<String> _photoUrls = [];
+  bool _isUploading = false;
+
+  ChecklistItem get item => widget.item;
+  int get _minPhotos => item.minPhotos ?? (item.requiresPhoto ? 1 : 0);
+  bool get _photoMet => _photoUrls.length >= _minPhotos;
+  bool get _canSubmit => _minPhotos == 0 || _photoMet;
+
+  /// 채팅 화면과 동일한 키 — draft 공유
+  String get _draftKey =>
+      'checklist_draft_${widget.scheduleId}_${widget.item.index}';
 
   @override
   void initState() {
     super.initState();
-    _currentIndex = widget.initialIndex;
-    _pageController = PageController(initialPage: widget.initialIndex);
+    _loadDraft();
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _saveDraftSync();
+    _noteController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_draftKey);
+      if (raw != null) {
+        final data = jsonDecode(raw) as Map<String, dynamic>;
+        final photos = (data['photoUrls'] as List<dynamic>?)
+                ?.map((e) => e.toString())
+                .toList() ??
+            [];
+        final memo = data['memo'] as String? ?? '';
+        if (mounted && (photos.isNotEmpty || memo.isNotEmpty)) {
+          setState(() {
+            _photoUrls.addAll(photos);
+            _noteController.text = memo;
+          });
+          return;
+        }
+      }
+    } catch (_) {}
+
+    // draft가 없으면 이전 제출 내용으로 채움 (resubmit 시)
+    if (widget.initialPhotoUrls != null || widget.initialNote != null) {
+      if (mounted) {
+        setState(() {
+          if (widget.initialPhotoUrls != null) {
+            _photoUrls.addAll(widget.initialPhotoUrls!);
+          }
+          if (widget.initialNote != null) {
+            _noteController.text = widget.initialNote!;
+          }
+        });
+      }
+    }
+  }
+
+  void _saveDraft() {
+    SharedPreferences.getInstance().then((prefs) {
+      final data = jsonEncode({
+        'photoUrls': _photoUrls,
+        'memo': _noteController.text,
+      });
+      prefs.setString(_draftKey, data);
+    }).catchError((_) {});
+  }
+
+  void _saveDraftSync() {
+    // dispose 시 동기적으로 호출 — fire and forget
+    _saveDraft();
+  }
+
+  Future<void> _clearDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_draftKey);
+    } catch (_) {}
+  }
+
+  Future<void> _addPhoto(ImageSource source) async {
+    final picker = ImagePicker();
+
+    // Gallery → 여러 장 선택, Camera → 1장
+    final List<XFile> picked;
+    if (source == ImageSource.gallery) {
+      picked = await picker.pickMultiImage(imageQuality: 80);
+    } else {
+      final single = await picker.pickImage(source: source, imageQuality: 80);
+      picked = single != null ? [single] : [];
+    }
+    if (picked.isEmpty) return;
+
+    setState(() => _isUploading = true);
+    try {
+      for (final file in picked) {
+        final bytes = await file.readAsBytes();
+        final filename = 'checklist_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final urls = await widget.storageProvider.getPresignedUrl(filename, 'image/jpeg');
+        await widget.storageProvider.uploadFile(urls['upload_url']!, bytes, 'image/jpeg');
+        if (mounted) {
+          setState(() {
+            _photoUrls.add(urls['file_url']!);
+          });
+        }
+      }
+      _saveDraft();
+    } catch (e) {
+      if (mounted) ToastManager().error(context, 'Photo upload failed');
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
+  void _removePhoto(int index) {
+    setState(() {
+      _photoUrls.removeAt(index);
+      _saveDraft();
+    });
+  }
+
+  void _showPhotoSource() async {
+    final source = await showDialog<ImageSource>(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 56, height: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.accentBg,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.camera_alt_rounded, color: AppColors.accent, size: 28),
+              ),
+              const SizedBox(height: 16),
+              const Text('Add Photo', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: AppColors.accent),
+                title: const Text('Take Photo'),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: AppColors.accent),
+                title: const Text('Choose from Gallery'),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (source != null) _addPhoto(source);
+  }
+
+  void _submit() {
+    final note = _noteController.text.trim();
+    _clearDraft();
+    Navigator.pop(context, _CompletionResult(
+      photoUrls: _photoUrls,
+      note: note.isEmpty ? null : note,
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
-    final total = widget.photoUrls.length;
-    return Scaffold(
-      backgroundColor: Colors.black87,
-      body: Stack(
-        children: [
-          PageView.builder(
-            controller: _pageController,
-            itemCount: total,
-            onPageChanged: (i) => setState(() => _currentIndex = i),
-            itemBuilder: (context, index) {
-              return GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: Center(
-                  child: InteractiveViewer(
-                    minScale: 0.5,
-                    maxScale: 4.0,
-                    child: Image.network(
-                      widget.photoUrls[index],
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.broken_image_outlined,
-                              size: 48, color: Colors.white54),
-                          SizedBox(height: 8),
-                          Text('Failed to load image',
-                              style: TextStyle(
-                                  fontSize: 14, color: Colors.white54)),
-                        ],
-                      ),
-                      loadingBuilder: (_, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return const Center(
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2,
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-          Positioned(
-            top: MediaQuery.of(context).padding.top + 12,
-            right: 16,
-            child: GestureDetector(
-              onTap: () => Navigator.of(context).pop(),
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.black54,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child:
-                    const Icon(Icons.close, color: Colors.white, size: 20),
-              ),
-            ),
-          ),
-          if (total > 1)
-            Positioned(
-              bottom: MediaQuery.of(context).padding.bottom + 24,
-              left: 0,
-              right: 0,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+    final needsPhoto = item.requiresPhoto;
+    final needsText = item.requiresComment;
+    final hasInputs = needsPhoto || needsText;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
+                    width: 48, height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.black54,
-                      borderRadius: BorderRadius.circular(16),
+                      color: widget.isResubmit
+                          ? AppColors.danger.withOpacity(0.15)
+                          : AppColors.accentBg,
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Text(
-                      '${_currentIndex + 1} / $total',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                    child: Icon(
+                      widget.isResubmit
+                          ? Icons.redo_rounded
+                          : hasInputs ? Icons.camera_alt_rounded : Icons.check_circle_rounded,
+                      color: widget.isResubmit ? AppColors.danger : AppColors.accent,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    widget.isResubmit ? 'Resubmit Item' : 'Complete Item',
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    widget.isResubmit
+                        ? '"${item.title}"'
+                        : hasInputs ? '"${item.title}"' : 'Mark "${item.title}" as complete?',
+                    style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.55),
+                    maxLines: 2, overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Input section (사진 + 텍스트)
+            if (hasInputs) ...[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Photo section
+                    if (needsPhoto) ...[
+                      // Photo thumbnails strip
+                      if (_photoUrls.isNotEmpty) ...[
+                        SizedBox(
+                          height: 68,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _photoUrls.length + 1,
+                            separatorBuilder: (_, __) => const SizedBox(width: 8),
+                            itemBuilder: (ctx, i) {
+                              if (i == _photoUrls.length) {
+                                // Add more button
+                                return GestureDetector(
+                                  onTap: _isUploading ? null : _showPhotoSource,
+                                  child: Container(
+                                    width: 68, height: 68,
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: AppColors.border, width: 1.5, style: BorderStyle.solid),
+                                      color: AppColors.bg,
+                                    ),
+                                    child: const Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.add, color: AppColors.textMuted, size: 20),
+                                        Text('Add', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }
+                              return Stack(
+                                clipBehavior: Clip.none,
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.network(
+                                      _photoUrls[i], width: 68, height: 68,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        width: 68, height: 68,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.bg,
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(color: AppColors.accent),
+                                        ),
+                                        child: const Icon(Icons.image, color: AppColors.accent),
+                                      ),
+                                    ),
+                                  ),
+                                  Positioned(
+                                    top: -6, right: -6,
+                                    child: GestureDetector(
+                                      onTap: () => _removePhoto(i),
+                                      child: Container(
+                                        width: 20, height: 20,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.danger,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: Colors.white, width: 1.5),
+                                        ),
+                                        child: const Icon(Icons.close, color: Colors.white, size: 12),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ] else ...[
+                        // Empty photo picker — dashed area
+                        GestureDetector(
+                          onTap: _isUploading ? null : _showPhotoSource,
+                          child: Container(
+                            width: double.infinity, height: 80,
+                            decoration: BoxDecoration(
+                              color: AppColors.bg,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.border, width: 1.5),
+                            ),
+                            child: _isUploading
+                                ? const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)))
+                                : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.camera_alt_outlined, color: AppColors.textMuted, size: 20),
+                                      SizedBox(width: 8),
+                                      Text('Tap to add photo', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+                      // Photo counter
+                      Row(
+                        children: [
+                          Icon(
+                            _photoMet ? Icons.check_circle : Icons.camera_alt_outlined,
+                            size: 14,
+                            color: _photoMet ? AppColors.success : AppColors.warning,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Photos: ${_photoUrls.length}/$_minPhotos required',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: _photoMet ? AppColors.success : AppColors.warning,
+                              fontWeight: _photoMet ? FontWeight.w600 : FontWeight.w400,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                    ],
+                    // Text input
+                    TextField(
+                      controller: _noteController,
+                      maxLines: 3,
+                      onChanged: (_) => _saveDraft(),
+                      decoration: InputDecoration(
+                        hintText: needsText
+                            ? 'Text (required)...'
+                            : 'Text (optional) — e.g. store front prep completed',
+                        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+                        filled: true, fillColor: AppColors.bg,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: AppColors.border),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(color: AppColors.accent),
+                        ),
+                      ),
+                      style: const TextStyle(fontSize: 14, color: AppColors.text),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            // ── Uploading indicator
+            if (_isUploading && _photoUrls.isNotEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+              ),
+
+            // ── Buttons
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        decoration: BoxDecoration(
+                          color: AppColors.bg,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        alignment: Alignment.center,
+                        child: const Text('Cancel', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: (_canSubmit && !_isUploading) ? _submit : null,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        decoration: BoxDecoration(
+                          color: (_canSubmit && !_isUploading) ? AppColors.accent : const Color(0xFFEDE6E9),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          widget.isResubmit ? 'Resubmit' : 'Complete',
+                          style: TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w700,
+                            color: (_canSubmit && !_isUploading) ? AppColors.white : AppColors.textMuted,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-        ],
+          ],
+        ),
       ),
     );
   }

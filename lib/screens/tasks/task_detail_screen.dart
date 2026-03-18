@@ -205,7 +205,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           if (task.store?.name != null || task.storeName != null) ...[
             const SizedBox(height: 4),
             Text(
-              task.store?.name ?? task.storeName!,
+              task.store?.name ?? task.storeName ?? '-',
               style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
             ),
           ],
@@ -313,7 +313,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
             _DetailRow(
               icon: Icons.person_outline,
               label: 'Created by',
-              value: task.createdByName!,
+              value: task.createdByName ?? 'Unknown',
             ),
           if (task.createdAt != null) ...[
             const SizedBox(height: 14),

@@ -6,12 +6,19 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/constants.dart';
 import '../utils/token_storage.dart';
+import 'mock_interceptor.dart';
+
+/// Mock 모드 활성화 여부
+///
+/// `--dart-define=USE_MOCK=true`로 빌드하면 서버 없이 테스트 가능.
+const _useMock = bool.fromEnvironment('USE_MOCK', defaultValue: false);
 
 /// Dio 싱글턴 Provider
 ///
 /// 앱 전역에서 하나의 Dio 인스턴스를 공유.
 /// baseUrl, 타임아웃, Content-Type 기본 헤더를 설정하고
 /// AuthInterceptor를 등록하여 모든 요청에 인증 헤더를 자동 추가.
+/// USE_MOCK=true 시 MockInterceptor로 대체.
 final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(BaseOptions(
     baseUrl: AppConstants.apiBaseUrl,
@@ -20,7 +27,11 @@ final dioProvider = Provider<Dio>((ref) {
     headers: {'Content-Type': 'application/json'},
   ));
 
-  dio.interceptors.add(AuthInterceptor(dio));
+  if (_useMock) {
+    dio.interceptors.add(MockInterceptor());
+  } else {
+    dio.interceptors.add(AuthInterceptor(dio));
+  }
   return dio;
 });
 

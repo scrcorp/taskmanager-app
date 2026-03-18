@@ -14,12 +14,13 @@ import 'package:intl/intl.dart';
 import '../../config/theme.dart';
 import '../../models/task.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/assignment_provider.dart';
+import '../../providers/my_schedule_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/announcement_provider.dart';
 import '../../providers/voice_provider.dart';
 import '../../models/announcement.dart';
 import '../../utils/toast_manager.dart';
+import 'widgets/schedule_summary_card.dart';
 
 /// 의견 제출 카테고리 맵 (키: API 값, 값: 표시 라벨)
 const _voiceCategories = <String, String>{
@@ -67,7 +68,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     super.initState();
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
     Future.microtask(() {
-      ref.read(assignmentProvider.notifier).loadAssignments(today);
+      ref.read(myScheduleProvider.notifier).loadSchedules(today);
       ref.read(taskProvider.notifier).loadTasks();
       ref.read(announcementProvider.notifier).loadAnnouncements();
     });
@@ -99,7 +100,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
-    final assignments = ref.watch(assignmentProvider);
+    final scheduleState = ref.watch(myScheduleProvider);
     final tasks = ref.watch(taskProvider);
     final announcements = ref.watch(announcementProvider);
     final today = DateTime.now();
@@ -107,10 +108,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final firstName = user?.firstName ?? 'Staff';
     final fullName = user?.fullName ?? 'Staff';
     final dueTodayCount = _countDueToday(tasks.tasks);
-    final totalAssignments = assignments.assignments.length;
-    final completedAssignments = assignments.assignments.where((a) {
-      final snap = a.checklistSnapshot;
-      return snap != null && snap.totalItems > 0 && snap.completedItems == snap.totalItems;
+    final checklistSchedules =
+        scheduleState.schedules.where((s) => s.totalItems > 0).toList();
+    final totalSchedules = checklistSchedules.length;
+    final completedSchedules = checklistSchedules.where((s) {
+      return s.completedItems == s.totalItems;
     }).length;
     final totalTasks = tasks.tasks.length;
     final completedTasks = tasks.tasks.where((t) => t.status == 'completed').length;
@@ -121,7 +123,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       onRefresh: () async {
         final dateStr = DateFormat('yyyy-MM-dd').format(today);
         await Future.wait([
-          ref.read(assignmentProvider.notifier).loadAssignments(dateStr),
+          ref.read(myScheduleProvider.notifier).loadSchedules(dateStr),
           ref.read(taskProvider.notifier).loadTasks(),
           ref.read(announcementProvider.notifier).loadAnnouncements(),
         ]);
@@ -214,12 +216,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     children: [
                       _StatItem(
                         label: 'Checklist',
-                        value: assignments.isLoading
+                        value: scheduleState.isLoading
                             ? '-'
-                            : '$completedAssignments/$totalAssignments',
-                        color: totalAssignments > 0 && completedAssignments == totalAssignments
+                            : '$completedSchedules/$totalSchedules',
+                        color: totalSchedules > 0 && completedSchedules == totalSchedules
                             ? AppColors.success
                             : AppColors.accent,
+                        onTap: () => context.go('/work'),
                       ),
                       _statDivider(),
                       _StatItem(
@@ -241,6 +244,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   ),
                 ],
               ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ── Schedule summary ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: ScheduleSummaryCard(
+              onViewAll: () => context.push('/schedule'),
+              onResubmit: () => context.push('/schedule'),
             ),
           ),
           const SizedBox(height: 16),
@@ -436,37 +449,43 @@ class _StatItem extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
+  final VoidCallback? onTap;
 
   const _StatItem({
     required this.label,
     required this.value,
     required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: color,
-              letterSpacing: -0.5,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: color,
+                letterSpacing: -0.5,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textMuted,
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textMuted,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
