@@ -156,7 +156,7 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
                     const Icon(Icons.person_outline,
                         size: 14, color: AppColors.textMuted),
                     const SizedBox(width: 4),
-                    Text(announcement.createdByName!,
+                    Text(announcement.createdByName ?? 'Unknown',
                         style: const TextStyle(
                             fontSize: 13, color: AppColors.textSecondary)),
                   ],
@@ -400,8 +400,8 @@ class _AcknowledgmentSection extends StatelessWidget {
                         radius: 10,
                         backgroundColor: AppColors.textMuted,
                         child: Text(
-                          ack.userName.isNotEmpty
-                              ? ack.userName[0].toUpperCase()
+                          (ack.userName?.isNotEmpty ?? false)
+                              ? ack.userName![0].toUpperCase()
                               : '?',
                           style: const TextStyle(
                             fontSize: 10,
@@ -412,7 +412,7 @@ class _AcknowledgmentSection extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        ack.userName,
+                        ack.userName ?? 'Unknown',
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
@@ -449,8 +449,8 @@ class _NoticeCommentTile extends StatelessWidget {
             radius: 16,
             backgroundColor: AppColors.bg,
             child: Text(
-              comment.userName.isNotEmpty
-                  ? comment.userName[0].toUpperCase()
+              (comment.userName?.isNotEmpty ?? false)
+                  ? comment.userName![0].toUpperCase()
                   : '?',
               style: const TextStyle(
                 fontSize: 13,
@@ -467,7 +467,7 @@ class _NoticeCommentTile extends StatelessWidget {
                 Row(
                   children: [
                     Text(
-                      comment.userName,
+                      comment.userName ?? 'Unknown',
                       style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,

@@ -117,7 +117,7 @@ class _NoticeCard extends StatelessWidget {
                     Icon(Icons.person_outline,
                         size: 13, color: AppColors.textMuted),
                     const SizedBox(width: 3),
-                    Text(announcement.createdByName!,
+                    Text(announcement.createdByName ?? 'Unknown',
                         style: const TextStyle(
                             fontSize: 12, color: AppColors.textMuted)),
                     const SizedBox(width: 8),

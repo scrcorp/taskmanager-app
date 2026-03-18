@@ -108,10 +108,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final firstName = user?.firstName ?? 'Staff';
     final fullName = user?.fullName ?? 'Staff';
     final dueTodayCount = _countDueToday(tasks.tasks);
-    final totalSchedules = scheduleState.schedules.length;
-    final completedSchedules = scheduleState.schedules.where((s) {
-      final snap = s.checklistSnapshot;
-      return snap != null && snap.totalItems > 0 && snap.completedItems == snap.totalItems;
+    final checklistSchedules =
+        scheduleState.schedules.where((s) => s.totalItems > 0).toList();
+    final totalSchedules = checklistSchedules.length;
+    final completedSchedules = checklistSchedules.where((s) {
+      return s.completedItems == s.totalItems;
     }).length;
     final totalTasks = tasks.tasks.length;
     final completedTasks = tasks.tasks.where((t) => t.status == 'completed').length;
@@ -221,6 +222,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         color: totalSchedules > 0 && completedSchedules == totalSchedules
                             ? AppColors.success
                             : AppColors.accent,
+                        onTap: () => context.go('/work'),
                       ),
                       _statDivider(),
                       _StatItem(
@@ -447,37 +449,43 @@ class _StatItem extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
+  final VoidCallback? onTap;
 
   const _StatItem({
     required this.label,
     required this.value,
     required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: color,
-              letterSpacing: -0.5,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+                color: color,
+                letterSpacing: -0.5,
+              ),
             ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textMuted,
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textMuted,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

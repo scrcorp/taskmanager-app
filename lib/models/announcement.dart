@@ -80,7 +80,7 @@ class Announcement {
 class NoticeComment {
   final String id;
   final String userId;
-  final String userName;
+  final String? userName;
   final String text;
   final DateTime createdAt;
   /// 좋아요 수
@@ -91,7 +91,7 @@ class NoticeComment {
   const NoticeComment({
     required this.id,
     required this.userId,
-    required this.userName,
+    this.userName,
     required this.text,
     required this.createdAt,
     this.likes = 0,
@@ -117,12 +117,12 @@ class NoticeComment {
 /// 직원이 공지를 읽었음을 확인한 시점과 정보를 기록한다.
 class NoticeAcknowledgment {
   final String userId;
-  final String userName;
+  final String? userName;
   final DateTime acknowledgedAt;
 
   const NoticeAcknowledgment({
     required this.userId,
-    required this.userName,
+    this.userName,
     required this.acknowledgedAt,
   });
 
