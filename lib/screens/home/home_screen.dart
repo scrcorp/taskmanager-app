@@ -282,7 +282,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ],
             ),
           ),
-          if ((user?.roleLevel ?? 40) <= 30) ...[
+          if (user?.hasPermission('daily_reports:read') ?? false) ...[
             const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),

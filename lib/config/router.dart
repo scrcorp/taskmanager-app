@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 
 import '../providers/auth_provider.dart';
 import '../screens/auth/company_code_screen.dart';
+import '../screens/auth/email_verification_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/clock/clock_screen.dart';
@@ -52,13 +53,21 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final authState = ref.read(authProvider);
       final isAuth = authState.status == AuthStatus.authenticated;
+      final user = authState.user;
       final path = state.uri.path;
       // 인증 관련 경로 (로그인, 회원가입, 회사코드 입력)
       final isAuthRoute = path == '/login' || path == '/register' || path == '/company-code';
+      final isVerifyRoute = path == '/verify-email';
       // 미인증 + 비인증 경로 접근 → 로그인으로 리다이렉트
-      if (!isAuth && !isAuthRoute) return '/login';
-      // 인증 완료 + 인증 경로 접근 → 홈으로 리다이렉트
-      if (isAuth && isAuthRoute) return '/home';
+      if (!isAuth && !isAuthRoute && !isVerifyRoute) return '/login';
+      // 인증 완료 + 이메일 미인증 → 이메일 인증 화면으로 리다이렉트
+      if (isAuth && user != null && !user.emailVerified && !isVerifyRoute) {
+        return '/verify-email';
+      }
+      // 인증 완료 + 이메일 인증 완료 + 인증 경로 접근 → 홈으로 리다이렉트
+      if (isAuth && user != null && user.emailVerified && (isAuthRoute || isVerifyRoute)) {
+        return '/home';
+      }
       return null;
     },
     routes: [
@@ -66,6 +75,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/company-code', builder: (_, __) => const CompanyCodeScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
+      GoRoute(path: '/verify-email', builder: (_, __) => const EmailVerificationScreen()),
 
       // ── 메인 화면 (ShellRoute = AppShell 하단 네비게이션 포함) ──
       ShellRoute(
