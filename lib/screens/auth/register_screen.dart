@@ -1,17 +1,20 @@
 /// 회원가입 화면 — 4단계 스텝 프로세스
 ///
 /// Step 1: 이용약관 동의 (필수 2개 + 선택 1개)
-/// Step 2: 이메일 입력 (형식 검증만, 인증 없음)
+/// Step 2: 이메일 입력 + 인증코드 발송/검증
 /// Step 3: 개인정보 입력 (이름, 사용자명 중복 확인, 비밀번호)
 /// Step 4: 가입 완료 및 서비스 시작
 ///
 /// URL 쿼리에서 company_code를 받아와 표시하며,
 /// 최종 단계에서 authProvider.register()로 실제 가입 처리.
+import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/auth_service.dart';
 import '../../utils/toast_manager.dart';
 import '../../widgets/app_modal.dart';
 
@@ -31,8 +34,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _term2 = false;
   bool _term3 = false;
 
-  // Step 2: Email
+  // Step 2: Email verification
   final _emailCtrl = TextEditingController();
+  final _codeCtrl = TextEditingController();
+  bool _codeSent = false;
+  bool _emailVerified = false;
+  String? _verificationToken;
+  Timer? _timer;
+  int _remainingSeconds = 0;
+  String? _emailError;
 
   // Step 3: Info
   final _nameCtrl = TextEditingController();
@@ -53,7 +63,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   void dispose() {
+    _timer?.cancel();
     _emailCtrl.dispose();
+    _codeCtrl.dispose();
     _nameCtrl.dispose();
     _idCtrl.dispose();
     _pwCtrl.dispose();
@@ -80,17 +92,93 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _nextStep();
   }
 
-  // Step 2: Email format validation
+  // Step 2: Email verification
   static final _emailRegex = RegExp(r'^[\w\-.]+@[\w\-]+(\.[\w\-]+)+$');
 
-  void _validateStep2() {
+  void _startTimer() {
+    _remainingSeconds = 300; // 5 minutes
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) { t.cancel(); return; }
+      setState(() {
+        _remainingSeconds--;
+        if (_remainingSeconds <= 0) t.cancel();
+      });
+    });
+  }
+
+  String get _timerText {
+    final m = _remainingSeconds ~/ 60;
+    final s = _remainingSeconds % 60;
+    return '$m:${s.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _sendCode() async {
     final email = _emailCtrl.text.trim();
-    if (email.isEmpty) {
-      ToastManager().warning(context, 'Please enter your email.');
+    if (email.isEmpty || !_emailRegex.hasMatch(email)) {
+      ToastManager().warning(context, 'Please enter a valid email address.');
       return;
     }
-    if (!_emailRegex.hasMatch(email)) {
-      ToastManager().warning(context, 'Please enter a valid email address.');
+    setState(() { _isLoading = true; _emailError = null; });
+    try {
+      final authService = ref.read(authServiceProvider);
+      await authService.sendVerificationCode(email);
+      if (mounted) {
+        setState(() { _codeSent = true; _isLoading = false; });
+        _startTimer();
+        ToastManager().success(context, 'Verification code sent.');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() { _isLoading = false; });
+        final msg = _parseApiError(e, 'Failed to send code. Please try again.');
+        // 409 중복 이메일은 에러 배너로, 나머지는 토스트로
+        if (e is DioException && e.response?.statusCode == 409) {
+          setState(() { _emailError = msg; });
+        } else {
+          ToastManager().error(context, msg);
+        }
+      }
+    }
+  }
+
+  Future<void> _verifyCode() async {
+    final code = _codeCtrl.text.trim();
+    if (code.isEmpty || code.length != 6) {
+      ToastManager().warning(context, 'Please enter the 6-digit code.');
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      final authService = ref.read(authServiceProvider);
+      final result = await authService.verifyEmailCode(
+        _emailCtrl.text.trim(), code,
+      );
+      if (mounted) {
+        setState(() {
+          _emailVerified = true;
+          _verificationToken = result['verification_token'] as String;
+          _isLoading = false;
+        });
+        _timer?.cancel();
+        AppModal.show(
+          context,
+          title: 'Email Verified',
+          message: 'Your email has been verified successfully.',
+          type: ModalType.info,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ToastManager().error(context, _parseApiError(e, 'Verification failed.'));
+      }
+    }
+  }
+
+  void _validateStep2() {
+    if (!_emailVerified) {
+      ToastManager().warning(context, 'Please verify your email first.');
       return;
     }
     _nextStep();
@@ -147,6 +235,34 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _nextStep();
   }
 
+  /// 서버 에러 응답에서 사용자 친화적 메시지 추출
+  String _parseApiError(Object e, String fallback) {
+    if (e is DioException && e.response?.data != null) {
+      final data = e.response!.data;
+      if (data is Map<String, dynamic>) {
+        final detail = data['detail'];
+        if (detail is String) return detail;
+        if (detail is Map<String, dynamic>) {
+          return (detail['message'] as String?) ?? fallback;
+        }
+      }
+    }
+    if (e is DioException) {
+      final statusCode = e.response?.statusCode;
+      if (statusCode != null && statusCode >= 500) {
+        return 'Server error. Please try again later.';
+      }
+      if (e.type == DioExceptionType.connectionTimeout ||
+          e.type == DioExceptionType.receiveTimeout) {
+        return 'Server not responding. Please try again.';
+      }
+      if (e.type == DioExceptionType.connectionError) {
+        return 'No internet connection.';
+      }
+    }
+    return fallback;
+  }
+
   // Step 4: actual register call
   Future<void> _completeRegistration() async {
     setState(() => _isLoading = true);
@@ -154,7 +270,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       username: _idCtrl.text.trim(),
       password: _pwCtrl.text,
       fullName: _nameCtrl.text.trim(),
-      email: _emailCtrl.text.trim().isNotEmpty ? _emailCtrl.text.trim() : null,
+      email: _emailCtrl.text.trim(),
+      verificationToken: _verificationToken!,
     );
     if (mounted) {
       setState(() => _isLoading = false);
@@ -322,28 +439,88 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
   }
 
-  // Step 2: Email Input
+  // Step 2: Email Verification
   Widget _buildStep2() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Enter Your Email', style: Theme.of(context).textTheme.headlineLarge),
+          Text('Verify Your Email', style: Theme.of(context).textTheme.headlineLarge),
           const SizedBox(height: 8),
-          Text('Enter your email address to continue.', style: Theme.of(context).textTheme.bodyMedium),
+          Text("We'll send a verification code to your email.", style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 32),
           const _FormLabel('Email'),
           const SizedBox(height: 8),
-          TextField(
+          _FieldWithButton(
             controller: _emailCtrl,
+            hint: 'example@email.com',
+            buttonLabel: _codeSent ? 'Resend' : 'Send Code',
+            onButtonTap: _emailVerified ? null : _sendCode,
             keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(hintText: 'example@email.com'),
+            isDone: _emailVerified,
+            enabled: !_codeSent || _emailVerified ? true : false,
           ),
+          if (_emailError != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFEEEE),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+              ),
+              child: Text(
+                _emailError!,
+                style: const TextStyle(fontSize: 13, color: Color(0xFFFF6B6B)),
+              ),
+            ),
+          ],
+          const SizedBox(height: 20),
+          const _FormLabel('Verification Code'),
+          const SizedBox(height: 8),
+          _FieldWithButton(
+            controller: _codeCtrl,
+            hint: '6-digit code',
+            buttonLabel: 'Verify',
+            onButtonTap: _codeSent && !_emailVerified ? _verifyCode : null,
+            isDone: _emailVerified,
+            enabled: _codeSent && !_emailVerified,
+          ),
+          if (_codeSent && !_emailVerified && _remainingSeconds > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(
+                '⏱ $_timerText remaining',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.danger),
+              ),
+            ),
+          if (_emailVerified)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.successBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  '✓ Email verified',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.success),
+                ),
+              ),
+            ),
+          if (_codeSent && !_emailVerified) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Code expires in 5 minutes after sending.',
+              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+          ],
           const Spacer(),
           _BottomButton(
             label: 'Continue',
-            onPressed: _validateStep2,
+            onPressed: _emailVerified ? _validateStep2 : null,
           ),
         ],
       ),
@@ -618,6 +795,7 @@ class _FieldWithButton extends StatelessWidget {
   final bool obscureText;
   final TextInputType? keyboardType;
   final bool isDone;
+  final bool enabled;
 
   const _FieldWithButton({
     required this.controller,
@@ -627,6 +805,7 @@ class _FieldWithButton extends StatelessWidget {
     this.obscureText = false,
     this.keyboardType,
     this.isDone = false,
+    this.enabled = true,
   });
 
   @override
@@ -639,6 +818,7 @@ class _FieldWithButton extends StatelessWidget {
             controller: controller,
             obscureText: obscureText,
             keyboardType: keyboardType,
+            enabled: enabled,
             decoration: InputDecoration(hintText: hint),
           ),
         ),

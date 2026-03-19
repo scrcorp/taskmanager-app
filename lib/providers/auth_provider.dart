@@ -87,7 +87,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String username,
     required String password,
     required String fullName,
-    String? email,
+    required String email,
+    required String verificationToken,
   }) async {
     state = state.copyWith(status: AuthStatus.loading, error: null);
     try {
@@ -96,6 +97,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         password: password,
         fullName: fullName,
         email: email,
+        verificationToken: verificationToken,
       );
       final data = await _authService.getMe();
       state = AuthState(status: AuthStatus.authenticated, user: User.fromJson(data));
@@ -104,6 +106,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = AuthState(status: AuthStatus.unauthenticated, error: _parseError(e, 'Registration failed'));
       return false;
     }
+  }
+
+  /// 로그인 후 이메일 인증 완료 — getMe()로 사용자 정보 갱신
+  Future<void> refreshUser() async {
+    try {
+      final data = await _authService.getMe();
+      state = AuthState(status: AuthStatus.authenticated, user: User.fromJson(data));
+    } catch (_) {}
   }
 
   /// Dio 에러 응답을 사용자 친화적 메시지로 변환

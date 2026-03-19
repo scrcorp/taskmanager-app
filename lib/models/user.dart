@@ -9,6 +9,7 @@ class User {
   final String username;
   final String fullName;
   final String? email;
+  final bool emailVerified;
   final bool isActive;
   final String roleName;
   /// 역할 우선순위 (낮을수록 높은 권한: Owner=10, Staff=40)
@@ -27,6 +28,7 @@ class User {
     required this.username,
     required this.fullName,
     this.email,
+    this.emailVerified = false,
     this.isActive = true,
     required this.roleName,
     required this.roleLevel,
@@ -62,6 +64,7 @@ class User {
       username: json['username'] as String,
       fullName: json['full_name'] as String? ?? '',
       email: json['email'] as String?,
+      emailVerified: json['email_verified'] as bool? ?? false,
       isActive: json['is_active'] as bool? ?? true,
       roleName: json['role_name'] as String? ?? '',
       roleLevel: json['role_priority'] as int? ?? json['role_level'] as int? ?? 40,
