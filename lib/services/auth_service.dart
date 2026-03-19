@@ -44,20 +44,54 @@ class AuthService {
     required String username,
     required String password,
     required String fullName,
-    String? email,
+    required String email,
+    required String verificationToken,
   }) async {
     final companyCode = await TokenStorage.getCompanyCode() ?? '3Y1FII';
     final response = await _dio.post('/app/auth/register', data: {
       'username': username,
       'password': password,
       'full_name': fullName,
-      if (email != null) 'email': email,
+      'email': email,
       'company_code': companyCode,
+      'verification_token': verificationToken,
     });
     await TokenStorage.setTokens(
       response.data['access_token'],
       response.data['refresh_token'],
     );
+  }
+
+  /// 이메일 인증코드 발송
+  Future<Map<String, dynamic>> sendVerificationCode(
+    String email, {
+    String purpose = 'registration',
+  }) async {
+    final response = await _dio.post('/app/auth/send-verification-code', data: {
+      'email': email,
+      'purpose': purpose,
+    });
+    return response.data;
+  }
+
+  /// 이메일 인증코드 검증 — 성공 시 verification_token 반환
+  Future<Map<String, dynamic>> verifyEmailCode(
+    String email,
+    String code,
+  ) async {
+    final response = await _dio.post('/app/auth/verify-email-code', data: {
+      'email': email,
+      'code': code,
+    });
+    return response.data;
+  }
+
+  /// 로그인 후 이메일 인증 (기존 사용자용)
+  Future<void> confirmEmail(String email, String code) async {
+    await _dio.post('/app/auth/confirm-email', data: {
+      'email': email,
+      'code': code,
+    });
   }
 
   /// 내 정보 조회 — JWT 토큰으로 현재 사용자 프로필 반환

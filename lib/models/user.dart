@@ -2,21 +2,25 @@
 ///
 /// /auth/me 응답으로 받는 현재 로그인 사용자 정보.
 /// 역할(role), 조직(organization), 회사코드(companyCode) 등을 포함.
-/// roleLevel: Owner=10, GM=20, SV=30, Staff=40 (10단위 간격)
+/// permissions: 서버에서 role에 할당된 permission code 목록
 class User {
   final String id;
   final String organizationId;
   final String username;
   final String fullName;
   final String? email;
+  final bool emailVerified;
   final bool isActive;
   final String roleName;
-  /// 역할 우선순위 레벨 (낮을수록 높은 권한: Owner=10, Staff=40)
+  /// 역할 우선순위 (낮을수록 높은 권한: Owner=10, Staff=40)
+  /// 계층 비교용으로만 사용 (권한 판단은 permissions 사용)
   final int roleLevel;
   final String organizationName;
   final String companyCode;
   /// 조직의 기본 타임존 (예: 'America/Los_Angeles')
   final String? organizationTimezone;
+  /// role에 할당된 permission code 목록 (예: ['daily_reports:read', 'checklists:read'])
+  final Set<String> permissions;
 
   const User({
     required this.id,
@@ -24,12 +28,14 @@ class User {
     required this.username,
     required this.fullName,
     this.email,
+    this.emailVerified = false,
     this.isActive = true,
     required this.roleName,
     required this.roleLevel,
     required this.organizationName,
     required this.companyCode,
     this.organizationTimezone,
+    this.permissions = const {},
   });
 
   /// fullName에서 첫 단어만 추출 (인사말 등에 사용)
@@ -46,20 +52,26 @@ class User {
     return username.substring(0, 2).toUpperCase();
   }
 
+  /// permission code가 있는지 확인
+  bool hasPermission(String code) => permissions.contains(code);
+
   /// 서버 JSON → User 객체 변환
   factory User.fromJson(Map<String, dynamic> json) {
+    final permList = json['permissions'] as List<dynamic>? ?? [];
     return User(
       id: json['id'] as String,
       organizationId: json['organization_id'] as String? ?? '',
       username: json['username'] as String,
       fullName: json['full_name'] as String? ?? '',
       email: json['email'] as String?,
+      emailVerified: json['email_verified'] as bool? ?? false,
       isActive: json['is_active'] as bool? ?? true,
       roleName: json['role_name'] as String? ?? '',
       roleLevel: json['role_priority'] as int? ?? json['role_level'] as int? ?? 40,
       organizationName: json['organization_name'] as String? ?? '',
       companyCode: json['company_code'] as String? ?? '',
       organizationTimezone: json['organization_timezone'] as String?,
+      permissions: permList.map((e) => e as String).toSet(),
     );
   }
 }
