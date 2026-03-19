@@ -290,6 +290,7 @@ class MockInterceptor extends Interceptor {
             'role_level': 40,
             'organization_name': 'Demo Org',
             'company_code': 'MOCK01',
+            'permissions': <String>[],
           },
         ));
       }
