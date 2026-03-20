@@ -116,6 +116,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 20),
+              // Find Username / Forgot Password 링크
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  GestureDetector(
+                    onTap: () => context.go('/find-username'),
+                    child: Text('Find Username', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text('|', style: TextStyle(color: AppColors.border, fontSize: 13)),
+                  ),
+                  GestureDetector(
+                    onTap: () => context.go('/reset-password'),
+                    child: Text('Forgot Password?', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
               // 회원가입 링크
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,

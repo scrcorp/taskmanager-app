@@ -272,10 +272,29 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                     const SizedBox(height: 4),
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: Text(
-                        'You can change your email address if needed.',
-                        style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-                      ),
+                      child: _codeSent
+                          ? GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _codeSent = false;
+                                  _codeCtrl.clear();
+                                  _timer?.cancel();
+                                  _remainingSeconds = 0;
+                                });
+                              },
+                              child: Text(
+                                'Change Email',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.accent,
+                                  decoration: TextDecoration.underline,
+                                ),
+                              ),
+                            )
+                          : Text(
+                              'You can change your email address if needed.',
+                              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                            ),
                     ),
 
                     if (_codeSent) ...[

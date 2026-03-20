@@ -49,8 +49,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _idCtrl = TextEditingController();
   final _pwCtrl = TextEditingController();
   final _confirmPwCtrl = TextEditingController();
-  bool _idChecked = false;
-  bool _pwConfirmed = false;
 
   bool _isLoading = false;
 
@@ -184,55 +182,45 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _nextStep();
   }
 
-  // Step 3: Info validation
-  Future<void> _checkId() async {
+  Future<void> _validateStep3() async {
+    if (_nameCtrl.text.trim().isEmpty) {
+      ToastManager().warning(context, 'Please enter your name.');
+      return;
+    }
     if (_idCtrl.text.trim().isEmpty) {
       ToastManager().warning(context, 'Please enter a username.');
       return;
     }
-    setState(() => _isLoading = true);
-    // TODO: Connect to server username check API when available
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (mounted) {
-      setState(() {
-        _idChecked = true;
-        _isLoading = false;
-      });
-      ToastManager().success(context, 'Username is available.');
-    }
-  }
-
-  void _confirmPassword() {
-    if (_confirmPwCtrl.text.isEmpty) {
-      ToastManager().warning(context, 'Please enter your password.');
+    if (_pwCtrl.text.isEmpty) {
+      ToastManager().warning(context, 'Please enter a password.');
       return;
     }
     if (_confirmPwCtrl.text != _pwCtrl.text) {
       ToastManager().warning(context, 'Passwords do not match.');
       return;
     }
-    setState(() => _pwConfirmed = true);
-    ToastManager().success(context, 'Password confirmed.');
-  }
-
-  void _validateStep3() {
-    if (_nameCtrl.text.trim().isEmpty) {
-      ToastManager().warning(context, 'Please enter your name.');
-      return;
+    // 서버에 회원가입 요청 → 성공 시에만 완료 화면으로 이동
+    setState(() => _isLoading = true);
+    final success = await ref.read(authProvider.notifier).register(
+      username: _idCtrl.text.trim(),
+      password: _pwCtrl.text,
+      fullName: _nameCtrl.text.trim(),
+      email: _emailCtrl.text.trim(),
+      verificationToken: _verificationToken!,
+    );
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    if (success) {
+      _nextStep();
+    } else {
+      final error = ref.read(authProvider).error ?? 'Registration failed';
+      AppModal.show(
+        context,
+        title: 'Registration Failed',
+        message: error,
+        type: ModalType.error,
+      );
     }
-    if (!_idChecked) {
-      ToastManager().warning(context, 'Please check username availability.');
-      return;
-    }
-    if (_pwCtrl.text.length < 6) {
-      ToastManager().warning(context, 'Password must be at least 6 characters.');
-      return;
-    }
-    if (!_pwConfirmed) {
-      ToastManager().warning(context, 'Please confirm your password.');
-      return;
-    }
-    _nextStep();
   }
 
   /// 서버 에러 응답에서 사용자 친화적 메시지 추출
@@ -263,30 +251,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return fallback;
   }
 
-  // Step 4: actual register call
-  Future<void> _completeRegistration() async {
-    setState(() => _isLoading = true);
-    final success = await ref.read(authProvider.notifier).register(
-      username: _idCtrl.text.trim(),
-      password: _pwCtrl.text,
-      fullName: _nameCtrl.text.trim(),
-      email: _emailCtrl.text.trim(),
-      verificationToken: _verificationToken!,
-    );
-    if (mounted) {
-      setState(() => _isLoading = false);
-      if (success) {
-        context.go('/home');
-      } else {
-        final error = ref.read(authProvider).error ?? 'Registration failed';
-        AppModal.show(
-          context,
-          title: 'Registration Failed',
-          message: error,
-          type: ModalType.error,
-        );
-      }
-    }
+  // Step 4: 이미 회원가입 완료 상태 → 홈으로 이동
+  void _goHome() {
+    context.go('/home');
   }
 
   @override
@@ -322,7 +289,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   if (_currentStep == 3)
                     IconButton(
                       icon: const Icon(Icons.close_rounded, size: 22),
-                      onPressed: _completeRegistration,
+                      onPressed: _goHome,
                     )
                   else
                     const SizedBox(width: 48),
@@ -461,6 +428,32 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             isDone: _emailVerified,
             enabled: !_codeSent || _emailVerified ? true : false,
           ),
+          if (_codeSent && !_emailVerified)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _codeSent = false;
+                    _codeCtrl.clear();
+                    _timer?.cancel();
+                    _remainingSeconds = 0;
+                    _emailError = null;
+                  });
+                },
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    'Change Email',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.accent,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           if (_emailError != null) ...[
             const SizedBox(height: 8),
             Container(
@@ -566,12 +559,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   const SizedBox(height: 20),
                   const _FormLabel('Username'),
                   const SizedBox(height: 8),
-                  _FieldWithButton(
+                  TextField(
                     controller: _idCtrl,
-                    hint: 'Choose a username',
-                    buttonLabel: 'Check',
-                    onButtonTap: _idChecked ? null : _checkId,
-                    isDone: _idChecked,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(hintText: 'Choose a username'),
                   ),
                   const SizedBox(height: 20),
                   const _FormLabel('Password'),
@@ -579,18 +570,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   TextField(
                     controller: _pwCtrl,
                     obscureText: true,
-                    decoration: const InputDecoration(hintText: 'At least 6 characters'),
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(hintText: 'Enter password'),
                   ),
                   const SizedBox(height: 20),
                   const _FormLabel('Confirm Password'),
                   const SizedBox(height: 8),
-                  _FieldWithButton(
+                  TextField(
                     controller: _confirmPwCtrl,
-                    hint: 'Re-enter your password',
-                    buttonLabel: 'Confirm',
-                    onButtonTap: _pwConfirmed ? null : _confirmPassword,
                     obscureText: true,
-                    isDone: _pwConfirmed,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _validateStep3(),
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: 'Re-enter your password',
+                      errorText: _confirmPwCtrl.text.isNotEmpty && _confirmPwCtrl.text != _pwCtrl.text
+                          ? 'Passwords do not match'
+                          : null,
+                    ),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -598,7 +595,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          _BottomButton(label: 'Next', onPressed: _validateStep3),
+          _BottomButton(label: 'Register', onPressed: _isLoading ? null : _validateStep3, isLoading: _isLoading),
         ],
       ),
     );
@@ -672,8 +669,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           const Spacer(flex: 3),
           _BottomButton(
             label: 'Get Started',
-            onPressed: _isLoading ? null : _completeRegistration,
-            isLoading: _isLoading,
+            onPressed: _goHome,
           ),
         ],
       ),

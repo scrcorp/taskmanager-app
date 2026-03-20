@@ -11,8 +11,11 @@ import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../screens/auth/company_code_screen.dart';
 import '../screens/auth/email_verification_screen.dart';
+import '../screens/auth/find_username_screen.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
+import '../screens/auth/reset_password_screen.dart';
+import '../screens/my/change_password_screen.dart';
 import '../screens/clock/clock_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/my/my_page_screen.dart';
@@ -55,8 +58,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isAuth = authState.status == AuthStatus.authenticated;
       final user = authState.user;
       final path = state.uri.path;
-      // 인증 관련 경로 (로그인, 회원가입, 회사코드 입력)
-      final isAuthRoute = path == '/login' || path == '/register' || path == '/company-code';
+      // 인증 관련 경로 (로그인, 회원가입, 회사코드 입력, 아이디 찾기, 비밀번호 재설정)
+      final isAuthRoute = path == '/login' || path == '/register' || path == '/company-code'
+          || path == '/find-username' || path == '/reset-password';
       final isVerifyRoute = path == '/verify-email';
       // 미인증 + 비인증 경로 접근 → 로그인으로 리다이렉트
       if (!isAuth && !isAuthRoute && !isVerifyRoute) return '/login';
@@ -76,6 +80,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(path: '/verify-email', builder: (_, __) => const EmailVerificationScreen()),
+      GoRoute(path: '/find-username', builder: (_, __) => const FindUsernameScreen()),
+      GoRoute(path: '/reset-password', builder: (_, __) => const ResetPasswordScreen()),
 
       // ── 메인 화면 (ShellRoute = AppShell 하단 네비게이션 포함) ──
       ShellRoute(
@@ -101,7 +107,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/daily-reports', builder: (_, __) => const DailyReportListScreen()),
       GoRoute(path: '/daily-reports/create', builder: (_, __) => const DailyReportDetailScreen()),
       GoRoute(path: '/daily-reports/:id', builder: (_, state) => DailyReportDetailScreen(id: state.pathParameters['id']!)),
-      GoRoute(path: '/my', builder: (_, __) => const MyPageScreen()),
+      GoRoute(path: '/my', builder: (_, state) => MyPageScreen(returnTo: state.extra as String?)),
+      GoRoute(path: '/my/change-password', builder: (_, __) => const ChangePasswordScreen()),
       GoRoute(path: '/alerts', builder: (_, __) => const NotificationScreen()),
     ],
   );
