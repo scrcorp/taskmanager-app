@@ -49,8 +49,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _idCtrl = TextEditingController();
   final _pwCtrl = TextEditingController();
   final _confirmPwCtrl = TextEditingController();
-  bool _idChecked = false;
-  bool _pwConfirmed = false;
 
   bool _isLoading = false;
 
@@ -184,52 +182,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _nextStep();
   }
 
-  // Step 3: Info validation
-  Future<void> _checkId() async {
-    if (_idCtrl.text.trim().isEmpty) {
-      ToastManager().warning(context, 'Please enter a username.');
-      return;
-    }
-    setState(() => _isLoading = true);
-    // TODO: Connect to server username check API when available
-    await Future.delayed(const Duration(milliseconds: 300));
-    if (mounted) {
-      setState(() {
-        _idChecked = true;
-        _isLoading = false;
-      });
-      ToastManager().success(context, 'Username is available.');
-    }
-  }
-
-  void _confirmPassword() {
-    if (_confirmPwCtrl.text.isEmpty) {
-      ToastManager().warning(context, 'Please enter your password.');
-      return;
-    }
-    if (_confirmPwCtrl.text != _pwCtrl.text) {
-      ToastManager().warning(context, 'Passwords do not match.');
-      return;
-    }
-    setState(() => _pwConfirmed = true);
-    ToastManager().success(context, 'Password confirmed.');
-  }
-
   Future<void> _validateStep3() async {
     if (_nameCtrl.text.trim().isEmpty) {
       ToastManager().warning(context, 'Please enter your name.');
       return;
     }
-    if (!_idChecked) {
-      ToastManager().warning(context, 'Please check username availability.');
+    if (_idCtrl.text.trim().isEmpty) {
+      ToastManager().warning(context, 'Please enter a username.');
       return;
     }
     if (_pwCtrl.text.isEmpty) {
       ToastManager().warning(context, 'Please enter a password.');
       return;
     }
-    if (!_pwConfirmed) {
-      ToastManager().warning(context, 'Please confirm your password.');
+    if (_confirmPwCtrl.text != _pwCtrl.text) {
+      ToastManager().warning(context, 'Passwords do not match.');
       return;
     }
     // 서버에 회원가입 요청 → 성공 시에만 완료 화면으로 이동
@@ -592,12 +559,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   const SizedBox(height: 20),
                   const _FormLabel('Username'),
                   const SizedBox(height: 8),
-                  _FieldWithButton(
+                  TextField(
                     controller: _idCtrl,
-                    hint: 'Choose a username',
-                    buttonLabel: 'Check',
-                    onButtonTap: _idChecked ? null : _checkId,
-                    isDone: _idChecked,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(hintText: 'Choose a username'),
                   ),
                   const SizedBox(height: 20),
                   const _FormLabel('Password'),
@@ -605,18 +570,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   TextField(
                     controller: _pwCtrl,
                     obscureText: true,
-                    decoration: const InputDecoration(hintText: 'At least 6 characters'),
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(hintText: 'Enter password'),
                   ),
                   const SizedBox(height: 20),
                   const _FormLabel('Confirm Password'),
                   const SizedBox(height: 8),
-                  _FieldWithButton(
+                  TextField(
                     controller: _confirmPwCtrl,
-                    hint: 'Re-enter your password',
-                    buttonLabel: 'Confirm',
-                    onButtonTap: _pwConfirmed ? null : _confirmPassword,
                     obscureText: true,
-                    isDone: _pwConfirmed,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _validateStep3(),
+                    onChanged: (_) => setState(() {}),
+                    decoration: InputDecoration(
+                      hintText: 'Re-enter your password',
+                      errorText: _confirmPwCtrl.text.isNotEmpty && _confirmPwCtrl.text != _pwCtrl.text
+                          ? 'Passwords do not match'
+                          : null,
+                    ),
                   ),
                   const SizedBox(height: 24),
                 ],
@@ -624,7 +595,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          _BottomButton(label: 'Next', onPressed: _isLoading ? null : _validateStep3, isLoading: _isLoading),
+          _BottomButton(label: 'Register', onPressed: _isLoading ? null : _validateStep3, isLoading: _isLoading),
         ],
       ),
     );
