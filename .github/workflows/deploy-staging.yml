@@ -3,12 +3,16 @@ name: Deploy to Staging
 on:
   push:
     branches: [staging]
+    paths-ignore:
+      - '*.md'
+      - '.github/**'
+      - '.gitignore'
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: subosito/flutter-action@v2
         with:
@@ -17,7 +21,7 @@ jobs:
       - run: flutter pub get
       - run: flutter build web --release --dart-define=API_BASE_URL=http://35.91.205.208:28000/api/v1 --dart-define=APP_ENV=staging --dart-define=DEFAULT_COMPANY_CODE=3Y1FII
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v5
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
