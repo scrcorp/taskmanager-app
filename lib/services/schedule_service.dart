@@ -17,6 +17,15 @@ class ScheduleService {
 
   ScheduleService(this._dio);
 
+  /// 내 매장의 스케줄 기간(period) 목록 조회
+  Future<List<Map<String, dynamic>>> getMyPeriods({String? storeId, String? status}) async {
+    final params = <String, dynamic>{};
+    if (storeId != null) params['store_id'] = storeId;
+    if (status != null) params['status'] = status;
+    final response = await _dio.get('/app/my/schedule-periods', queryParameters: params);
+    return (response.data as List).cast<Map<String, dynamic>>();
+  }
+
   /// 내 매장 목록 조회
   Future<List<Map<String, dynamic>>> getMyStores() async {
     final response = await _dio.get('/app/my/stores');
