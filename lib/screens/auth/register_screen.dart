@@ -215,7 +215,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     ToastManager().success(context, 'Password confirmed.');
   }
 
-  void _validateStep3() {
+  Future<void> _validateStep3() async {
     if (_nameCtrl.text.trim().isEmpty) {
       ToastManager().warning(context, 'Please enter your name.');
       return;
@@ -232,7 +232,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       ToastManager().warning(context, 'Please confirm your password.');
       return;
     }
-    _nextStep();
+    // 서버에 회원가입 요청 → 성공 시에만 완료 화면으로 이동
+    setState(() => _isLoading = true);
+    final success = await ref.read(authProvider.notifier).register(
+      username: _idCtrl.text.trim(),
+      password: _pwCtrl.text,
+      fullName: _nameCtrl.text.trim(),
+      email: _emailCtrl.text.trim(),
+      verificationToken: _verificationToken!,
+    );
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    if (success) {
+      _nextStep();
+    } else {
+      final error = ref.read(authProvider).error ?? 'Registration failed';
+      AppModal.show(
+        context,
+        title: 'Registration Failed',
+        message: error,
+        type: ModalType.error,
+      );
+    }
   }
 
   /// 서버 에러 응답에서 사용자 친화적 메시지 추출
@@ -263,30 +284,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return fallback;
   }
 
-  // Step 4: actual register call
-  Future<void> _completeRegistration() async {
-    setState(() => _isLoading = true);
-    final success = await ref.read(authProvider.notifier).register(
-      username: _idCtrl.text.trim(),
-      password: _pwCtrl.text,
-      fullName: _nameCtrl.text.trim(),
-      email: _emailCtrl.text.trim(),
-      verificationToken: _verificationToken!,
-    );
-    if (mounted) {
-      setState(() => _isLoading = false);
-      if (success) {
-        context.go('/home');
-      } else {
-        final error = ref.read(authProvider).error ?? 'Registration failed';
-        AppModal.show(
-          context,
-          title: 'Registration Failed',
-          message: error,
-          type: ModalType.error,
-        );
-      }
-    }
+  // Step 4: 이미 회원가입 완료 상태 → 홈으로 이동
+  void _goHome() {
+    context.go('/home');
   }
 
   @override
@@ -322,7 +322,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   if (_currentStep == 3)
                     IconButton(
                       icon: const Icon(Icons.close_rounded, size: 22),
-                      onPressed: _completeRegistration,
+                      onPressed: _goHome,
                     )
                   else
                     const SizedBox(width: 48),
@@ -624,7 +624,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          _BottomButton(label: 'Next', onPressed: _validateStep3),
+          _BottomButton(label: 'Next', onPressed: _isLoading ? null : _validateStep3, isLoading: _isLoading),
         ],
       ),
     );
@@ -698,8 +698,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           const Spacer(flex: 3),
           _BottomButton(
             label: 'Get Started',
-            onPressed: _isLoading ? null : _completeRegistration,
-            isLoading: _isLoading,
+            onPressed: _goHome,
           ),
         ],
       ),
