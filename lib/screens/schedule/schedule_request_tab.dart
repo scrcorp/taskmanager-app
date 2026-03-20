@@ -236,6 +236,10 @@ class _ScheduleRequestTabState extends ConsumerState<ScheduleRequestTab> {
   String? _selectedBlockId;
   bool _scrollToSelected = false;
 
+  /// store_id → period status (open/closed/sv_draft/gm_review/finalized)
+  /// null = period 없음 (날짜 기반 검증만 적용)
+  final Map<String, String?> _storePeriodStatus = {};
+
   @override
   void initState() {
     super.initState();
@@ -355,6 +359,29 @@ class _ScheduleRequestTabState extends ConsumerState<ScheduleRequestTab> {
             _originals[ds]!.add(b.copy());
           }
         }
+      }
+
+      // 3) Period 상태 조회 — 매장별 신청 가능 여부 판단
+      try {
+        final periods = await _service.getMyPeriods();
+        final weekStartDate = weekStart;
+        final weekEndDate = weekStart.add(const Duration(days: 6));
+        _storePeriodStatus.clear();
+        for (final p in periods) {
+          final pStart = DateTime.tryParse(p['period_start'] ?? '');
+          final pEnd = DateTime.tryParse(p['period_end'] ?? '');
+          if (pStart == null || pEnd == null) continue;
+          // 이 period가 현재 주와 겹치는지 확인
+          if (pStart.isBefore(weekEndDate.add(const Duration(days: 1))) &&
+              pEnd.isAfter(weekStartDate.subtract(const Duration(days: 1)))) {
+            final storeId = p['store_id'] as String? ?? '';
+            if (storeId.isNotEmpty) {
+              _storePeriodStatus[storeId] = p['status'] as String?;
+            }
+          }
+        }
+      } catch (_) {
+        // period 조회 실패해도 기존 동작에 영향 없음
       }
 
       _loadedWeeks.add(key);
@@ -613,20 +640,48 @@ class _ScheduleRequestTabState extends ConsumerState<ScheduleRequestTab> {
 
     setState(() => _isSubmitting = true);
     try {
-      await _service.batchSubmit(
+      final result = await _service.batchSubmit(
         creates: changes.creates,
         updates: changes.updates,
         deletes: changes.deletes,
       );
-      // Reload
+
+      final errors = (result['errors'] as List?)?.cast<String>() ?? [];
+
+      // Reload regardless of errors (partial success possible)
       _loadedWeeks.clear();
       _data.clear();
       _originals.clear();
       await _ensureWeekLoaded(_weekStart);
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Submitted successfully')),
-        );
+        if (errors.isNotEmpty) {
+          final created = (result['created'] as List?)?.length ?? 0;
+          final updated = (result['updated'] as List?)?.length ?? 0;
+          final deleted = result['deleted_count'] as int? ?? 0;
+          final succeeded = created + updated + deleted;
+
+          if (succeeded > 0) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Partially saved ($succeeded). ${errors.length} failed.'),
+                duration: const Duration(seconds: 5),
+              ),
+            );
+          } else {
+            // All failed — show first error
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Submit failed: ${errors.first}'),
+                duration: const Duration(seconds: 5),
+              ),
+            );
+          }
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Submitted successfully')),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -956,6 +1011,7 @@ class _ScheduleRequestTabState extends ConsumerState<ScheduleRequestTab> {
         defaultStart: tapHour ?? _kDefaultStart,
         dateStr: dateStr,
         existingBlocks: blocksForDate,
+        storePeriodStatus: _storePeriodStatus,
       ),
     );
     if (result == null) return;
@@ -2248,6 +2304,8 @@ class _ShiftBottomSheet extends StatefulWidget {
   final String dateStr;
   /// 해당 날짜에 이미 존재하는 블록 목록 (중복 체크용)
   final List<_TimeBlock> existingBlocks;
+  /// store_id → period status (null = period 없음)
+  final Map<String, String?> storePeriodStatus;
 
   const _ShiftBottomSheet({
     required this.stores,
@@ -2256,6 +2314,7 @@ class _ShiftBottomSheet extends StatefulWidget {
     required this.defaultStart,
     required this.dateStr,
     this.existingBlocks = const [],
+    this.storePeriodStatus = const {},
   });
 
   @override
@@ -2271,6 +2330,24 @@ class _ShiftBottomSheetState extends State<_ShiftBottomSheet> {
   late String _storeName;
   late String _workRoleName;
   bool _userSetTime = false; // 유저가 직접 시간을 설정했는지 추적
+
+  /// 현재 선택된 매장의 period가 신청 불가 상태인지
+  bool get _isStoreClosed {
+    final status = widget.storePeriodStatus[_storeId];
+    if (status == null) return false; // period 없으면 날짜 기반 검증에 맡김
+    return status != 'open';
+  }
+
+  String get _closedStatusLabel {
+    final status = widget.storePeriodStatus[_storeId];
+    switch (status) {
+      case 'closed': return 'Requests are closed for this period';
+      case 'sv_draft': return 'Schedule is being reviewed by supervisor';
+      case 'gm_review': return 'Schedule is under GM review';
+      case 'finalized': return 'Schedule has been published';
+      default: return 'Requests are not available';
+    }
+  }
 
   @override
   void initState() {
@@ -2417,6 +2494,32 @@ class _ShiftBottomSheetState extends State<_ShiftBottomSheet> {
                     );
                   }).toList(),
                 ),
+
+                // Period closed banner
+                if (_isStoreClosed) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.dangerBg,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.lock_outline, size: 16, color: AppColors.danger),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _closedStatusLabel,
+                            style: TextStyle(fontSize: 12, color: AppColors.danger, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 16),
 
                 // Role presets
@@ -2544,7 +2647,7 @@ class _ShiftBottomSheetState extends State<_ShiftBottomSheet> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton(
-                        onPressed: _storeId.isNotEmpty ? _confirm : null,
+                        onPressed: _storeId.isNotEmpty && !_isStoreClosed ? _confirm : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.accent,
                           padding: const EdgeInsets.symmetric(vertical: 12),
