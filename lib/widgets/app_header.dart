@@ -76,7 +76,7 @@ class _AppHeaderState extends ConsumerState<AppHeader> {
                       padding: EdgeInsets.zero,
                     )
                   : GestureDetector(
-                      onTap: () => context.push('/my'),
+                      onTap: () => context.push('/my', extra: GoRouterState.of(context).uri.path),
                       child: CircleAvatar(
                         radius: 16,
                         backgroundColor: AppColors.accentBg,

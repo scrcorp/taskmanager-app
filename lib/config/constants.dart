@@ -14,4 +14,13 @@ class AppConstants {
     'API_BASE_URL',
     defaultValue: 'http://localhost:8000/api/v1',
   );
+
+  /// 기본 회사 코드
+  ///
+  /// 빌드 환경변수 `DEFAULT_COMPANY_CODE`로 주입.
+  /// company_code_screen을 스킵할 때 자동 사용.
+  static const String defaultCompanyCode = String.fromEnvironment(
+    'DEFAULT_COMPANY_CODE',
+    defaultValue: '',
+  );
 }

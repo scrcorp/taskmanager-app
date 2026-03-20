@@ -38,7 +38,8 @@ const _documentTypes = [
 
 /// 마이 페이지 화면 위젯
 class MyPageScreen extends ConsumerStatefulWidget {
-  const MyPageScreen({super.key});
+  final String? returnTo;
+  const MyPageScreen({super.key, this.returnTo});
 
   @override
   ConsumerState<MyPageScreen> createState() => _MyPageScreenState();
@@ -217,7 +218,19 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
       backgroundColor: AppColors.bg,
       appBar: AppBar(
         backgroundColor: AppColors.white,
-        leading: IconButton(icon: const Icon(Icons.chevron_left, size: 28), onPressed: () => context.pop()),
+        leading: IconButton(
+          icon: const Icon(Icons.chevron_left, size: 28),
+          onPressed: () {
+            final returnTo = widget.returnTo;
+            if (returnTo != null) {
+              context.go(returnTo);
+            } else if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
+        ),
         title: const Text('My Page'),
         centerTitle: true,
         elevation: 0,
@@ -353,6 +366,11 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                         )
                       : null,
                   onTap: () => context.push('/alerts'),
+                ),
+                const Divider(height: 1),
+                _MenuItem(
+                  label: 'Change Password',
+                  onTap: () => context.push('/my/change-password'),
                 ),
                 const Divider(height: 1),
                 _MenuItem(
