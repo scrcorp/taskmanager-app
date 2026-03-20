@@ -612,7 +612,7 @@ class _ProfileCard extends StatelessWidget {
                 ),
               ),
               GestureDetector(
-                onTap: () => context.push('/my'),
+                onTap: () => context.push('/my', extra: '/work'),
                 child: Stack(
                   children: [
                     CircleAvatar(

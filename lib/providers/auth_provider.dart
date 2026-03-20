@@ -116,6 +116,25 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (_) {}
   }
 
+  /// 비밀번호 변경 — 새 토큰으로 현재 세션 유지
+  ///
+  /// 성공 시 서버가 반환한 새 토큰을 저장하고 사용자 정보를 갱신.
+  /// 다른 기기의 세션은 서버에서 자동으로 무효화됨.
+  Future<bool> changePassword(String currentPassword, String newPassword) async {
+    try {
+      final data = await _authService.changePassword(currentPassword, newPassword);
+      await TokenStorage.setTokens(
+        data['access_token'] as String,
+        data['refresh_token'] as String,
+      );
+      await refreshUser();
+      return true;
+    } catch (e) {
+      state = state.copyWith(error: _parseError(e, 'Failed to change password'));
+      return false;
+    }
+  }
+
   /// Dio 에러 응답을 사용자 친화적 메시지로 변환
   ///
   /// - 서버 에러: {"detail": "message"} → 메시지 직접 표시

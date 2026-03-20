@@ -62,6 +62,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _ideaCtrl = TextEditingController();
   String _selectedCategory = 'idea';
+  /// must_change_password 배너 dismiss 상태 (로컬)
+  bool _passwordBannerDismissed = false;
 
   @override
   void initState() {
@@ -118,6 +120,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final completedTasks = tasks.tasks.where((t) => t.status == 'completed').length;
     final noticeCount = announcements.announcements.length;
 
+    final mustChangePw = (user?.mustChangePassword ?? false) && !_passwordBannerDismissed;
+
     return RefreshIndicator(
       color: AppColors.accent,
       onRefresh: () async {
@@ -131,6 +135,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: ListView(
         padding: EdgeInsets.zero,
         children: [
+          // ── Password change suggestion banner ──
+          if (mustChangePw)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+                decoration: BoxDecoration(
+                  color: AppColors.warningBg,
+                  border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Text('\u26A0\uFE0F', style: TextStyle(fontSize: 20)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Your password was recently reset. We recommend changing it to a new password.',
+                        style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => context.push('/my/change-password'),
+                      child: Text('Change', style: TextStyle(fontSize: 13, color: AppColors.accent, fontWeight: FontWeight.w600)),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => setState(() => _passwordBannerDismissed = true),
+                      child: Icon(Icons.close, size: 18, color: AppColors.textMuted),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           // ── Greeting Header ──
           Container(
             width: double.infinity,

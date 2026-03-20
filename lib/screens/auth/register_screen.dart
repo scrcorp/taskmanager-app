@@ -224,8 +224,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       ToastManager().warning(context, 'Please check username availability.');
       return;
     }
-    if (_pwCtrl.text.length < 6) {
-      ToastManager().warning(context, 'Password must be at least 6 characters.');
+    if (_pwCtrl.text.isEmpty) {
+      ToastManager().warning(context, 'Please enter a password.');
       return;
     }
     if (!_pwConfirmed) {
@@ -461,6 +461,32 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             isDone: _emailVerified,
             enabled: !_codeSent || _emailVerified ? true : false,
           ),
+          if (_codeSent && !_emailVerified)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _codeSent = false;
+                    _codeCtrl.clear();
+                    _timer?.cancel();
+                    _remainingSeconds = 0;
+                    _emailError = null;
+                  });
+                },
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    'Change Email',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.accent,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           if (_emailError != null) ...[
             const SizedBox(height: 8),
             Container(
