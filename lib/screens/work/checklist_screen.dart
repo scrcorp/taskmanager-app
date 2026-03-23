@@ -1317,11 +1317,13 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
   final _noteController = TextEditingController();
   final List<String> _photoUrls = [];
   bool _isUploading = false;
+  bool _isSubmitting = false;
 
   ChecklistItem get item => widget.item;
   int get _minPhotos => item.minPhotos ?? (item.requiresPhoto ? 1 : 0);
   bool get _photoMet => _photoUrls.length >= _minPhotos;
-  bool get _canSubmit => _minPhotos == 0 || _photoMet;
+  bool get _noteMet => !item.requiresComment || _noteController.text.trim().isNotEmpty;
+  bool get _canSubmit => (_minPhotos == 0 || _photoMet) && _noteMet;
 
   /// 채팅 화면과 동일한 키 — draft 공유
   String get _draftKey =>
@@ -1486,6 +1488,8 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
   }
 
   void _submit() {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
     final note = _noteController.text.trim();
     _clearDraft();
     Navigator.pop(context, _CompletionResult(
@@ -1672,15 +1676,17 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
                       const SizedBox(height: 10),
                     ],
                     // Text input
-                    TextField(
+                    Builder(builder: (context) {
+                      final errorBorder = needsText && !_noteMet;
+                      return TextField(
                       controller: _noteController,
                       maxLines: 3,
-                      onChanged: (_) => _saveDraft(),
+                      onChanged: (_) { setState(() {}); _saveDraft(); },
                       decoration: InputDecoration(
                         hintText: needsText
                             ? 'Text (required)...'
                             : 'Text (optional) — e.g. store front prep completed',
-                        hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+                        hintStyle: TextStyle(color: errorBorder ? AppColors.danger.withOpacity(0.5) : AppColors.textMuted, fontSize: 14),
                         filled: true, fillColor: AppColors.bg,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         border: OutlineInputBorder(
@@ -1689,15 +1695,16 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: AppColors.border),
+                          borderSide: BorderSide(color: errorBorder ? AppColors.danger : AppColors.border),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: AppColors.accent),
+                          borderSide: BorderSide(color: errorBorder ? AppColors.danger : AppColors.accent),
                         ),
                       ),
                       style: const TextStyle(fontSize: 14, color: AppColors.text),
-                    ),
+                    );
+                    }),
                   ],
                 ),
               ),
@@ -1733,19 +1740,19 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: GestureDetector(
-                      onTap: (_canSubmit && !_isUploading) ? _submit : null,
+                      onTap: (_canSubmit && !_isUploading && !_isSubmitting) ? _submit : null,
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 13),
                         decoration: BoxDecoration(
-                          color: (_canSubmit && !_isUploading) ? AppColors.accent : const Color(0xFFEDE6E9),
+                          color: (_canSubmit && !_isUploading && !_isSubmitting) ? AppColors.accent : const Color(0xFFEDE6E9),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          widget.isResubmit ? 'Resubmit' : 'Complete',
+                          _isSubmitting ? 'Submitting...' : (widget.isResubmit ? 'Resubmit' : 'Complete'),
                           style: TextStyle(
                             fontSize: 15, fontWeight: FontWeight.w700,
-                            color: (_canSubmit && !_isUploading) ? AppColors.white : AppColors.textMuted,
+                            color: (_canSubmit && !_isUploading && !_isSubmitting) ? AppColors.white : AppColors.textMuted,
                           ),
                         ),
                       ),
