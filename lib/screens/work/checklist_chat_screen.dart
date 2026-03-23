@@ -621,7 +621,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
                     ),
                   if (item.requiresComment)
                     _RequirementRow(
-                      label: 'Text (optional)',
+                      label: 'Text (required)',
                       isDone: _memoController.text.isNotEmpty,
                     ),
                 ],
