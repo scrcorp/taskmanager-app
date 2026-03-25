@@ -28,6 +28,13 @@ import '../screens/daily_report/daily_report_detail_screen.dart';
 import '../screens/daily_report/daily_report_list_screen.dart';
 import '../screens/tasks/task_detail_screen.dart';
 import '../screens/tasks/task_list_screen.dart';
+import '../screens/inventory/store_select_screen.dart';
+import '../screens/inventory/inventory_home_screen.dart';
+import '../screens/inventory/inventory_list_screen.dart';
+import '../screens/inventory/stock_in_screen.dart';
+import '../screens/inventory/stock_out_screen.dart';
+import '../screens/inventory/inventory_add_screen.dart';
+import '../screens/inventory/inventory_audit_screen.dart';
 import '../screens/work/checklist_screen.dart';
 import '../screens/work/work_screen.dart';
 import '../widgets/app_shell.dart';
@@ -110,6 +117,41 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/my', builder: (_, state) => MyPageScreen(returnTo: state.extra as String?)),
       GoRoute(path: '/my/change-password', builder: (_, __) => const ChangePasswordScreen()),
       GoRoute(path: '/alerts', builder: (_, __) => const NotificationScreen()),
+
+      // ── Inventory screens (no bottom nav) ──
+      GoRoute(path: '/inventory', builder: (_, __) => const StoreSelectScreen()),
+      GoRoute(
+        path: '/inventory/:storeId',
+        builder: (_, state) =>
+            InventoryHomeScreen(storeId: state.pathParameters['storeId']!),
+      ),
+      GoRoute(
+        path: '/inventory/:storeId/list',
+        builder: (_, state) => InventoryListScreen(
+          storeId: state.pathParameters['storeId']!,
+          initialStatus: state.uri.queryParameters['status'],
+        ),
+      ),
+      GoRoute(
+        path: '/inventory/:storeId/stock-in',
+        builder: (_, state) =>
+            StockInScreen(storeId: state.pathParameters['storeId']!),
+      ),
+      GoRoute(
+        path: '/inventory/:storeId/stock-out',
+        builder: (_, state) =>
+            StockOutScreen(storeId: state.pathParameters['storeId']!),
+      ),
+      GoRoute(
+        path: '/inventory/:storeId/audit',
+        builder: (_, state) =>
+            InventoryAuditScreen(storeId: state.pathParameters['storeId']!),
+      ),
+      GoRoute(
+        path: '/inventory/:storeId/add-product',
+        builder: (_, state) =>
+            InventoryAddScreen(storeId: state.pathParameters['storeId']!),
+      ),
     ],
   );
 });
