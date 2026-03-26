@@ -74,19 +74,27 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
   }
 
   List<ChecklistItem> _applyFilter(List<ChecklistItem> items) {
+    // Defensive filter: exclude items that don't apply to this schedule's day
+    final schedule = ref.read(myScheduleProvider).selected;
+    final weekday = schedule?.workDate.weekday; // Dart: 1=Mon..7=Sun
+    final dayIndex = weekday != null ? weekday - 1 : null; // Convert to 0=Mon..6=Sun
+    final dayFiltered = dayIndex != null
+        ? items.where((i) => i.appliesToWeekday(dayIndex)).toList()
+        : items;
+
     List<ChecklistItem> filtered;
     switch (_filter) {
       case _ChecklistFilter.all:
-        filtered = List<ChecklistItem>.from(items);
+        filtered = List<ChecklistItem>.from(dayFiltered);
         break;
       case _ChecklistFilter.todo:
-        filtered = items.where((i) => !i.isCompleted).toList();
+        filtered = dayFiltered.where((i) => !i.isCompleted).toList();
         break;
       case _ChecklistFilter.done:
-        filtered = items.where((i) => i.isCompleted && !i.isRejected).toList();
+        filtered = dayFiltered.where((i) => i.isCompleted && !i.isRejected).toList();
         break;
       case _ChecklistFilter.rejected:
-        filtered = items.where((i) => i.isRejected && !i.isResolved).toList();
+        filtered = dayFiltered.where((i) => i.isRejected && !i.isResolved).toList();
         break;
     }
     // Sort: incomplete first, then completed
@@ -977,14 +985,14 @@ class _ChecklistItemTile extends StatelessWidget {
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Status icon — 완료 항목은 체크 아이콘 탭 시 undo
+            // Status icon — vertically centered
             GestureDetector(
               onTap: item.isCompleted ? onLongPress : null,
               behavior: HitTestBehavior.opaque,
               child: Padding(
-              padding: const EdgeInsets.only(top: 1, right: 8),
+              padding: const EdgeInsets.only(right: 8),
               child: _buildStatusIcon(),
             ),
             ),
@@ -994,6 +1002,9 @@ class _ChecklistItemTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Badges row — above title
+                  _buildBadgesRow(),
+                  // Title
                   Text(
                     item.title,
                     style: TextStyle(
@@ -1006,9 +1017,20 @@ class _ChecklistItemTile extends StatelessWidget {
                       decorationColor: AppColors.textMuted,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  // Badges row
-                  _buildBadgesRow(),
+                  // Description — below title, only if present
+                  if (item.description != null && item.description!.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      item.description!,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        height: 1.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                   // Review comment preview
                   if (item.reviewComment != null) ...[
                     const SizedBox(height: 4),
@@ -1067,7 +1089,7 @@ class _ChecklistItemTile extends StatelessWidget {
                 ],
               ),
             ),
-            // Chat button
+            // Chat button — vertically centered
             GestureDetector(
               onTap: onChatTap,
               child: Container(
@@ -1136,6 +1158,15 @@ class _ChecklistItemTile extends StatelessWidget {
   Widget _buildBadgesRow() {
     final badges = <Widget>[];
 
+    // Recurrence badge — daily or specific days
+    if (item.recurrenceType != null) {
+      badges.add(_Badge(
+        label: item.isWeekly ? '📅 ${item.recurrenceLabel}' : '📅 Daily',
+        bgColor: const Color(0xFFEDE9FE),
+        textColor: const Color(0xFF6D28D9),
+      ));
+    }
+
     if (item.requiresPhoto) {
       badges.add(_Badge(
         label: '📷 Photo',
@@ -1173,8 +1204,49 @@ class _ChecklistItemTile extends StatelessWidget {
     if (badges.isEmpty) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Wrap(spacing: 5, runSpacing: 4, children: badges),
+    );
+  }
+}
+
+class _ExpandableDescription extends StatefulWidget {
+  final String description;
+  const _ExpandableDescription({required this.description});
+
+  @override
+  State<_ExpandableDescription> createState() => _ExpandableDescriptionState();
+}
+
+class _ExpandableDescriptionState extends State<_ExpandableDescription> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => setState(() => _expanded = !_expanded),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            _expanded ? Icons.info : Icons.info_outline,
+            size: 16,
+            color: AppColors.accent,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: _expanded
+                ? Text(
+                    widget.description,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                  )
+                : const Text(
+                    'Tap to view description',
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1321,7 +1393,9 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
 
   ChecklistItem get item => widget.item;
   int get _minPhotos => item.minPhotos ?? (item.requiresPhoto ? 1 : 0);
+  int get _maxPhotos => item.maxPhotos ?? 5;
   bool get _photoMet => _photoUrls.length >= _minPhotos;
+  bool get _photoMaxReached => _photoUrls.length >= _maxPhotos;
   bool get _noteMet => !item.requiresComment || _noteController.text.trim().isNotEmpty;
   bool get _canSubmit => (_minPhotos == 0 || _photoMet) && _noteMet;
 
@@ -1413,9 +1487,17 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
     }
     if (picked.isEmpty) return;
 
+    // Trim picked list to max allowed
+    final remaining = _maxPhotos - _photoUrls.length;
+    if (remaining <= 0) return;
+    final trimmed = picked.take(remaining).toList();
+    if (trimmed.length < picked.length && mounted) {
+      ToastManager().info(context, 'Only $remaining more photo(s) allowed (max $_maxPhotos)');
+    }
+
     setState(() => _isUploading = true);
     try {
-      for (final file in picked) {
+      for (final file in trimmed) {
         final bytes = await file.readAsBytes();
         final filename = 'checklist_${DateTime.now().millisecondsSinceEpoch}.jpg';
         final urls = await widget.storageProvider.getPresignedUrl(filename, 'image/jpeg');
@@ -1442,6 +1524,10 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
   }
 
   void _showPhotoSource() async {
+    if (_photoMaxReached) {
+      ToastManager().error(context, 'Maximum $_maxPhotos photos allowed');
+      return;
+    }
     final source = await showDialog<ImageSource>(
       context: context,
       builder: (ctx) => Dialog(
@@ -1511,73 +1597,107 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Header
+            // ── Header: icon + label inline, then big title
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 48, height: 48,
-                    decoration: BoxDecoration(
-                      color: widget.isResubmit
-                          ? AppColors.danger.withOpacity(0.15)
-                          : AppColors.accentBg,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(
-                      widget.isResubmit
-                          ? Icons.redo_rounded
-                          : hasInputs ? Icons.camera_alt_rounded : Icons.check_circle_rounded,
-                      color: widget.isResubmit ? AppColors.danger : AppColors.accent,
-                      size: 26,
-                    ),
+                  // Icon + label row
+                  Row(
+                    children: [
+                      Container(
+                        width: 32, height: 32,
+                        decoration: BoxDecoration(
+                          color: widget.isResubmit
+                              ? AppColors.danger.withOpacity(0.15)
+                              : AppColors.accentBg,
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Icon(
+                          widget.isResubmit
+                              ? Icons.redo_rounded
+                              : Icons.check_circle_rounded,
+                          color: widget.isResubmit ? AppColors.danger : AppColors.accent,
+                          size: 18,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        widget.isResubmit ? 'Resubmit Item' : 'Complete Item',
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 12),
+                  // Task title — big and bold
                   Text(
-                    widget.isResubmit ? 'Resubmit Item' : 'Complete Item',
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    widget.isResubmit
-                        ? '"${item.title}"'
-                        : hasInputs ? '"${item.title}"' : 'Mark "${item.title}" as complete?',
-                    style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.55),
+                    item.title,
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.text),
                     maxLines: 2, overflow: TextOverflow.ellipsis,
                   ),
+                  // Description — expandable via info icon
+                  if (item.description != null && item.description!.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    _ExpandableDescription(description: item.description!),
+                  ],
                 ],
               ),
             ),
 
-            // ── Input section (사진 + 텍스트)
-            if (hasInputs) ...[
+            // ── Photo section
+            if (needsPhoto) ...[
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Photo section
-                    if (needsPhoto) ...[
-                      // Photo thumbnails strip
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.bg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Section header: title + required count
+                      Row(
+                        children: [
+                          const Icon(Icons.camera_alt_rounded, size: 16, color: AppColors.textSecondary),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Photo',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.text),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${_photoUrls.length}/$_minPhotos min, $_maxPhotos max',
+                            style: TextStyle(
+                              fontSize: 11, fontWeight: FontWeight.w600,
+                              color: _photoMet ? AppColors.success : AppColors.warning,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      // Photo thumbnails or empty picker
                       if (_photoUrls.isNotEmpty) ...[
                         SizedBox(
                           height: 68,
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
-                            itemCount: _photoUrls.length + 1,
+                            itemCount: _photoMaxReached ? _photoUrls.length : _photoUrls.length + 1,
                             separatorBuilder: (_, __) => const SizedBox(width: 8),
                             itemBuilder: (ctx, i) {
                               if (i == _photoUrls.length) {
-                                // Add more button
                                 return GestureDetector(
                                   onTap: _isUploading ? null : _showPhotoSource,
                                   child: Container(
                                     width: 68, height: 68,
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(10),
-                                      border: Border.all(color: AppColors.border, width: 1.5, style: BorderStyle.solid),
-                                      color: AppColors.bg,
+                                      border: Border.all(color: AppColors.border, width: 1.5),
+                                      color: AppColors.white,
                                     ),
                                     child: const Column(
                                       mainAxisAlignment: MainAxisAlignment.center,
@@ -1628,16 +1748,14 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
                             },
                           ),
                         ),
-                        const SizedBox(height: 8),
                       ] else ...[
-                        // Empty photo picker — dashed area
                         GestureDetector(
                           onTap: _isUploading ? null : _showPhotoSource,
                           child: Container(
-                            width: double.infinity, height: 80,
+                            width: double.infinity, height: 64,
                             decoration: BoxDecoration(
-                              color: AppColors.bg,
-                              borderRadius: BorderRadius.circular(12),
+                              color: AppColors.white,
+                              borderRadius: BorderRadius.circular(10),
                               border: Border.all(color: AppColors.border, width: 1.5),
                             ),
                             child: _isUploading
@@ -1652,60 +1770,74 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
                                   ),
                           ),
                         ),
-                        const SizedBox(height: 8),
                       ],
-                      // Photo counter
+                    ],
+                  ),
+                ),
+              ),
+            ],
+
+            // ── Text section
+            if (hasInputs) ...[
+              Padding(
+                padding: EdgeInsets.fromLTRB(20, needsPhoto ? 12 : 16, 20, 0),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.bg,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: needsText && !_noteMet ? AppColors.danger.withOpacity(0.4) : AppColors.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Section header
                       Row(
                         children: [
-                          Icon(
-                            _photoMet ? Icons.check_circle : Icons.camera_alt_outlined,
-                            size: 14,
-                            color: _photoMet ? AppColors.success : AppColors.warning,
-                          ),
-                          const SizedBox(width: 4),
+                          const Icon(Icons.edit_note_rounded, size: 16, color: AppColors.textSecondary),
+                          const SizedBox(width: 6),
                           Text(
-                            'Photos: ${_photoUrls.length}/$_minPhotos required',
+                            'Note',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.text),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            needsText ? 'required' : 'optional',
                             style: TextStyle(
-                              fontSize: 12,
-                              color: _photoMet ? AppColors.success : AppColors.warning,
-                              fontWeight: _photoMet ? FontWeight.w600 : FontWeight.w400,
+                              fontSize: 11, fontWeight: FontWeight.w600,
+                              color: needsText ? ((_noteMet) ? AppColors.success : AppColors.warning) : AppColors.textMuted,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
-                    ],
-                    // Text input
-                    Builder(builder: (context) {
-                      final errorBorder = needsText && !_noteMet;
-                      return TextField(
-                      controller: _noteController,
-                      maxLines: 3,
-                      onChanged: (_) { setState(() {}); _saveDraft(); },
-                      decoration: InputDecoration(
-                        hintText: needsText
-                            ? 'Text (required)...'
-                            : 'Text (optional) — e.g. store front prep completed',
-                        hintStyle: TextStyle(color: errorBorder ? AppColors.danger.withOpacity(0.5) : AppColors.textMuted, fontSize: 14),
-                        filled: true, fillColor: AppColors.bg,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: AppColors.border),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _noteController,
+                        maxLines: 3,
+                        onChanged: (_) { setState(() {}); _saveDraft(); },
+                        decoration: InputDecoration(
+                          hintText: needsText ? 'Enter note...' : 'Optional note...',
+                          hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+                          filled: true, fillColor: AppColors.white,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: AppColors.border),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: AppColors.border),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: AppColors.accent),
+                          ),
                         ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: errorBorder ? AppColors.danger : AppColors.border),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: errorBorder ? AppColors.danger : AppColors.accent),
-                        ),
+                        style: const TextStyle(fontSize: 14, color: AppColors.text),
                       ),
-                      style: const TextStyle(fontSize: 14, color: AppColors.text),
-                    );
-                    }),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],

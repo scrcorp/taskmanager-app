@@ -38,6 +38,16 @@ class AuthService {
     );
   }
 
+  /// 매장 목록 조회 — login/register와 동일 패턴으로 TokenStorage에서 company_code 사용
+  Future<List<Map<String, dynamic>>> getStores() async {
+    final companyCode = await TokenStorage.getCompanyCode()
+        ?? (AppConstants.defaultCompanyCode.isNotEmpty ? AppConstants.defaultCompanyCode : null);
+    final response = await _dio.get('/app/auth/stores', queryParameters: {
+      if (companyCode != null) 'company_code': companyCode,
+    });
+    return List<Map<String, dynamic>>.from(response.data);
+  }
+
   /// 회원가입 — 직원이 company_code를 통해 조직에 가입
   ///
   /// company_code는 TokenStorage에서 가져옴 (로그인과 동일).
@@ -48,6 +58,7 @@ class AuthService {
     required String fullName,
     required String email,
     required String verificationToken,
+    List<String> storeIds = const [],
   }) async {
     final companyCode = await TokenStorage.getCompanyCode()
         ?? (AppConstants.defaultCompanyCode.isNotEmpty ? AppConstants.defaultCompanyCode : null);
@@ -58,6 +69,7 @@ class AuthService {
       'email': email,
       'company_code': companyCode,
       'verification_token': verificationToken,
+      'store_ids': storeIds,
     });
     await TokenStorage.setTokens(
       response.data['access_token'],

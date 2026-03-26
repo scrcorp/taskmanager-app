@@ -332,6 +332,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ],
+          // ── Inventory quick action (SV+ only — need create, not just read) ──
+          if (user != null && user.hasPermission('inventory:create')) ...[
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: _QuickActionCard(
+                icon: Icons.inventory_2_rounded,
+                label: 'Inventory',
+                onTap: () => context.push('/inventory'),
+              ),
+            ),
+          ],
           const SizedBox(height: 32),
 
           // ── Share your idea ──
