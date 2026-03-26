@@ -89,6 +89,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String fullName,
     required String email,
     required String verificationToken,
+    List<String> storeIds = const [],
   }) async {
     state = state.copyWith(status: AuthStatus.loading, error: null);
     try {
@@ -98,6 +99,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         fullName: fullName,
         email: email,
         verificationToken: verificationToken,
+        storeIds: storeIds,
       );
       final data = await _authService.getMe();
       state = AuthState(status: AuthStatus.authenticated, user: User.fromJson(data));
