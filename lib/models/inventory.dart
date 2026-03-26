@@ -242,8 +242,8 @@ class InventoryTransaction {
 class InventoryAudit {
   final String id;
   final String storeId;
-  final String auditedBy;
-  final String? auditedByName;
+  final String createdBy;
+  final String? createdByName;
   /// 'in_progress' | 'completed'
   final String status;
   final DateTime startedAt;
@@ -254,8 +254,8 @@ class InventoryAudit {
   const InventoryAudit({
     required this.id,
     required this.storeId,
-    required this.auditedBy,
-    this.auditedByName,
+    required this.createdBy,
+    this.createdByName,
     required this.status,
     required this.startedAt,
     this.completedAt,
@@ -267,8 +267,8 @@ class InventoryAudit {
     return InventoryAudit(
       id: json['id'] as String,
       storeId: json['store_id'] as String,
-      auditedBy: json['audited_by'] as String,
-      auditedByName: json['auditor_name'] as String? ?? json['audited_by_name'] as String?,
+      createdBy: json['created_by'] as String? ?? json['audited_by'] as String? ?? '',
+      createdByName: json['created_by_name'] as String?,
       status: json['status'] as String? ?? 'in_progress',
       startedAt: DateTime.parse(json['started_at'] as String),
       completedAt: json['completed_at'] != null
