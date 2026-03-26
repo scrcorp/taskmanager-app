@@ -922,23 +922,29 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
     );
   }
 
-  void _addNewCategory() {
+  Future<void> _addNewCategory() async {
     final val = _newCategoryCtrl.text.trim();
     if (val.isEmpty) return;
     final normalized = val[0].toUpperCase() + val.substring(1);
-    // Optimistically add as a local category with a temp ID
-    final tempId = '__new__$normalized';
     if (_categories.any((c) => c.name.toLowerCase() == normalized.toLowerCase())) {
       ToastManager().error(context, '"$normalized" already exists');
       return;
     }
-    final newCat = InventoryCategory(id: tempId, name: normalized);
-    setState(() {
-      _categories = [..._categories, newCat];
-      _selectedCategoryId = tempId;
-      _addingCategory = false;
-      _newCategoryCtrl.clear();
-    });
+    try {
+      // Call server API to create category → get UUID back
+      final result = await ref.read(inventoryServiceProvider).createCategory(normalized);
+      final newId = result['id'] as String;
+      final newCat = InventoryCategory(id: newId, name: normalized);
+      setState(() {
+        _categories = [..._categories, newCat];
+        _selectedCategoryId = newId;
+        _addingCategory = false;
+        _newCategoryCtrl.clear();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ToastManager().error(context, 'Failed to create category');
+    }
   }
 
   // ── Subcategory selector (children of selected category) ──────────────────
@@ -1063,26 +1069,33 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
     );
   }
 
-  void _addNewSubUnit() {
+  Future<void> _addNewSubUnit() async {
     final val = _newSubUnitCtrl.text.trim().toLowerCase();
     if (val.isEmpty) return;
     if (_allSubUnits.any((u) => u.code == val)) {
       ToastManager().error(context, '"$val" already exists');
       return;
     }
-    final newUnit = InventorySubUnit(
-      id: '__custom__$val',
-      name: val,
-      code: val,
-      sortOrder: 999,
-    );
-    setState(() {
-      _customSubUnits.add(newUnit);
-      _selectedSubUnit = newUnit;
-      _subUnitRatioCtrl.text = '1';
-      _addingSubUnit = false;
-      _newSubUnitCtrl.clear();
-    });
+    try {
+      // Call server API to create sub unit → get UUID + code back
+      final result = await ref.read(inventoryServiceProvider).createSubUnit(val);
+      final newUnit = InventorySubUnit(
+        id: result['id'] as String,
+        name: result['name'] as String? ?? val,
+        code: result['code'] as String? ?? val,
+        sortOrder: 999,
+      );
+      setState(() {
+        _customSubUnits.add(newUnit);
+        _selectedSubUnit = newUnit;
+        _subUnitRatioCtrl.text = '1';
+        _addingSubUnit = false;
+        _newSubUnitCtrl.clear();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ToastManager().error(context, 'Failed to create sub unit');
+    }
   }
 
   Widget _buildFormCard({required List<Widget> children}) {

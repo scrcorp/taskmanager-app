@@ -123,6 +123,24 @@ class InventoryService {
         .toList();
   }
 
+  /// Create a category (returns {id, name, ...})
+  Future<Map<String, dynamic>> createCategory(String name, {String? parentId}) async {
+    final response = await _dio.post('/app/inventory/categories', data: {
+      'name': name,
+      if (parentId != null) 'parent_id': parentId,
+    });
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Create a sub unit (returns {id, name, code, ...})
+  Future<Map<String, dynamic>> createSubUnit(String name) async {
+    final response = await _dio.post('/app/inventory/sub-units', data: {
+      'name': name,
+      'code': name.toLowerCase().replaceAll(RegExp(r'\s+'), '_'),
+    });
+    return response.data as Map<String, dynamic>;
+  }
+
   /// Create a new product in the organization's catalog
   Future<InventoryProduct> createProduct(Map<String, dynamic> data) async {
     final response =
