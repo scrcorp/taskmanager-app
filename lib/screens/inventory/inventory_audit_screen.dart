@@ -1,11 +1,11 @@
 /// Inventory audit screen
 ///
-/// Starts a new audit for the store on entry.
+/// Loads store inventory items locally on entry — no server call until submit.
 /// Items sorted: Frequent section first, then All Items.
 /// Section dividers shown only when both groups exist.
 /// Each item: name, system qty, actual qty input (pre-filled with system qty), diff indicator.
 /// "Show Modified Only" toggle: hides items where actual == system.
-/// "Complete Audit" button always enabled (all items pre-filled).
+/// "Complete Audit" button: calls submitAudit API once to create audit+items+transactions.
 /// On complete: show summary of changes.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -14,7 +14,6 @@ import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
 import '../../models/inventory.dart';
 import '../../providers/inventory_provider.dart';
-import '../../services/inventory_service.dart';
 import '../../widgets/app_header.dart';
 import '../../widgets/app_modal.dart';
 import '../../utils/toast_manager.dart';
@@ -32,34 +31,31 @@ class InventoryAuditScreen extends ConsumerStatefulWidget {
 class _InventoryAuditScreenState
     extends ConsumerState<InventoryAuditScreen> {
   bool _showModifiedOnly = false;
-  bool _isStarting = true;
+  bool _isSubmitting = false;
   bool _completed = false;
-  // Local copy of actual quantities keyed by audit item id
+  // Local copy of actual quantities keyed by StoreInventoryItem.id (= store_inventory_id)
   final Map<String, double> _actualQtys = {};
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(_startAudit);
-  }
-
-  Future<void> _startAudit() async {
-    final audit = await ref
-        .read(inventoryProvider.notifier)
-        .startAudit(widget.storeId);
-    if (!mounted) return;
-    if (audit != null) {
-      for (final item in audit.items) {
-        _actualQtys[item.id] = item.systemQuantity;
+    Future.microtask(() async {
+      final state = ref.read(inventoryProvider);
+      if (state.inventoryItems.isEmpty) {
+        await ref.read(inventoryProvider.notifier).loadInventory(widget.storeId);
       }
-    }
-    setState(() => _isStarting = false);
+      if (!mounted) return;
+      // Pre-fill actual quantities with current system quantities
+      for (final item in ref.read(inventoryProvider).inventoryItems) {
+        _actualQtys[item.id] = item.currentQuantity.toDouble();
+      }
+      setState(() {});
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(inventoryProvider);
-    final audit = state.currentAudit;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -70,7 +66,7 @@ class _InventoryAuditScreenState
             isDetail: true,
             onBack: () => _onBack(context),
           ),
-          if (_isStarting)
+          if (state.isLoading && state.inventoryItems.isEmpty)
             const Expanded(
               child: Center(
                 child: Column(
@@ -78,14 +74,14 @@ class _InventoryAuditScreenState
                   children: [
                     CircularProgressIndicator(color: AppColors.accent),
                     SizedBox(height: 12),
-                    Text('Starting audit...',
+                    Text('Loading inventory...',
                         style: TextStyle(
                             fontSize: 14, color: AppColors.textSecondary)),
                   ],
                 ),
               ),
             )
-          else if (state.error != null)
+          else if (state.error != null && state.inventoryItems.isEmpty)
             Expanded(
               child: Center(
                 child: Column(
@@ -101,9 +97,17 @@ class _InventoryAuditScreenState
                         textAlign: TextAlign.center),
                     const SizedBox(height: 14),
                     ElevatedButton(
-                      onPressed: () {
-                        setState(() => _isStarting = true);
-                        _startAudit();
+                      onPressed: () async {
+                        await ref
+                            .read(inventoryProvider.notifier)
+                            .loadInventory(widget.storeId);
+                        if (!mounted) return;
+                        for (final item
+                            in ref.read(inventoryProvider).inventoryItems) {
+                          _actualQtys[item.id] =
+                              item.currentQuantity.toDouble();
+                        }
+                        setState(() {});
                       },
                       child: const Text('Retry'),
                     ),
@@ -111,37 +115,41 @@ class _InventoryAuditScreenState
                 ),
               ),
             )
-          else if (audit == null)
+          else if (state.inventoryItems.isEmpty)
             const Expanded(
               child: Center(
-                child: Text('No audit data',
+                child: Text('No inventory items',
                     style: TextStyle(
                         fontSize: 14, color: AppColors.textSecondary)),
               ),
             )
           else if (_completed)
-            Expanded(child: _buildCompletedView(audit))
+            Expanded(child: _buildCompletedView())
           else
-            Expanded(child: _buildAuditView(audit, state.isLoading)),
+            Expanded(
+                child: _buildAuditView(state.inventoryItems)),
         ],
       ),
     );
   }
 
-  Widget _buildAuditView(InventoryAudit audit, bool isLoading) {
-    final allItems = audit.items;
+  Widget _buildAuditView(List<StoreInventoryItem> allItems) {
     final frequentItems = allItems.where((i) => i.isFrequent).toList();
     final regularItems = allItems.where((i) => !i.isFrequent).toList();
 
-    List<InventoryAuditItem> displayFrequent = frequentItems;
-    List<InventoryAuditItem> displayRegular = regularItems;
+    List<StoreInventoryItem> displayFrequent = frequentItems;
+    List<StoreInventoryItem> displayRegular = regularItems;
 
     if (_showModifiedOnly) {
       displayFrequent = frequentItems
-          .where((i) => (_actualQtys[i.id] ?? i.systemQuantity) != i.systemQuantity)
+          .where((i) =>
+              (_actualQtys[i.id] ?? i.currentQuantity.toDouble()) !=
+              i.currentQuantity.toDouble())
           .toList();
       displayRegular = regularItems
-          .where((i) => (_actualQtys[i.id] ?? i.systemQuantity) != i.systemQuantity)
+          .where((i) =>
+              (_actualQtys[i.id] ?? i.currentQuantity.toDouble()) !=
+              i.currentQuantity.toDouble())
           .toList();
     }
 
@@ -155,7 +163,6 @@ class _InventoryAuditScreenState
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
           child: Row(
             children: [
-              // Progress
               Text(
                 '${allItems.length} items',
                 style: const TextStyle(
@@ -226,8 +233,10 @@ class _InventoryAuditScreenState
                     padding: const EdgeInsets.only(bottom: 8),
                     child: _AuditItemRow(
                       item: item,
-                      actualQty: _actualQtys[item.id] ?? item.systemQuantity,
-                      onChanged: (v) => setState(() => _actualQtys[item.id] = v),
+                      actualQty: _actualQtys[item.id] ??
+                          item.currentQuantity.toDouble(),
+                      onChanged: (v) =>
+                          setState(() => _actualQtys[item.id] = v),
                     ),
                   )),
               if (hasBothSections && regularItems.isNotEmpty) ...[
@@ -239,8 +248,10 @@ class _InventoryAuditScreenState
                     padding: const EdgeInsets.only(bottom: 8),
                     child: _AuditItemRow(
                       item: item,
-                      actualQty: _actualQtys[item.id] ?? item.systemQuantity,
-                      onChanged: (v) => setState(() => _actualQtys[item.id] = v),
+                      actualQty: _actualQtys[item.id] ??
+                          item.currentQuantity.toDouble(),
+                      onChanged: (v) =>
+                          setState(() => _actualQtys[item.id] = v),
                     ),
                   )),
               if (displayFrequent.isEmpty && displayRegular.isEmpty)
@@ -267,13 +278,13 @@ class _InventoryAuditScreenState
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: isLoading ? null : () => _completeAudit(audit),
+                onPressed: _isSubmitting ? null : _completeAudit,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12)),
                 ),
-                child: isLoading
+                child: _isSubmitting
                     ? const SizedBox(
                         width: 20,
                         height: 20,
@@ -291,10 +302,13 @@ class _InventoryAuditScreenState
     );
   }
 
-  Widget _buildCompletedView(InventoryAudit audit) {
-    final changed = audit.items
-        .where((i) => i.difference != 0)
-        .toList();
+  Widget _buildCompletedView() {
+    final items = ref.read(inventoryProvider).inventoryItems;
+    // Items where actual qty differs from system qty
+    final changed = items.where((item) {
+      final actual = _actualQtys[item.id] ?? item.currentQuantity.toDouble();
+      return actual != item.currentQuantity.toDouble();
+    }).toList();
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -322,7 +336,7 @@ class _InventoryAuditScreenState
               ),
               const SizedBox(height: 6),
               Text(
-                '${audit.items.length} items audited · ${changed.length} adjustments',
+                '${items.length} items audited · ${changed.length} adjustments',
                 style: const TextStyle(
                     fontSize: 13, color: AppColors.textSecondary),
               ),
@@ -339,45 +353,49 @@ class _InventoryAuditScreenState
                 color: AppColors.text),
           ),
           const SizedBox(height: 10),
-          ...changed.map((item) => Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.04),
-                      blurRadius: 6,
+          ...changed.map((item) {
+            final actual =
+                _actualQtys[item.id] ?? item.currentQuantity.toDouble();
+            final diff = actual - item.currentQuantity.toDouble();
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 6,
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.productName,
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.text),
                     ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        item.productName,
-                        style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.text),
-                      ),
+                  ),
+                  Text(
+                    diff > 0
+                        ? '+${diff.toStringAsFixed(0)}'
+                        : diff.toStringAsFixed(0),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color:
+                          diff > 0 ? AppColors.success : AppColors.danger,
                     ),
-                    Text(
-                      item.difference > 0
-                          ? '+${item.difference.toStringAsFixed(0)}'
-                          : item.difference.toStringAsFixed(0),
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: item.difference > 0
-                            ? AppColors.success
-                            : AppColors.danger,
-                      ),
-                    ),
-                  ],
-                ),
-              )),
+                  ),
+                ],
+              ),
+            );
+          }),
         ],
         const SizedBox(height: 24),
         SizedBox(
@@ -398,7 +416,7 @@ class _InventoryAuditScreenState
     );
   }
 
-  Future<void> _completeAudit(InventoryAudit audit) async {
+  Future<void> _completeAudit() async {
     final confirmed = await AppModal.show(
       context,
       title: 'Complete Audit',
@@ -409,22 +427,27 @@ class _InventoryAuditScreenState
     );
     if (confirmed != true || !mounted) return;
 
-    // Save actual quantities before completing
+    setState(() => _isSubmitting = true);
+
     final items = _actualQtys.entries
-        .map((e) => {'id': e.key, 'actual_quantity': e.value})
+        .map((e) => {
+              'store_inventory_id': e.key,
+              'actual_quantity': e.value.toInt(),
+            })
         .toList();
-    await ref.read(inventoryServiceProvider).updateAuditItems(
-          widget.storeId, audit.id, items);
 
     final ok = await ref
         .read(inventoryProvider.notifier)
-        .completeAudit(widget.storeId, audit.id);
+        .submitAudit(widget.storeId, items);
 
     if (!mounted) return;
+    setState(() => _isSubmitting = false);
+
     if (ok) {
       setState(() => _completed = true);
+      ToastManager().success(context, 'Audit completed');
     } else {
-      ToastManager().error(context, 'Failed to complete audit.');
+      ToastManager().error(context, 'Failed to submit audit');
     }
   }
 
@@ -436,13 +459,11 @@ class _InventoryAuditScreenState
     AppModal.show(
       context,
       title: 'Exit Audit',
-      message:
-          'Are you sure? Progress will not be saved.',
+      message: 'Are you sure? Progress will not be saved.',
       type: ModalType.confirm,
       confirmText: 'Exit',
     ).then((confirmed) {
       if (confirmed == true && mounted) {
-        ref.read(inventoryProvider.notifier).clearAudit();
         context.pop();
       }
     });
@@ -452,7 +473,7 @@ class _InventoryAuditScreenState
 // ─── Audit item row ────────────────────────────────────────────────────────
 
 class _AuditItemRow extends StatefulWidget {
-  final InventoryAuditItem item;
+  final StoreInventoryItem item;
   final double actualQty;
   final void Function(double) onChanged;
 
@@ -491,20 +512,21 @@ class _AuditItemRowState extends State<_AuditItemRow> {
   }
 
   String get _systemDisplay {
-    final sys = widget.item.systemQuantity.toStringAsFixed(0);
+    final sys = widget.item.currentQuantity.toString();
     if (widget.item.subUnit != null && widget.item.subUnitRatio != null) {
       final subQty =
-          widget.item.systemQuantity ~/ widget.item.subUnitRatio!;
+          widget.item.currentQuantity ~/ widget.item.subUnitRatio!;
       return '$sys ea ($subQty ${widget.item.subUnit}s)';
     }
     return '$sys ea';
   }
 
-  double get _diff => widget.actualQty - widget.item.systemQuantity;
+  double get _diff => widget.actualQty - widget.item.currentQuantity.toDouble();
 
   @override
   Widget build(BuildContext context) {
-    final modified = widget.actualQty != widget.item.systemQuantity;
+    final modified =
+        widget.actualQty != widget.item.currentQuantity.toDouble();
 
     return Container(
       padding: const EdgeInsets.all(14),

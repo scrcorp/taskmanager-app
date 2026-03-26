@@ -332,8 +332,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ],
-          // ── Inventory quick action (SV+ only, priority ≤ 30) ──
-          if (user != null && user.hasPermission('inventory:read')) ...[
+          // ── Inventory quick action (SV+ only — need create, not just read) ──
+          if (user != null && user.hasPermission('inventory:create')) ...[
             const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),

@@ -32,9 +32,9 @@ class InventoryService {
 
   InventoryService(this._dio);
 
-  /// Stores the current user belongs to
+  /// Stores the user manages (is_manager=true) for inventory access
   Future<List<InventoryStore>> getMyStores() async {
-    final response = await _dio.get('/app/my/stores');
+    final response = await _dio.get('/app/inventory/my-stores');
     final list = response.data is List
         ? response.data
         : response.data['items'] ?? response.data['data'] ?? [];
@@ -231,6 +231,25 @@ class InventoryService {
         if (reason != null && reason.isNotEmpty) 'reason': reason,
       },
     );
+  }
+
+  /// Submit a completed audit in one shot — creates audit + items + transactions
+  ///
+  /// [items] — list of { store_inventory_id, actual_quantity }
+  /// [note]  — optional audit note
+  Future<InventoryAudit> submitAudit(
+    String storeId,
+    List<Map<String, dynamic>> items, {
+    String? note,
+  }) async {
+    final response = await _dio.post(
+      '/app/stores/$storeId/inventory/audits',
+      data: {
+        'items': items,
+        if (note != null && note.isNotEmpty) 'note': note,
+      },
+    );
+    return InventoryAudit.fromJson(response.data as Map<String, dynamic>);
   }
 
   /// Start a new audit session for the store

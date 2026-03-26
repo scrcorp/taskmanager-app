@@ -275,6 +275,13 @@ class ChecklistItem {
   final int? minPhotos;
   final int? maxPhotos;
   final int sortOrder;
+
+  /// Recurrence snapshot — "daily", "weekly", or null (legacy/deleted template)
+  final String? recurrenceType;
+
+  /// Day indices for weekly recurrence [0=Mon..6=Sun]
+  final List<int>? recurrenceDays;
+
   final bool isCompleted;
   final String? completedAt;
   final String? completedTz;
@@ -301,6 +308,8 @@ class ChecklistItem {
     this.minPhotos,
     this.maxPhotos,
     this.sortOrder = 0,
+    this.recurrenceType,
+    this.recurrenceDays,
     this.isCompleted = false,
     this.completedAt,
     this.completedTz,
@@ -317,6 +326,24 @@ class ChecklistItem {
   });
 
   // ── 인증 유형 computed getters ──
+  /// Whether this item is weekly (specific days only)
+  bool get isWeekly => recurrenceType == 'weekly';
+
+  /// Recurrence label for badge display (e.g., "Mon, Wed, Fri")
+  String get recurrenceLabel {
+    if (recurrenceDays == null || recurrenceDays!.isEmpty) return 'Daily';
+    const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return recurrenceDays!.map((d) => dayNames[d]).join(', ');
+  }
+
+  /// Check if this item applies to a given weekday (0=Mon..6=Sun)
+  /// null recurrenceType = legacy data, always show (no filtering)
+  bool appliesToWeekday(int weekday) {
+    if (recurrenceType == null || recurrenceType == 'daily') return true;
+    if (recurrenceDays == null || recurrenceDays!.isEmpty) return true;
+    return recurrenceDays!.contains(weekday);
+  }
+
   bool get requiresPhoto => verificationType.contains('photo');
   bool get requiresComment => verificationType.contains('text');
   bool get requiresVerification => verificationType != 'none';
@@ -567,6 +594,8 @@ class ChecklistItem {
       minPhotos: minPhotos,
       maxPhotos: maxPhotos,
       sortOrder: sortOrder,
+      recurrenceType: recurrenceType,
+      recurrenceDays: recurrenceDays,
       isCompleted: isCompleted ?? this.isCompleted,
       completedAt: completedAt ?? this.completedAt,
       completedTz: completedTz ?? this.completedTz,
@@ -596,6 +625,10 @@ class ChecklistItem {
       minPhotos: json['min_photos'],
       maxPhotos: json['max_photos'],
       sortOrder: json['sort_order'] ?? 0,
+      recurrenceType: json['recurrence_type'],
+      recurrenceDays: (json['recurrence_days'] as List<dynamic>?)
+          ?.map((e) => e as int)
+          .toList(),
       isCompleted: json['is_completed'] ?? false,
       completedAt: json['completed_at'],
       completedTz: json['completed_tz'],

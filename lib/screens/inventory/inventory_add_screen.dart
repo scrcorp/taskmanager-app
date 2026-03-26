@@ -98,6 +98,7 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
     _subUnitRatioCtrl.dispose();
     _newSubUnitCtrl.dispose();
     _newCategoryCtrl.dispose();
+    _newSubcategoryCtrl.dispose();
     _descriptionCtrl.dispose();
     _newMinQtyCtrl.dispose();
     _newInitialQtyCtrl.dispose();
@@ -949,9 +950,11 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
 
   // ── Subcategory selector (children of selected category) ──────────────────
 
+  bool _addingSubcategory = false;
+  final _newSubcategoryCtrl = TextEditingController();
+
   Widget _buildSubcategorySelector() {
-    final subs = _subcategoriesForSelected;
-    if (_selectedCategoryId == null || subs.isEmpty) {
+    if (_selectedCategoryId == null) {
       return const SizedBox(
         height: 48,
         child: Align(
@@ -964,18 +967,90 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
       );
     }
 
-    return DropdownButtonFormField<String>(
-      value: _selectedSubcategoryId,
-      decoration: const InputDecoration(hintText: 'None'),
-      items: [
-        const DropdownMenuItem<String>(value: null, child: Text('None')),
-        ...subs.map((c) => DropdownMenuItem(
-              value: c.id,
-              child: Text(c.name),
-            )),
+    final subs = _subcategoriesForSelected;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        DropdownButtonFormField<String>(
+          value: _selectedSubcategoryId,
+          decoration: const InputDecoration(hintText: 'None'),
+          items: [
+            const DropdownMenuItem<String>(value: null, child: Text('None')),
+            ...subs.map((c) => DropdownMenuItem(
+                  value: c.id,
+                  child: Text(c.name),
+                )),
+            const DropdownMenuItem<String>(
+                value: '__add_new__', child: Text('＋ Add New')),
+          ],
+          onChanged: (val) {
+            if (val == '__add_new__') {
+              setState(() => _addingSubcategory = true);
+            } else {
+              setState(() {
+                _selectedSubcategoryId = val;
+                _addingSubcategory = false;
+              });
+            }
+          },
+        ),
+        if (_addingSubcategory) ...[
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _newSubcategoryCtrl,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    hintText: 'New subcategory name...',
+                    isDense: true,
+                  ),
+                  onSubmitted: (_) => _addNewSubcategory(),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: _addNewSubcategory,
+                icon: const Icon(Icons.check, color: AppColors.accent),
+                style: IconButton.styleFrom(backgroundColor: AppColors.accentBg),
+              ),
+              IconButton(
+                onPressed: () => setState(() {
+                  _addingSubcategory = false;
+                  _newSubcategoryCtrl.clear();
+                }),
+                icon: const Icon(Icons.close, color: AppColors.textMuted),
+              ),
+            ],
+          ),
+        ],
       ],
-      onChanged: (val) => setState(() => _selectedSubcategoryId = val),
     );
+  }
+
+  Future<void> _addNewSubcategory() async {
+    final val = _newSubcategoryCtrl.text.trim();
+    if (val.isEmpty || _selectedCategoryId == null) return;
+    try {
+      final result = await ref.read(inventoryServiceProvider).createCategory(
+        val,
+        parentId: _selectedCategoryId,
+      );
+      final newId = result['id'] as String;
+      // Reload categories to get updated tree
+      final cats = await ref.read(inventoryServiceProvider).getCategories();
+      setState(() {
+        _categories = cats;
+        _selectedSubcategoryId = newId;
+        _addingSubcategory = false;
+        _newSubcategoryCtrl.clear();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ToastManager().error(context, 'Failed to create subcategory');
+    }
   }
 
   // ── Sub-unit selector (server-loaded + add new) ────────────────────────────

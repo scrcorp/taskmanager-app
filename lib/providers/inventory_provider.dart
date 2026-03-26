@@ -232,6 +232,23 @@ class InventoryNotifier extends StateNotifier<InventoryState> {
     }
   }
 
+  /// Submit a completed audit in one shot — creates audit + items + transactions
+  Future<bool> submitAudit(
+    String storeId,
+    List<Map<String, dynamic>> items, {
+    String? note,
+  }) async {
+    try {
+      final audit = await _service.submitAudit(storeId, items, note: note);
+      state = state.copyWith(currentAudit: audit);
+      await loadSummary(storeId);
+      return true;
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+      return false;
+    }
+  }
+
   /// Start audit session for the store
   Future<InventoryAudit?> startAudit(String storeId) async {
     state = state.copyWith(isLoading: true, clearError: true);
