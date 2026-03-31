@@ -181,9 +181,8 @@ class ScheduleNotifier extends StateNotifier<ScheduleState> {
   /// 현재 뷰 모드에 맞는 날짜 범위로 데이터 로드
   Future<void> _loadData() async {
     try {
-      final (start, end) = state.viewMode == ScheduleViewMode.weekly
-          ? _weekRange(state.currentWeekStart)
-          : _monthRange(state.currentMonth);
+      // 메인 뷰가 월 전체 주를 나열하므로 항상 월 범위로 로드
+      final (start, end) = _monthRange(state.currentMonth);
       final dateFrom = _fmt(start);
       final dateTo = _fmt(end);
       // 독립 호출: 하나 실패해도 다른 하나는 유지
