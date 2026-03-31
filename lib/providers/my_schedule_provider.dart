@@ -62,8 +62,8 @@ class MyScheduleNotifier extends StateNotifier<MyScheduleState> {
 
   MyScheduleNotifier(this._service) : super(const MyScheduleState());
 
-  /// 특정 날짜의 스케줄 목록 로드
-  Future<void> loadSchedules(String workDate) async {
+  /// Today 스케줄 로드 — workDate 생략 시 서버가 매장별 timezone 기준으로 판단
+  Future<void> loadSchedules([String? workDate]) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final schedules = await _service.getMySchedules(workDate: workDate);
@@ -84,21 +84,11 @@ class MyScheduleNotifier extends StateNotifier<MyScheduleState> {
     }
   }
 
-  /// 과거 스케줄 로드 (최근 30일, 페이지네이션)
+  /// 과거 스케줄 로드 — 서버가 매장별 timezone 기준으로 past 판단
   Future<void> loadPastSchedules({int page = 1}) async {
     state = state.copyWith(isPastLoading: true, error: null);
     try {
-      final now = DateTime.now();
-      final yesterday = now.subtract(const Duration(days: 1));
-      final dateTo = '${yesterday.year}-${yesterday.month.toString().padLeft(2, '0')}-${yesterday.day.toString().padLeft(2, '0')}';
-      final from = yesterday.subtract(const Duration(days: 29));
-      final dateFrom = '${from.year}-${from.month.toString().padLeft(2, '0')}-${from.day.toString().padLeft(2, '0')}';
-
-      final result = await _service.getPastMySchedules(
-        dateTo: dateTo,
-        dateFrom: dateFrom,
-        page: page,
-      );
+      final result = await _service.getPastMySchedules(page: page);
       state = state.copyWith(pastResult: result, isPastLoading: false);
     } catch (e) {
       state = state.copyWith(isPastLoading: false, error: e.toString());

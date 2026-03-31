@@ -7,12 +7,16 @@ class Store {
   final String name;
   final String? address;
   final bool isActive;
+  final String? timezone;
+  final Map<String, String>? dayStartTime;
 
   const Store({
     required this.id,
     required this.name,
     this.address,
     this.isActive = true,
+    this.timezone,
+    this.dayStartTime,
   });
 
   /// 서버 JSON → Store 객체 변환
@@ -22,6 +26,10 @@ class Store {
       name: json['name'],
       address: json['address'],
       isActive: json['is_active'] ?? true,
+      timezone: json['timezone'],
+      dayStartTime: json['day_start_time'] != null
+          ? Map<String, String>.from(json['day_start_time'])
+          : null,
     );
   }
 }
