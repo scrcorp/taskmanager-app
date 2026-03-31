@@ -57,9 +57,9 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
       _selectedTab = 1;
       _pastLoaded = true; // Past 데이터 로드 트리거
     }
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
     Future.microtask(() {
-      ref.read(myScheduleProvider.notifier).loadSchedules(today);
+      // No date param → server determines "today" per store timezone
+      ref.read(myScheduleProvider.notifier).loadSchedules();
       ref.read(taskProvider.notifier).loadTasks();
       // scheduleId가 있으면 해당 체크리스트 자동 열기
       if (widget.scheduleId != null) {
@@ -95,9 +95,7 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
     await context.push('/work/$scheduleId');
     // 체크리스트에서 돌아오면 목록 새로고침
     if (mounted) {
-      final today = DateTime.now();
-      final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
-      ref.read(myScheduleProvider.notifier).loadSchedules(todayStr);
+      ref.read(myScheduleProvider.notifier).loadSchedules();
       if (_pastLoaded) {
         ref.read(myScheduleProvider.notifier).loadPastSchedules();
       }
@@ -133,9 +131,8 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
     return RefreshIndicator(
       onRefresh: () async {
         if (_selectedTab == 0) {
-          final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
           await Future.wait([
-            ref.read(myScheduleProvider.notifier).loadSchedules(today),
+            ref.read(myScheduleProvider.notifier).loadSchedules(),
             ref.read(taskProvider.notifier).loadTasks(),
           ]);
         } else {

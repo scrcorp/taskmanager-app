@@ -263,20 +263,17 @@ class ScheduleService {
     return MySchedule.fromJson(response.data);
   }
 
-  /// 과거 스케줄 조회 — 날짜 범위 + 페이지네이션
+  /// 과거 스케줄 조회 — 서버가 매장별 timezone 기준으로 past 판단
   Future<PaginatedMySchedules> getPastMySchedules({
-    required String dateTo,
-    String? dateFrom,
     int page = 1,
     int perPage = 20,
   }) async {
     final params = <String, dynamic>{
-      'date_to': dateTo,
+      'past': true,
       'page': page,
       'per_page': perPage,
       'sort': 'desc',
     };
-    if (dateFrom != null) params['date_from'] = dateFrom;
 
     final response = await _dio.get('/app/my/schedules', queryParameters: params);
     return PaginatedMySchedules.fromJson(response.data as Map<String, dynamic>);
