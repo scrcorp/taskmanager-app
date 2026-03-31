@@ -68,9 +68,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
     Future.microtask(() {
-      ref.read(myScheduleProvider.notifier).loadSchedules(today);
+      // No date param → server determines "today" per store timezone
+      ref.read(myScheduleProvider.notifier).loadSchedules();
       ref.read(taskProvider.notifier).loadTasks();
       ref.read(announcementProvider.notifier).loadAnnouncements();
     });
@@ -125,9 +125,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return RefreshIndicator(
       color: AppColors.accent,
       onRefresh: () async {
-        final dateStr = DateFormat('yyyy-MM-dd').format(today);
         await Future.wait([
-          ref.read(myScheduleProvider.notifier).loadSchedules(dateStr),
+          ref.read(myScheduleProvider.notifier).loadSchedules(),
           ref.read(taskProvider.notifier).loadTasks(),
           ref.read(announcementProvider.notifier).loadAnnouncements(),
         ]);
