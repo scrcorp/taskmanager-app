@@ -1,19 +1,54 @@
 /// Schedule main screen
 ///
-/// Weekly timeline (default) or monthly calendar.
-/// Weekly: timeline bars + summary + legend.
+/// Weekly list view (default) or monthly calendar.
+/// Weekly: summary card + scrollable week rows with shift cards.
 /// Monthly: existing calendar grid.
-/// Tap date → bottom sheet detail, request icon → request tab.
+/// Tap date → bottom sheet detail, "+" → request tab.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
 import '../../models/schedule.dart';
 import '../../providers/schedule_provider.dart';
+import '../../services/schedule_service.dart';
 import 'schedule_request_tab.dart';
-import 'widgets/weekly_timeline.dart';
 
 const _weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const _monthAbbr = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+// ────── Unified shift item for combining entries + requests ──────
+
+class _ShiftItem {
+  final DateTime date;
+  final String startTime;
+  final String endTime;
+  final String storeName;
+  final String workRoleName;
+  final String status; // confirmed, submitted, modified, rejected
+  final int netMinutes;
+  final String? requestId; // non-null for editable requests
+  final String? entryId;
+  final ScheduleEntry? entry;
+  final ScheduleRequest? request;
+
+  const _ShiftItem({
+    required this.date,
+    required this.startTime,
+    required this.endTime,
+    required this.storeName,
+    required this.workRoleName,
+    required this.status,
+    required this.netMinutes,
+    this.requestId,
+    this.entryId,
+    this.entry,
+    this.request,
+  });
+}
 
 class ScheduleScreen extends ConsumerStatefulWidget {
   const ScheduleScreen({super.key});
@@ -23,6 +58,10 @@ class ScheduleScreen extends ConsumerStatefulWidget {
 }
 
 class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
+  /// 클립보드: 복사된 주의 shift 데이터
+  List<_ShiftItem>? _copiedShifts;
+  DateTime? _copiedWeekStart;
+
   @override
   void initState() {
     super.initState();
@@ -51,7 +90,6 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
               onPrev: () => ref.read(scheduleProvider.notifier).previousWeek(),
               onNext: () => ref.read(scheduleProvider.notifier).nextWeek(),
               onToday: () => ref.read(scheduleProvider.notifier).goToToday(),
-              onRequest: () => _openRequestTab(context),
             )
           else
             _MonthNav(
@@ -76,27 +114,194 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
   }
 
+  // ── Build unified shift list from entries + requests ──
+
+  List<_ShiftItem> _buildShiftItems(
+      List<ScheduleEntry> entries, List<ScheduleRequest> requests) {
+    final items = <_ShiftItem>[];
+
+    // 엔트리 ID 세트 (request_id 기반 중복 방지)
+    final entryRequestIds = <String>{};
+    for (final e in entries) {
+      if (e.requestId != null) entryRequestIds.add(e.requestId!);
+      items.add(_ShiftItem(
+        date: e.workDate,
+        startTime: e.startTime,
+        endTime: e.endTime,
+        storeName: e.storeName ?? '',
+        workRoleName: e.workRoleName ?? '',
+        status: 'confirmed',
+        netMinutes: e.netWorkMinutes,
+        entryId: e.id,
+        entry: e,
+      ));
+    }
+
+    for (final r in requests) {
+      // accepted 이미 entry로 표시됨
+      if (r.status == 'accepted') continue;
+      // submitted인데 매칭 entry 있으면 skip
+      if (r.status == 'submitted') {
+        final hasEntry = entries.any((e) =>
+            _fmt(e.workDate) == _fmt(r.workDate) &&
+            (e.storeName ?? '') == (r.storeName ?? '') &&
+            e.startTime == (r.preferredStartTime ?? '') &&
+            e.endTime == (r.preferredEndTime ?? ''));
+        if (hasEntry) continue;
+      }
+      final minutes = _estimateMinutes(r);
+      items.add(_ShiftItem(
+        date: r.workDate,
+        startTime: r.preferredStartTime ?? '',
+        endTime: r.preferredEndTime ?? '',
+        storeName: r.storeName ?? '',
+        workRoleName: r.workRoleName ?? '',
+        status: r.status,
+        netMinutes: minutes,
+        requestId: r.id,
+        request: r,
+      ));
+    }
+
+    items.sort((a, b) => a.date.compareTo(b.date));
+    return items;
+  }
+
+  // ── Weekly content: summary + week rows ──
+
   Widget _weeklyContent(ScheduleState state) {
+    final allShifts = _buildShiftItems(state.entries, state.requests);
+
+    // 현재 주의 shifts (summary용)
+    final weekEnd = state.currentWeekStart.add(const Duration(days: 6));
+    final currentWeekShifts = allShifts.where((s) =>
+        !s.date.isBefore(state.currentWeekStart) &&
+        !s.date.isAfter(weekEnd)).toList();
+
+    // 현재 월의 모든 주 (일요일 시작) 계산
+    final weeks = _weeksInMonth(state.currentMonth);
+
     return SingleChildScrollView(
+      padding: const EdgeInsets.only(bottom: 24),
       child: Column(
         children: [
-          _SummaryBar(entries: state.entries, requests: state.requests),
-          _HoursProgressBar(entries: state.entries, requests: state.requests),
-          _Legend(),
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: WeeklyTimeline(
-              weekStart: state.currentWeekStart,
-              entries: state.entries,
-              requests: state.requests,
-              onDayTap: (date) => _showDayDetail(context, date, state),
-              onDayDetailTap: (date) => _showDayDetail(context, date, state),
-            ),
-          ),
+          _WeeklySummaryCard(shifts: currentWeekShifts),
+          const SizedBox(height: 8),
+          ...weeks.map((weekStart) {
+            final wEnd = weekStart.add(const Duration(days: 6));
+            final weekShifts = allShifts.where((s) =>
+                !s.date.isBefore(weekStart) &&
+                !s.date.isAfter(wEnd)).toList();
+            final isCopied = _copiedWeekStart != null &&
+                _copiedWeekStart!.year == weekStart.year &&
+                _copiedWeekStart!.month == weekStart.month &&
+                _copiedWeekStart!.day == weekStart.day;
+
+            return _WeekRow(
+              weekStart: weekStart,
+              shifts: weekShifts,
+              isCopied: isCopied,
+              hasClipboard: _copiedShifts != null,
+              onCopy: () => _onCopyWeek(weekStart, weekShifts),
+              onPaste: () => _onPasteWeek(weekStart),
+              onAdd: () => _openRequestTab(context, targetDate: weekStart),
+              onShiftTap: (item) => _showDayDetail(context, item.date, state),
+              onEditShift: (item) =>
+                  _openRequestTab(context, targetDate: item.date),
+              onDeleteShift: (item) {
+                if (item.requestId != null) _deleteRequest(item.requestId!);
+              },
+            );
+          }),
         ],
       ),
     );
   }
+
+  List<DateTime> _weeksInMonth(DateTime month) {
+    // 월의 첫째날이 속한 주의 일요일 ~ 마지막날이 속한 주의 일요일
+    final firstDay = DateTime(month.year, month.month, 1);
+    final lastDay = DateTime(month.year, month.month + 1, 0);
+    final firstSunday =
+        firstDay.subtract(Duration(days: firstDay.weekday % 7));
+    final lastSunday =
+        lastDay.subtract(Duration(days: lastDay.weekday % 7));
+
+    final weeks = <DateTime>[];
+    var d = firstSunday;
+    while (!d.isAfter(lastSunday)) {
+      weeks.add(d);
+      d = d.add(const Duration(days: 7));
+    }
+    return weeks;
+  }
+
+  // ── Copy / Paste ──
+
+  void _onCopyWeek(DateTime weekStart, List<_ShiftItem> shifts) {
+    setState(() {
+      _copiedShifts = shifts;
+      _copiedWeekStart = weekStart;
+    });
+  }
+
+  Future<void> _onPasteWeek(DateTime targetWeekStart) async {
+    if (_copiedShifts == null || _copiedShifts!.isEmpty) return;
+    if (_copiedWeekStart == null) return;
+
+    final dayOffset =
+        targetWeekStart.difference(_copiedWeekStart!).inDays;
+
+    final creates = <Map<String, dynamic>>[];
+    for (final shift in _copiedShifts!) {
+      final newDate = shift.date.add(Duration(days: dayOffset));
+      // 신청 또는 확정 shift 모두 복사 대상
+      creates.add({
+        'store_id': shift.entry?.storeId ?? shift.request?.storeId ?? '',
+        'work_date': _fmt(newDate),
+        if (shift.entry?.workRoleId != null)
+          'work_role_id': shift.entry!.workRoleId!,
+        if (shift.request?.workRoleId != null)
+          'work_role_id': shift.request!.workRoleId!,
+        'preferred_start_time': shift.startTime,
+        'preferred_end_time': shift.endTime,
+      });
+    }
+
+    if (creates.isEmpty) return;
+
+    try {
+      final service =
+          ref.read(scheduleProvider.notifier);
+      // batchSubmit via service
+      final scheduleService =
+          ref.read(scheduleServiceProvider);
+      await scheduleService.batchSubmit(creates: creates);
+      await service.refresh();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to paste: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteRequest(String requestId) async {
+    try {
+      final scheduleService = ref.read(scheduleServiceProvider);
+      await scheduleService.deleteRequest(requestId);
+      await ref.read(scheduleProvider.notifier).refresh();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete: $e')),
+        );
+      }
+    }
+  }
+
+  // ── Monthly content (keep as-is) ──
 
   Widget _monthlyContent(ScheduleState state) {
     return Column(
@@ -221,20 +426,13 @@ class _WeekNav extends StatelessWidget {
   final VoidCallback onPrev;
   final VoidCallback onNext;
   final VoidCallback onToday;
-  final VoidCallback onRequest;
 
   const _WeekNav({
     required this.weekStart,
     required this.onPrev,
     required this.onNext,
     required this.onToday,
-    required this.onRequest,
   });
-
-  static const _monthAbbr = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -286,69 +484,42 @@ class _WeekNav extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: onRequest,
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: AppColors.accent,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.edit_calendar_outlined,
-                  size: 18, color: AppColors.white),
-            ),
-          ),
         ],
       ),
     );
   }
 }
 
-// ────── Summary Bar ──────
+// ────── Weekly Summary Card ──────
 
-class _SummaryBar extends StatelessWidget {
-  final List<ScheduleEntry> entries;
-  final List<ScheduleRequest> requests;
+class _WeeklySummaryCard extends StatelessWidget {
+  final List<_ShiftItem> shifts;
 
-  const _SummaryBar({required this.entries, required this.requests});
+  const _WeeklySummaryCard({required this.shifts});
 
   @override
   Widget build(BuildContext context) {
-    // Count confirmed days (entries)
-    final entryDates = <String>{};
     int totalMinutes = 0;
-    for (final e in entries) {
-      entryDates.add(_fmt(e.workDate));
-      totalMinutes += e.netWorkMinutes;
-    }
+    int pending = 0, confirmed = 0, rejected = 0;
+    final workDates = <String>{};
 
-    // Count request statuses (skip accepted + submitted duplicates)
-    int confirmed = entryDates.length;
-    int modified = 0, submitted = 0, rejected = 0;
-    for (final r in requests) {
-      if (r.status == 'accepted') continue;
-      // skip submitted if matching entry exists
-      if (r.status == 'submitted') {
-        final hasEntry = entries.any((e) =>
-            _fmt(e.workDate) == _fmt(r.workDate) &&
-            (e.storeName ?? '') == (r.storeName ?? '') &&
-            e.startTime == (r.preferredStartTime ?? '') &&
-            e.endTime == (r.preferredEndTime ?? ''));
-        if (hasEntry) continue;
-        submitted++;
-        totalMinutes += _estimateMinutes(r);
-      } else if (r.status == 'modified') {
-        modified++;
-        totalMinutes += _estimateMinutes(r);
-      } else if (r.status == 'rejected') {
+    for (final s in shifts) {
+      if (s.status == 'rejected') {
         rejected++;
+        continue;
+      }
+      totalMinutes += s.netMinutes;
+      workDates.add(_fmt(s.date));
+      if (s.status == 'confirmed') {
+        confirmed++;
+      } else {
+        // submitted, modified
+        pending++;
       }
     }
 
     final totalHours = totalMinutes ~/ 60;
-    final dayCount = confirmed + modified + submitted;
+    final dayCount = workDates.length;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -385,10 +556,12 @@ class _SummaryBar extends StatelessWidget {
               spacing: 4,
               runSpacing: 4,
               children: [
-                if (confirmed > 0) _chip('Confirmed $confirmed', AppColors.successBg, AppColors.success),
-                if (modified > 0) _chip('Changed $modified', AppColors.warningBg, AppColors.warning),
-                if (submitted > 0) _chip('Pending $submitted', AppColors.accentBg, AppColors.accent),
-                if (rejected > 0) _chip('Rejected $rejected', AppColors.dangerBg, AppColors.danger),
+                if (pending > 0)
+                  _badge('Pending $pending', AppColors.accent, AppColors.accentBg),
+                if (confirmed > 0)
+                  _badge('Confirmed $confirmed', AppColors.success, AppColors.successBg),
+                if (rejected > 0)
+                  _badge('Rejected $rejected', AppColors.danger, AppColors.dangerBg),
               ],
             ),
           ],
@@ -397,7 +570,7 @@ class _SummaryBar extends StatelessWidget {
     );
   }
 
-  Widget _chip(String label, Color bg, Color fg) {
+  Widget _badge(String label, Color fg, Color bg) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration:
@@ -408,126 +581,346 @@ class _SummaryBar extends StatelessWidget {
       ),
     );
   }
-
-  int _estimateMinutes(ScheduleRequest r) {
-    if (r.preferredStartTime == null || r.preferredEndTime == null) return 0;
-    final s = _parseHour(r.preferredStartTime!);
-    final e = _parseHour(r.preferredEndTime!);
-    return ((e - s) * 60).round();
-  }
 }
 
-// ────── Hours Progress Bar ──────
+// ────── Week Row Card ──────
 
-class _HoursProgressBar extends StatelessWidget {
-  final List<ScheduleEntry> entries;
-  final List<ScheduleRequest> requests;
-  static const _targetHours = 40;
+class _WeekRow extends StatelessWidget {
+  final DateTime weekStart;
+  final List<_ShiftItem> shifts;
+  final bool isCopied;
+  final bool hasClipboard;
+  final VoidCallback onCopy;
+  final VoidCallback onPaste;
+  final VoidCallback onAdd;
+  final void Function(_ShiftItem) onShiftTap;
+  final void Function(_ShiftItem) onEditShift;
+  final void Function(_ShiftItem) onDeleteShift;
 
-  const _HoursProgressBar({required this.entries, required this.requests});
+  const _WeekRow({
+    required this.weekStart,
+    required this.shifts,
+    required this.isCopied,
+    required this.hasClipboard,
+    required this.onCopy,
+    required this.onPaste,
+    required this.onAdd,
+    required this.onShiftTap,
+    required this.onEditShift,
+    required this.onDeleteShift,
+  });
 
   @override
   Widget build(BuildContext context) {
-    int totalMinutes = 0;
-    for (final e in entries) {
-      totalMinutes += e.netWorkMinutes;
-    }
-    for (final r in requests) {
-      if (r.status == 'modified' || r.status == 'submitted') {
-        if (r.preferredStartTime != null && r.preferredEndTime != null) {
-          final s = _parseHour(r.preferredStartTime!);
-          final e = _parseHour(r.preferredEndTime!);
-          totalMinutes += ((e - s) * 60).round();
-        }
-      }
-    }
-    final totalH = totalMinutes ~/ 60;
-    final pct = (totalH / _targetHours).clamp(0.0, 1.0);
+    final weekEnd = weekStart.add(const Duration(days: 6));
+    final rangeLabel = '${_monthAbbr[weekStart.month - 1]} ${weekStart.day}'
+        ' – ${_monthAbbr[weekEnd.month - 1]} ${weekEnd.day}';
+
+    final totalMinutes =
+        shifts.where((s) => s.status != 'rejected').fold<int>(0, (sum, s) => sum + s.netMinutes);
+    final totalHours = totalMinutes ~/ 60;
+    final shiftCount = shifts.length;
+    final subLabel = shiftCount > 0
+        ? '$shiftCount shifts · ${totalHours}h'
+        : 'No shifts';
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
-      child: Row(
-        children: [
-          Text(
-            '${totalH}h / ${_targetHours}h',
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: AppColors.textMuted,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Container(
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.border,
-                borderRadius: BorderRadius.circular(99),
-              ),
-              child: FractionallySizedBox(
-                alignment: Alignment.centerLeft,
-                widthFactor: pct,
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(99),
-                    gradient: const LinearGradient(
-                      colors: [AppColors.success, AppColors.accent],
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 10, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          rangeLabel,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.text,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          subLabel,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: shiftCount > 0
+                                ? AppColors.textSecondary
+                                : AppColors.textMuted,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                  // Action buttons
+                  _actionBtn(
+                    icon: Icons.copy_outlined,
+                    label: isCopied ? 'copied' : null,
+                    isHighlighted: isCopied,
+                    onTap: onCopy,
+                  ),
+                  const SizedBox(width: 4),
+                  Opacity(
+                    opacity: hasClipboard ? 1.0 : 0.4,
+                    child: _actionBtn(
+                      icon: Icons.paste_outlined,
+                      onTap: hasClipboard ? onPaste : null,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  _actionBtn(
+                    icon: Icons.add,
+                    onTap: onAdd,
+                  ),
+                ],
               ),
             ),
-          ),
-        ],
+            // Shift cards
+            if (shifts.isNotEmpty) ...[
+              const Divider(height: 1, indent: 14, endIndent: 14),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 8, 14, 12),
+                child: Column(
+                  children: shifts
+                      .map((s) => _ShiftCard(
+                            shift: s,
+                            onTap: () => onShiftTap(s),
+                            onEdit: (s.status == 'submitted' ||
+                                    s.status == 'rejected')
+                                ? () => onEditShift(s)
+                                : null,
+                            onDelete: (s.status == 'submitted' ||
+                                    s.status == 'rejected')
+                                ? () => onDeleteShift(s)
+                                : null,
+                          ))
+                      .toList(),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _actionBtn({
+    required IconData icon,
+    String? label,
+    bool isHighlighted = false,
+    VoidCallback? onTap,
+  }) {
+    final color = isHighlighted ? AppColors.accent : AppColors.textMuted;
+    final bg = isHighlighted ? AppColors.accentBg : Colors.transparent;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: label != null
+            ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
+            : const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(6),
+          border: isHighlighted
+              ? Border.all(color: AppColors.accent.withValues(alpha: 0.3))
+              : null,
+        ),
+        child: label != null
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 14, color: color),
+                  const SizedBox(width: 3),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: color,
+                    ),
+                  ),
+                ],
+              )
+            : Icon(icon, size: 16, color: color),
       ),
     );
   }
 }
 
-// ────── Legend ──────
+// ────── Shift Card ──────
 
-class _Legend extends StatelessWidget {
+class _ShiftCard extends StatelessWidget {
+  final _ShiftItem shift;
+  final VoidCallback onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
+
+  const _ShiftCard({
+    required this.shift,
+    required this.onTap,
+    this.onEdit,
+    this.onDelete,
+  });
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
-      child: Row(
-        children: [
-          _legItem(AppColors.success, null, false, 'Confirmed'),
-          const SizedBox(width: 10),
-          _legItem(AppColors.accentBg, AppColors.accent, true, 'Pending'),
-          const SizedBox(width: 10),
-          _legItem(AppColors.warning, null, false, 'Changed'),
-          const SizedBox(width: 10),
-          _legItem(AppColors.dangerBg, AppColors.danger, false, 'Rejected'),
-        ],
-      ),
-    );
-  }
+    final (statusColor, statusBg) = _statusColors(shift.status);
+    final isPending = shift.status == 'submitted' || shift.status == 'modified';
+    final isRejected = shift.status == 'rejected';
+    final isConfirmed = shift.status == 'confirmed';
 
-  Widget _legItem(Color bg, Color? border, bool dashed, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: bg,
-            borderRadius: BorderRadius.circular(3),
-            border: border != null ? Border.all(color: border, width: 1.5) : null,
+    final dow = shift.date.weekday % 7; // 0=Sun
+    final dateLabel =
+        '${_monthAbbr[shift.date.month - 1]} ${shift.date.day} ${_weekdays[dow]}';
+    final timeLabel = '${_trimTime(shift.startTime)} – ${_trimTime(shift.endTime)}';
+    final hours = shift.netMinutes ~/ 60;
+    final mins = shift.netMinutes % 60;
+    final hoursLabel = mins > 0 ? '${hours}h ${mins}m' : '${hours}h';
+
+    // Border style: dashed-like for pending (double border), solid for others
+    final borderColor = isPending
+        ? statusColor.withValues(alpha: 0.5)
+        : isRejected
+            ? statusColor.withValues(alpha: 0.3)
+            : statusBg;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: statusBg,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: borderColor,
+            width: isPending ? 1.5 : 1,
+            // Flutter doesn't support dashed borders natively;
+            // use thicker border for pending to visually differentiate
           ),
         ),
-        const SizedBox(width: 4),
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 10,
-            color: AppColors.textMuted,
-            fontWeight: FontWeight.w500,
-          ),
+        child: Row(
+          children: [
+            // Left: status indicator dot
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: statusColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 10),
+            // Middle: info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        dateLabel,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: isRejected
+                              ? AppColors.textMuted
+                              : AppColors.text,
+                          decoration: isRejected
+                              ? TextDecoration.lineThrough
+                              : null,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        hoursLabel,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: statusColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    timeLabel,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isRejected
+                          ? AppColors.textMuted
+                          : AppColors.textSecondary,
+                      decoration:
+                          isRejected ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${shift.storeName} · ${shift.workRoleName}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Right: action buttons (only for pending/rejected)
+            if (!isConfirmed && (onEdit != null || onDelete != null)) ...[
+              const SizedBox(width: 8),
+              Column(
+                children: [
+                  if (onEdit != null)
+                    GestureDetector(
+                      onTap: onEdit,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Icon(Icons.edit_outlined,
+                            size: 14, color: AppColors.textSecondary),
+                      ),
+                    ),
+                  if (onEdit != null && onDelete != null)
+                    const SizedBox(height: 4),
+                  if (onDelete != null)
+                    GestureDetector(
+                      onTap: onDelete,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Icon(Icons.delete_outline,
+                            size: 14, color: AppColors.danger),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -937,10 +1330,6 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
   late DateTime _date;
 
   static const _dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  static const _monthNames = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
 
   @override
   void initState() {
@@ -1023,7 +1412,7 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
                 ),
                 Expanded(
                   child: Text(
-                    '${_dayNames[_date.weekday - 1]}, ${_monthNames[_date.month - 1]} ${_date.day}',
+                    '${_dayNames[_date.weekday - 1]}, ${_monthAbbr[_date.month - 1]} ${_date.day}',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                         fontSize: 17, fontWeight: FontWeight.w700),
@@ -1087,7 +1476,6 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
     final totalDisplay = m > 0 ? '${h}h ${m}m' : '${h}h';
 
     // 첫 번째 entry의 ID를 사용해 checklist 화면으로 이동
-    // totalItems > 0 이거나 checklistInstanceId가 있으면 체크리스트 존재
     final firstEntry = groupEntries.isNotEmpty ? groupEntries.first : null;
     final hasChecklist = firstEntry != null &&
         (firstEntry.totalItems > 0 || firstEntry.checklistInstanceId != null);
@@ -1437,12 +1825,20 @@ String _trimTime(String t) {
   if (t.isEmpty) return '';
   final parts = t.split(':');
   if (parts.length < 2) return t;
-  final h = int.tryParse(parts[0]) ?? 0;
-  return '$h:${parts[1]}';
+  return '${parts[0]}:${parts[1]}';
 }
 
 double _parseHour(String time) {
   final parts = time.split(':');
   if (parts.length < 2) return 0;
   return (int.tryParse(parts[0]) ?? 0) + (int.tryParse(parts[1]) ?? 0) / 60.0;
+}
+
+int _estimateMinutes(ScheduleRequest r) {
+  if (r.preferredStartTime == null || r.preferredEndTime == null) return 0;
+  final s = _parseHour(r.preferredStartTime!);
+  var e = _parseHour(r.preferredEndTime!);
+  // 자정 넘김: end <= start → +24h
+  if (e <= s) e += 24;
+  return ((e - s) * 60).round();
 }
