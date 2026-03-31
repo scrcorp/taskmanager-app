@@ -162,10 +162,12 @@ class ScheduleService {
     required String name,
     required bool isDefault,
     required List<Map<String, dynamic>> items,
+    String? storeId,
   }) async {
     final response = await _dio.post('/app/my/schedule-templates', data: {
       'name': name,
       'is_default': isDefault,
+      if (storeId != null) 'store_id': storeId,
       'items': items,
     });
     return ScheduleTemplate.fromJson(response.data);
