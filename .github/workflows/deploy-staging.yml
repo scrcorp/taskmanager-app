@@ -5,7 +5,6 @@ on:
     branches: [staging]
     paths-ignore:
       - '*.md'
-      - '.github/**'
       - '.gitignore'
 
 jobs:
@@ -28,3 +27,4 @@ jobs:
           aws-region: us-west-2
 
       - run: aws s3 sync build/web/ s3://taskmanager-staff-app-staging/ --delete
+      - run: aws cloudfront create-invalidation --distribution-id ${{ secrets.CF_STAGING_DISTRIBUTION_ID }} --paths "/*"
