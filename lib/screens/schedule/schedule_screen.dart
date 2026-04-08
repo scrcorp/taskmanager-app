@@ -82,21 +82,14 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                 ref.read(scheduleProvider.notifier).setViewMode(m),
           ),
           // Navigation
-          if (isWeekly)
-            _WeekNav(
-              weekStart: state.currentWeekStart,
-              onPrev: () => ref.read(scheduleProvider.notifier).previousWeek(),
-              onNext: () => ref.read(scheduleProvider.notifier).nextWeek(),
-              onToday: () => ref.read(scheduleProvider.notifier).goToToday(),
-            )
-          else
-            _MonthNav(
-              month: state.currentMonth,
-              onPrev: () =>
-                  ref.read(scheduleProvider.notifier).previousMonth(),
-              onNext: () => ref.read(scheduleProvider.notifier).nextMonth(),
-              onToday: () => ref.read(scheduleProvider.notifier).goToToday(),
-            ),
+          // Weekly / Monthly 모두 월 단위 navigation 사용
+          _MonthNav(
+            month: state.currentMonth,
+            onPrev: () =>
+                ref.read(scheduleProvider.notifier).previousMonth(),
+            onNext: () => ref.read(scheduleProvider.notifier).nextMonth(),
+            onToday: () => ref.read(scheduleProvider.notifier).goToToday(),
+          ),
           // Content
           Expanded(
             child: state.isLoading
@@ -321,75 +314,6 @@ class _ViewToggle extends StatelessWidget {
 
 // ────── Week Navigation ──────
 
-class _WeekNav extends StatelessWidget {
-  final DateTime weekStart;
-  final VoidCallback onPrev;
-  final VoidCallback onNext;
-  final VoidCallback onToday;
-
-  const _WeekNav({
-    required this.weekStart,
-    required this.onPrev,
-    required this.onNext,
-    required this.onToday,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final end = weekStart.add(const Duration(days: 6));
-    final label = '${_monthAbbr[weekStart.month - 1]} ${weekStart.day}'
-        ' – ${_monthAbbr[end.month - 1]} ${end.day}';
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: onPrev,
-            child: const Icon(Icons.chevron_left,
-                size: 18, color: AppColors.textSecondary),
-          ),
-          Expanded(
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppColors.text,
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: onNext,
-            child: const Icon(Icons.chevron_right,
-                size: 18, color: AppColors.textSecondary),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: onToday,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.accentBg,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                'Today',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.accent,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 // ────── Weekly Summary Card ──────
 
 class _WeeklySummaryCard extends StatelessWidget {
@@ -513,6 +437,7 @@ class _WeekRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       child: Container(
+        width: double.infinity,
         decoration: BoxDecoration(
           color: AppColors.white,
           borderRadius: BorderRadius.circular(14),
