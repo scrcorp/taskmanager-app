@@ -28,6 +28,8 @@ class _ShiftItem {
   final DateTime date;
   final String startTime;
   final String endTime;
+  final String? breakStartTime;
+  final String? breakEndTime;
   final String storeName;
   final String workRoleName;
   final String status; // confirmed, submitted, modified, rejected
@@ -41,6 +43,8 @@ class _ShiftItem {
     required this.date,
     required this.startTime,
     required this.endTime,
+    this.breakStartTime,
+    this.breakEndTime,
     required this.storeName,
     required this.workRoleName,
     required this.status,
@@ -50,6 +54,9 @@ class _ShiftItem {
     this.entry,
     this.request,
   });
+
+  bool get hasBreak => breakStartTime != null && breakEndTime != null &&
+      breakStartTime!.isNotEmpty && breakEndTime!.isNotEmpty;
 }
 
 class ScheduleScreen extends ConsumerStatefulWidget {
@@ -118,6 +125,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         date: e.workDate,
         startTime: e.startTime,
         endTime: e.endTime,
+        breakStartTime: e.breakStartTime,
+        breakEndTime: e.breakEndTime,
         storeName: e.storeName ?? '',
         workRoleName: e.workRoleName ?? '',
         status: 'confirmed',
@@ -144,6 +153,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         date: r.workDate,
         startTime: r.preferredStartTime ?? '',
         endTime: r.preferredEndTime ?? '',
+        breakStartTime: r.breakStartTime,
+        breakEndTime: r.breakEndTime,
         storeName: r.storeName ?? '',
         workRoleName: r.workRoleName ?? '',
         status: r.status,
@@ -515,7 +526,9 @@ class _ShiftCard extends StatelessWidget {
     final dow = shift.date.weekday % 7; // 0=Sun
     final dateLabel =
         '${_monthAbbr[shift.date.month - 1]} ${shift.date.day} ${_weekdays[dow]}';
-    final timeLabel = '${_trimTime(shift.startTime)} – ${_trimTime(shift.endTime)}';
+    final timeLabel = shift.hasBreak
+        ? '${_trimTime(shift.startTime)}–${_trimTime(shift.breakStartTime!)} · ${_trimTime(shift.breakEndTime!)}–${_trimTime(shift.endTime)}'
+        : '${_trimTime(shift.startTime)} – ${_trimTime(shift.endTime)}';
     final hours = shift.netMinutes ~/ 60;
     final mins = shift.netMinutes % 60;
     final hoursLabel = mins > 0 ? '${hours}h ${mins}m' : '${hours}h';
@@ -808,7 +821,12 @@ class _DayCell extends StatelessWidget {
           timeBlocks: [],
         );
       }
-      map[key]!.timeBlocks.add((start: e.startTime, end: e.endTime));
+      if (e.hasBreak) {
+        map[key]!.timeBlocks.add((start: e.startTime, end: e.breakStartTime!));
+        map[key]!.timeBlocks.add((start: e.breakEndTime!, end: e.endTime));
+      } else {
+        map[key]!.timeBlocks.add((start: e.startTime, end: e.endTime));
+      }
     }
     return map.values.toList();
   }
@@ -1031,7 +1049,12 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
                 workRoleName: e.workRoleName ?? '',
                 timeBlocks: [],
               ));
-      map[key]!.timeBlocks.add((start: e.startTime, end: e.endTime));
+      if (e.hasBreak) {
+        map[key]!.timeBlocks.add((start: e.startTime, end: e.breakStartTime!));
+        map[key]!.timeBlocks.add((start: e.breakEndTime!, end: e.endTime));
+      } else {
+        map[key]!.timeBlocks.add((start: e.startTime, end: e.endTime));
+      }
     }
     return map.values.toList();
   }

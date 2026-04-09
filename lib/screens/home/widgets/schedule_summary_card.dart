@@ -122,6 +122,8 @@ class _ScheduleSummaryCardState extends ConsumerState<ScheduleSummaryCard> {
         dayLabel: dayLabel,
         startTime: e.startTime,
         endTime: e.endTime,
+        breakStartTime: e.breakStartTime,
+        breakEndTime: e.breakEndTime,
         storeName: e.storeName ?? '',
         roleName: e.workRoleName ?? '',
         hours: '${e.netWorkMinutes ~/ 60}h',
@@ -244,7 +246,7 @@ class _ScheduleSummaryCardState extends ConsumerState<ScheduleSummaryCard> {
                           ),
                         ),
                         Text(
-                          '${nextShift.startTime} – ${nextShift.endTime}${nextShift.hours.isNotEmpty ? ' · ${nextShift.hours}' : ''}',
+                          '${nextShift.timeLabel}${nextShift.hours.isNotEmpty ? ' · ${nextShift.hours}' : ''}',
                           style: const TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
@@ -365,6 +367,8 @@ class _NextShift {
   final String dayLabel;
   final String startTime;
   final String endTime;
+  final String? breakStartTime;
+  final String? breakEndTime;
   final String storeName;
   final String roleName;
   final String hours;
@@ -373,10 +377,19 @@ class _NextShift {
     required this.dayLabel,
     required this.startTime,
     required this.endTime,
+    this.breakStartTime,
+    this.breakEndTime,
     required this.storeName,
     required this.roleName,
     required this.hours,
   });
+
+  bool get hasBreak => breakStartTime != null && breakEndTime != null &&
+      breakStartTime!.isNotEmpty && breakEndTime!.isNotEmpty;
+
+  String get timeLabel => hasBreak
+      ? '$startTime–$breakStartTime · $breakEndTime–$endTime'
+      : '$startTime – $endTime';
 }
 
 String _fmt(DateTime d) =>
