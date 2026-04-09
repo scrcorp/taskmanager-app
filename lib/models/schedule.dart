@@ -59,6 +59,8 @@ class ScheduleRequest {
   final DateTime workDate;
   final String? preferredStartTime;
   final String? preferredEndTime;
+  final String? breakStartTime;
+  final String? breakEndTime;
   final String? note;
   final String status; // submitted, accepted, modified, rejected
   final DateTime? submittedAt;
@@ -78,6 +80,8 @@ class ScheduleRequest {
     required this.workDate,
     this.preferredStartTime,
     this.preferredEndTime,
+    this.breakStartTime,
+    this.breakEndTime,
     this.note,
     required this.status,
     this.submittedAt,
@@ -113,6 +117,8 @@ class ScheduleRequest {
       workDate: DateTime.parse(json['work_date']),
       preferredStartTime: json['preferred_start_time'],
       preferredEndTime: json['preferred_end_time'],
+      breakStartTime: json['break_start_time'],
+      breakEndTime: json['break_end_time'],
       note: json['note'],
       status: json['status'] ?? 'submitted',
       submittedAt: json['submitted_at'] != null
@@ -170,7 +176,12 @@ class ScheduleEntry {
     this.totalItems = 0,
   });
 
-  String get timeRange => '$startTime - $endTime';
+  bool get hasBreak => breakStartTime != null && breakEndTime != null &&
+      breakStartTime!.isNotEmpty && breakEndTime!.isNotEmpty;
+
+  String get timeRange => hasBreak
+      ? '$startTime–$breakStartTime · $breakEndTime–$endTime'
+      : '$startTime – $endTime';
 
   String get netWorkDisplay {
     final h = netWorkMinutes ~/ 60;
