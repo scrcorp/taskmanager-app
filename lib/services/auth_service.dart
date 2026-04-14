@@ -166,6 +166,12 @@ class AuthService {
     return response.data;
   }
 
+  /// 프로필 수정 — username, full_name, email 등 변경 가능
+  Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> data) async {
+    final response = await _dio.put('/app/profile', data: data);
+    return response.data;
+  }
+
   /// 내 정보 조회 — JWT 토큰으로 현재 사용자 프로필 반환
   Future<Map<String, dynamic>> getMe() async {
     final response = await _dio.get('/auth/me');
