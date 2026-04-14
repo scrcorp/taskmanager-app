@@ -118,6 +118,18 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (_) {}
   }
 
+  /// 프로필 수정 (username 등) — 변경 후 사용자 정보 갱신
+  Future<bool> updateProfile(Map<String, dynamic> data) async {
+    try {
+      await _authService.updateProfile(data);
+      await refreshUser();
+      return true;
+    } catch (e) {
+      state = state.copyWith(error: _parseError(e, 'Failed to update profile'));
+      return false;
+    }
+  }
+
   /// 비밀번호 변경 — 새 토큰으로 현재 세션 유지
   ///
   /// 성공 시 서버가 반환한 새 토큰을 저장하고 사용자 정보를 갱신.
