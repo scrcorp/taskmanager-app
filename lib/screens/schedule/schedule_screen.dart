@@ -1,17 +1,19 @@
-/// Schedule main screen
+/// Schedule main screen — READ ONLY mode (MVP)
 ///
 /// Weekly list view (default) or monthly calendar.
 /// Weekly: summary card + scrollable week rows with shift cards.
 /// Monthly: existing calendar grid.
-/// Tap date → bottom sheet detail, "+" → request tab.
+/// Tap date → bottom sheet detail.
+///
+/// Schedule request (신청 / 복사 / 편집 / 삭제) 기능은 현재 비활성화됨.
+/// 필요 시 admin의 Schedule Settings → Approval Workflow →
+/// "Allow staff to request schedules from app" 를 켜면 재활성화 계획.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
 import '../../models/schedule.dart';
 import '../../providers/schedule_provider.dart';
-import '../../services/schedule_service.dart';
-import 'schedule_request_tab.dart';
 
 const _weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -26,6 +28,8 @@ class _ShiftItem {
   final DateTime date;
   final String startTime;
   final String endTime;
+  final String? breakStartTime;
+  final String? breakEndTime;
   final String storeName;
   final String workRoleName;
   final String status; // confirmed, submitted, modified, rejected
@@ -39,6 +43,8 @@ class _ShiftItem {
     required this.date,
     required this.startTime,
     required this.endTime,
+    this.breakStartTime,
+    this.breakEndTime,
     required this.storeName,
     required this.workRoleName,
     required this.status,
@@ -48,6 +54,9 @@ class _ShiftItem {
     this.entry,
     this.request,
   });
+
+  bool get hasBreak => breakStartTime != null && breakEndTime != null &&
+      breakStartTime!.isNotEmpty && breakEndTime!.isNotEmpty;
 }
 
 class ScheduleScreen extends ConsumerStatefulWidget {
@@ -58,10 +67,6 @@ class ScheduleScreen extends ConsumerStatefulWidget {
 }
 
 class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
-  /// 클립보드: 복사된 주의 shift 데이터
-  List<_ShiftItem>? _copiedShifts;
-  DateTime? _copiedWeekStart;
-
   @override
   void initState() {
     super.initState();
@@ -84,22 +89,14 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                 ref.read(scheduleProvider.notifier).setViewMode(m),
           ),
           // Navigation
-          if (isWeekly)
-            _WeekNav(
-              weekStart: state.currentWeekStart,
-              onPrev: () => ref.read(scheduleProvider.notifier).previousWeek(),
-              onNext: () => ref.read(scheduleProvider.notifier).nextWeek(),
-              onToday: () => ref.read(scheduleProvider.notifier).goToToday(),
-            )
-          else
-            _MonthNav(
-              month: state.currentMonth,
-              onPrev: () =>
-                  ref.read(scheduleProvider.notifier).previousMonth(),
-              onNext: () => ref.read(scheduleProvider.notifier).nextMonth(),
-              onToday: () => ref.read(scheduleProvider.notifier).goToToday(),
-              onRequest: () => _openRequestTab(context),
-            ),
+          // Weekly / Monthly 모두 월 단위 navigation 사용
+          _MonthNav(
+            month: state.currentMonth,
+            onPrev: () =>
+                ref.read(scheduleProvider.notifier).previousMonth(),
+            onNext: () => ref.read(scheduleProvider.notifier).nextMonth(),
+            onToday: () => ref.read(scheduleProvider.notifier).goToToday(),
+          ),
           // Content
           Expanded(
             child: state.isLoading
@@ -128,6 +125,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         date: e.workDate,
         startTime: e.startTime,
         endTime: e.endTime,
+        breakStartTime: e.breakStartTime,
+        breakEndTime: e.breakEndTime,
         storeName: e.storeName ?? '',
         workRoleName: e.workRoleName ?? '',
         status: 'confirmed',
@@ -154,6 +153,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         date: r.workDate,
         startTime: r.preferredStartTime ?? '',
         endTime: r.preferredEndTime ?? '',
+        breakStartTime: r.breakStartTime,
+        breakEndTime: r.breakEndTime,
         storeName: r.storeName ?? '',
         workRoleName: r.workRoleName ?? '',
         status: r.status,
@@ -192,25 +193,11 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             final weekShifts = allShifts.where((s) =>
                 !s.date.isBefore(weekStart) &&
                 !s.date.isAfter(wEnd)).toList();
-            final isCopied = _copiedWeekStart != null &&
-                _copiedWeekStart!.year == weekStart.year &&
-                _copiedWeekStart!.month == weekStart.month &&
-                _copiedWeekStart!.day == weekStart.day;
 
             return _WeekRow(
               weekStart: weekStart,
               shifts: weekShifts,
-              isCopied: isCopied,
-              hasClipboard: _copiedShifts != null,
-              onCopy: () => _onCopyWeek(weekStart, weekShifts),
-              onPaste: () => _onPasteWeek(weekStart),
-              onAdd: () => _openRequestTab(context, targetDate: weekStart),
               onShiftTap: (item) => _showDayDetail(context, item.date, state),
-              onEditShift: (item) =>
-                  _openRequestTab(context, targetDate: item.date),
-              onDeleteShift: (item) {
-                if (item.requestId != null) _deleteRequest(item.requestId!);
-              },
             );
           }),
         ],
@@ -236,70 +223,8 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     return weeks;
   }
 
-  // ── Copy / Paste ──
-
-  void _onCopyWeek(DateTime weekStart, List<_ShiftItem> shifts) {
-    setState(() {
-      _copiedShifts = shifts;
-      _copiedWeekStart = weekStart;
-    });
-  }
-
-  Future<void> _onPasteWeek(DateTime targetWeekStart) async {
-    if (_copiedShifts == null || _copiedShifts!.isEmpty) return;
-    if (_copiedWeekStart == null) return;
-
-    final dayOffset =
-        targetWeekStart.difference(_copiedWeekStart!).inDays;
-
-    final creates = <Map<String, dynamic>>[];
-    for (final shift in _copiedShifts!) {
-      final newDate = shift.date.add(Duration(days: dayOffset));
-      // 신청 또는 확정 shift 모두 복사 대상
-      creates.add({
-        'store_id': shift.entry?.storeId ?? shift.request?.storeId ?? '',
-        'work_date': _fmt(newDate),
-        if (shift.entry?.workRoleId != null)
-          'work_role_id': shift.entry!.workRoleId!,
-        if (shift.request?.workRoleId != null)
-          'work_role_id': shift.request!.workRoleId!,
-        'preferred_start_time': shift.startTime,
-        'preferred_end_time': shift.endTime,
-      });
-    }
-
-    if (creates.isEmpty) return;
-
-    try {
-      final service =
-          ref.read(scheduleProvider.notifier);
-      // batchSubmit via service
-      final scheduleService =
-          ref.read(scheduleServiceProvider);
-      await scheduleService.batchSubmit(creates: creates);
-      await service.refresh();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to paste: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _deleteRequest(String requestId) async {
-    try {
-      final scheduleService = ref.read(scheduleServiceProvider);
-      await scheduleService.deleteRequest(requestId);
-      await ref.read(scheduleProvider.notifier).refresh();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete: $e')),
-        );
-      }
-    }
-  }
+  // Copy/Paste/Request/Delete 메서드 제거됨 (read-only mode)
+  // admin 설정 `schedule.allow_staff_request` 가 켜지면 다시 복원 예정.
 
   // ── Monthly content (keep as-is) ──
 
@@ -319,23 +244,6 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
   }
 
-  void _openRequestTab(BuildContext context, {DateTime? targetDate}) async {
-    await Navigator.of(context).push(
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) =>
-            ScheduleRequestTab(targetDate: targetDate),
-        transitionsBuilder: (_, anim, __, child) => SlideTransition(
-          position: Tween(
-            begin: const Offset(0, 1),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOut)),
-          child: child,
-        ),
-      ),
-    );
-    ref.read(scheduleProvider.notifier).refresh();
-  }
-
   void _showDayDetail(
       BuildContext context, DateTime date, ScheduleState state) {
     showModalBottomSheet(
@@ -346,10 +254,6 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         initialDate: date,
         allEntries: state.entries,
         allRequests: state.requests,
-        onRequestTap: (d) {
-          Navigator.of(context).pop();
-          _openRequestTab(context, targetDate: d);
-        },
       ),
     );
   }
@@ -420,75 +324,6 @@ class _ViewToggle extends StatelessWidget {
 }
 
 // ────── Week Navigation ──────
-
-class _WeekNav extends StatelessWidget {
-  final DateTime weekStart;
-  final VoidCallback onPrev;
-  final VoidCallback onNext;
-  final VoidCallback onToday;
-
-  const _WeekNav({
-    required this.weekStart,
-    required this.onPrev,
-    required this.onNext,
-    required this.onToday,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final end = weekStart.add(const Duration(days: 6));
-    final label = '${_monthAbbr[weekStart.month - 1]} ${weekStart.day}'
-        ' – ${_monthAbbr[end.month - 1]} ${end.day}';
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: onPrev,
-            child: const Icon(Icons.chevron_left,
-                size: 18, color: AppColors.textSecondary),
-          ),
-          Expanded(
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: AppColors.text,
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: onNext,
-            child: const Icon(Icons.chevron_right,
-                size: 18, color: AppColors.textSecondary),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: onToday,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.accentBg,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                'Today',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.accent,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 // ────── Weekly Summary Card ──────
 
@@ -588,26 +423,12 @@ class _WeeklySummaryCard extends StatelessWidget {
 class _WeekRow extends StatelessWidget {
   final DateTime weekStart;
   final List<_ShiftItem> shifts;
-  final bool isCopied;
-  final bool hasClipboard;
-  final VoidCallback onCopy;
-  final VoidCallback onPaste;
-  final VoidCallback onAdd;
   final void Function(_ShiftItem) onShiftTap;
-  final void Function(_ShiftItem) onEditShift;
-  final void Function(_ShiftItem) onDeleteShift;
 
   const _WeekRow({
     required this.weekStart,
     required this.shifts,
-    required this.isCopied,
-    required this.hasClipboard,
-    required this.onCopy,
-    required this.onPaste,
-    required this.onAdd,
     required this.onShiftTap,
-    required this.onEditShift,
-    required this.onDeleteShift,
   });
 
   @override
@@ -627,6 +448,7 @@ class _WeekRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
       child: Container(
+        width: double.infinity,
         decoration: BoxDecoration(
           color: AppColors.white,
           borderRadius: BorderRadius.circular(14),
@@ -635,55 +457,29 @@ class _WeekRow extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // Header (action buttons 제거됨 — read-only)
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 10, 8),
-              child: Row(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          rangeLabel,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.text,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          subLabel,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: shiftCount > 0
-                                ? AppColors.textSecondary
-                                : AppColors.textMuted,
-                          ),
-                        ),
-                      ],
+                  Text(
+                    rangeLabel,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.text,
                     ),
                   ),
-                  // Action buttons
-                  _actionBtn(
-                    icon: Icons.copy_outlined,
-                    label: isCopied ? 'copied' : null,
-                    isHighlighted: isCopied,
-                    onTap: onCopy,
-                  ),
-                  const SizedBox(width: 4),
-                  Opacity(
-                    opacity: hasClipboard ? 1.0 : 0.4,
-                    child: _actionBtn(
-                      icon: Icons.paste_outlined,
-                      onTap: hasClipboard ? onPaste : null,
+                  const SizedBox(height: 2),
+                  Text(
+                    subLabel,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: shiftCount > 0
+                          ? AppColors.textSecondary
+                          : AppColors.textMuted,
                     ),
-                  ),
-                  const SizedBox(width: 4),
-                  _actionBtn(
-                    icon: Icons.add,
-                    onTap: onAdd,
                   ),
                 ],
               ),
@@ -698,14 +494,6 @@ class _WeekRow extends StatelessWidget {
                       .map((s) => _ShiftCard(
                             shift: s,
                             onTap: () => onShiftTap(s),
-                            onEdit: (s.status == 'submitted' ||
-                                    s.status == 'rejected')
-                                ? () => onEditShift(s)
-                                : null,
-                            onDelete: (s.status == 'submitted' ||
-                                    s.status == 'rejected')
-                                ? () => onDeleteShift(s)
-                                : null,
                           ))
                       .toList(),
                 ),
@@ -716,49 +504,6 @@ class _WeekRow extends StatelessWidget {
       ),
     );
   }
-
-  Widget _actionBtn({
-    required IconData icon,
-    String? label,
-    bool isHighlighted = false,
-    VoidCallback? onTap,
-  }) {
-    final color = isHighlighted ? AppColors.accent : AppColors.textMuted;
-    final bg = isHighlighted ? AppColors.accentBg : Colors.transparent;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: label != null
-            ? const EdgeInsets.symmetric(horizontal: 8, vertical: 4)
-            : const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(6),
-          border: isHighlighted
-              ? Border.all(color: AppColors.accent.withValues(alpha: 0.3))
-              : null,
-        ),
-        child: label != null
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, size: 14, color: color),
-                  const SizedBox(width: 3),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: color,
-                    ),
-                  ),
-                ],
-              )
-            : Icon(icon, size: 16, color: color),
-      ),
-    );
-  }
 }
 
 // ────── Shift Card ──────
@@ -766,14 +511,10 @@ class _WeekRow extends StatelessWidget {
 class _ShiftCard extends StatelessWidget {
   final _ShiftItem shift;
   final VoidCallback onTap;
-  final VoidCallback? onEdit;
-  final VoidCallback? onDelete;
 
   const _ShiftCard({
     required this.shift,
     required this.onTap,
-    this.onEdit,
-    this.onDelete,
   });
 
   @override
@@ -781,12 +522,13 @@ class _ShiftCard extends StatelessWidget {
     final (statusColor, statusBg) = _statusColors(shift.status);
     final isPending = shift.status == 'submitted' || shift.status == 'modified';
     final isRejected = shift.status == 'rejected';
-    final isConfirmed = shift.status == 'confirmed';
 
     final dow = shift.date.weekday % 7; // 0=Sun
     final dateLabel =
         '${_monthAbbr[shift.date.month - 1]} ${shift.date.day} ${_weekdays[dow]}';
-    final timeLabel = '${_trimTime(shift.startTime)} – ${_trimTime(shift.endTime)}';
+    final timeLabel = shift.hasBreak
+        ? '${_trimTime(shift.startTime)}–${_trimTime(shift.breakStartTime!)} · ${_trimTime(shift.breakEndTime!)}–${_trimTime(shift.endTime)}'
+        : '${_trimTime(shift.startTime)} – ${_trimTime(shift.endTime)}';
     final hours = shift.netMinutes ~/ 60;
     final mins = shift.netMinutes % 60;
     final hoursLabel = mins > 0 ? '${hours}h ${mins}m' : '${hours}h';
@@ -882,42 +624,7 @@ class _ShiftCard extends StatelessWidget {
                 ],
               ),
             ),
-            // Right: action buttons (only for pending/rejected)
-            if (!isConfirmed && (onEdit != null || onDelete != null)) ...[
-              const SizedBox(width: 8),
-              Column(
-                children: [
-                  if (onEdit != null)
-                    GestureDetector(
-                      onTap: onEdit,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.white,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Icon(Icons.edit_outlined,
-                            size: 14, color: AppColors.textSecondary),
-                      ),
-                    ),
-                  if (onEdit != null && onDelete != null)
-                    const SizedBox(height: 4),
-                  if (onDelete != null)
-                    GestureDetector(
-                      onTap: onDelete,
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: AppColors.white,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Icon(Icons.delete_outline,
-                            size: 14, color: AppColors.danger),
-                      ),
-                    ),
-                ],
-              ),
-            ],
+            // Edit/Delete 버튼 제거됨 — read-only mode
           ],
         ),
       ),
@@ -932,14 +639,12 @@ class _MonthNav extends StatelessWidget {
   final VoidCallback onPrev;
   final VoidCallback onNext;
   final VoidCallback onToday;
-  final VoidCallback onRequest;
 
   const _MonthNav({
     required this.month,
     required this.onPrev,
     required this.onNext,
     required this.onToday,
-    required this.onRequest,
   });
 
   static const _monthNames = [
@@ -993,19 +698,7 @@ class _MonthNav extends StatelessWidget {
             ),
           ),
           const Spacer(),
-          GestureDetector(
-            onTap: onRequest,
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: AppColors.accent,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.edit_calendar_outlined,
-                  size: 18, color: AppColors.white),
-            ),
-          ),
+          // Request button 제거됨 — read-only mode
         ],
       ),
     );
@@ -1128,7 +821,12 @@ class _DayCell extends StatelessWidget {
           timeBlocks: [],
         );
       }
-      map[key]!.timeBlocks.add((start: e.startTime, end: e.endTime));
+      if (e.hasBreak) {
+        map[key]!.timeBlocks.add((start: e.startTime, end: e.breakStartTime!));
+        map[key]!.timeBlocks.add((start: e.breakEndTime!, end: e.endTime));
+      } else {
+        map[key]!.timeBlocks.add((start: e.startTime, end: e.endTime));
+      }
     }
     return map.values.toList();
   }
@@ -1313,13 +1011,11 @@ class _DayDetailSheet extends StatefulWidget {
   final DateTime initialDate;
   final List<ScheduleEntry> allEntries;
   final List<ScheduleRequest> allRequests;
-  final void Function(DateTime) onRequestTap;
 
   const _DayDetailSheet({
     required this.initialDate,
     required this.allEntries,
     required this.allRequests,
-    required this.onRequestTap,
   });
 
   @override
@@ -1353,7 +1049,12 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
                 workRoleName: e.workRoleName ?? '',
                 timeBlocks: [],
               ));
-      map[key]!.timeBlocks.add((start: e.startTime, end: e.endTime));
+      if (e.hasBreak) {
+        map[key]!.timeBlocks.add((start: e.startTime, end: e.breakStartTime!));
+        map[key]!.timeBlocks.add((start: e.breakEndTime!, end: e.endTime));
+      } else {
+        map[key]!.timeBlocks.add((start: e.startTime, end: e.endTime));
+      }
     }
     return map.values.toList();
   }
@@ -1739,45 +1440,17 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
   }
 
   Widget _emptyState() {
-    final now = DateTime.now();
-    final isFuture =
-        _date.isAfter(DateTime(now.year, now.month, now.day));
+    // read-only mode — "Tap to request" CTA 제거, 단순 empty state
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (isFuture) ...[
-            GestureDetector(
-              onTap: () => widget.onRequestTap(_date),
-              child: Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: AppColors.accentBg,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(Icons.edit_calendar_outlined,
-                    size: 28, color: AppColors.accent),
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text('No schedule yet',
-                style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textSecondary)),
-            const SizedBox(height: 4),
-            const Text('Tap to request a schedule for this day',
-                style: TextStyle(
-                    fontSize: 12, color: AppColors.textMuted)),
-          ] else ...[
-            const Icon(Icons.calendar_today_outlined,
-                size: 36, color: AppColors.textMuted),
-            const SizedBox(height: 12),
-            const Text('No schedule',
-                style: TextStyle(
-                    fontSize: 14, color: AppColors.textMuted)),
-          ],
+        children: const [
+          Icon(Icons.calendar_today_outlined,
+              size: 36, color: AppColors.textMuted),
+          SizedBox(height: 12),
+          Text('No schedule',
+              style: TextStyle(
+                  fontSize: 14, color: AppColors.textMuted)),
         ],
       ),
     );

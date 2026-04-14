@@ -141,9 +141,13 @@ class MySchedule {
   /// "매장명 · 역할명" 형식의 라벨
   String get label => workRoleName.isNotEmpty ? '${store.name} · $workRoleName' : store.name;
 
-  /// 시간 범위 표시 ("09:00~17:00")
+  bool get hasBreak => breakStartTime != null && breakEndTime != null &&
+      breakStartTime!.isNotEmpty && breakEndTime!.isNotEmpty;
+
+  /// 시간 범위 표시 ("09:00~17:00" 또는 "09:00~12:00 · 13:00~17:00")
   String get timeRange {
     if (startTime == null || endTime == null) return '';
+    if (hasBreak) return '$startTime~$breakStartTime · $breakEndTime~$endTime';
     return '$startTime~$endTime';
   }
 
