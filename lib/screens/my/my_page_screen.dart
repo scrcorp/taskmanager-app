@@ -51,6 +51,35 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
   final Map<String, Uint8List> _documents = {};
   final Map<String, DateTime> _uploadedAt = {};
 
+  Future<void> _showEditUsernameDialog() async {
+    final user = ref.read(authProvider).user;
+    if (user == null) return;
+
+    final controller = TextEditingController(text: user.username);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => _EditUsernameDialog(controller: controller),
+    );
+
+    if (result != null && result.trim().isNotEmpty && result.trim() != user.username) {
+      final success = await ref.read(authProvider.notifier).updateProfile({
+        'username': result.trim(),
+      });
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Username updated successfully'), backgroundColor: AppColors.success),
+          );
+        } else {
+          final error = ref.read(authProvider).error ?? 'Failed to update username';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(error), backgroundColor: AppColors.danger),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _pickProfileImage() async {
     await showModalBottomSheet(
       context: context,
@@ -274,9 +303,13 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                     children: [
                       Text(user?.fullName ?? 'Staff', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.text)),
                       const SizedBox(height: 2),
-                      Text(user?.roleName ?? 'staff', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                      Text('@${user?.username ?? ''}', style: const TextStyle(fontSize: 13, color: AppColors.accent, fontWeight: FontWeight.w500)),
                       const SizedBox(height: 2),
-                      Text(user?.email ?? '', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                      Text(user?.roleName ?? 'staff', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                      if (user?.email != null && user!.email!.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(user.email!, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                      ],
                     ],
                   ),
                 ),
@@ -366,6 +399,11 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                         )
                       : null,
                   onTap: () => context.push('/alerts'),
+                ),
+                const Divider(height: 1),
+                _MenuItem(
+                  label: 'Edit Username',
+                  onTap: _showEditUsernameDialog,
                 ),
                 const Divider(height: 1),
                 _MenuItem(
@@ -509,6 +547,86 @@ class _MenuItem extends StatelessWidget {
             Expanded(child: Text(label, style: TextStyle(fontSize: 15, color: isDestructive ? AppColors.danger : AppColors.text))),
             if (trailing != null) ...[trailing!, const SizedBox(width: 8)],
             if (!isDestructive) const Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EditUsernameDialog extends StatefulWidget {
+  final TextEditingController controller;
+  const _EditUsernameDialog({required this.controller});
+
+  @override
+  State<_EditUsernameDialog> createState() => _EditUsernameDialogState();
+}
+
+class _EditUsernameDialogState extends State<_EditUsernameDialog> {
+  late String _initial;
+
+  @override
+  void initState() {
+    super.initState();
+    _initial = widget.controller.text;
+    widget.controller.addListener(_onChanged);
+  }
+
+  void _onChanged() => setState(() {});
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_onChanged);
+    super.dispose();
+  }
+
+  bool get _canSave {
+    final val = widget.controller.text.trim();
+    return val.isNotEmpty && val != _initial;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Edit Username', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.text)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: widget.controller,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Username',
+                hintText: 'Enter new username',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.accent)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: _canSave ? () => Navigator.pop(context, widget.controller.text) : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Save'),
+                ),
+              ],
+            ),
           ],
         ),
       ),
