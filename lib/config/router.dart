@@ -17,6 +17,8 @@ import '../screens/auth/register_screen.dart';
 import '../screens/auth/reset_password_screen.dart';
 import '../screens/my/change_password_screen.dart';
 import '../screens/clock/clock_screen.dart';
+import '../screens/clock/clock_pin_screen.dart';
+import '../screens/clock/clock_success_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/my/my_page_screen.dart';
 import '../screens/notices/notice_detail_screen.dart';
@@ -104,13 +106,34 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
+      // ── Clock PIN / Success (ShellRoute 바깥 = 전체 화면) ──
+      GoRoute(
+        path: '/clock/pin',
+        builder: (_, state) => ClockPinScreen(
+          action: state.extra as ClockAction? ?? ClockAction.clockIn,
+        ),
+      ),
+      GoRoute(
+        path: '/clock/success',
+        builder: (_, state) {
+          final data = state.extra as Map<String, dynamic>? ?? {};
+          return ClockSuccessScreen(
+            action: data['action'] as ClockAction? ?? ClockAction.clockIn,
+            userName: data['userName'] as String? ?? '',
+          );
+        },
+      ),
+
       // ── 독립 화면 (ShellRoute 바깥 = 전체 화면) ──
       GoRoute(path: '/ojt', builder: (_, __) => const OjtScreen()),
       GoRoute(path: '/tasks', builder: (_, __) => const TaskListScreen()),
       GoRoute(path: '/tasks/:id', builder: (_, state) => TaskDetailScreen(id: state.pathParameters['id']!)),
       GoRoute(path: '/notices', builder: (_, __) => const NoticeListScreen()),
       GoRoute(path: '/notices/:id', builder: (_, state) => NoticeDetailScreen(id: state.pathParameters['id']!)),
-      GoRoute(path: '/work/:id', builder: (_, state) => ChecklistScreen(id: state.pathParameters['id']!)),
+      GoRoute(path: '/work/:id', builder: (context, state) {
+        final isMobile = MediaQuery.of(context).size.width < 768;
+        return ChecklistScreen(id: state.pathParameters['id']!, readOnly: isMobile);
+      }),
       GoRoute(path: '/daily-reports', builder: (_, __) => const DailyReportListScreen()),
       GoRoute(path: '/daily-reports/create', builder: (_, __) => const DailyReportDetailScreen()),
       GoRoute(path: '/daily-reports/:id', builder: (_, state) => DailyReportDetailScreen(id: state.pathParameters['id']!)),

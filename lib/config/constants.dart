@@ -23,4 +23,21 @@ class AppConstants {
     'DEFAULT_COMPANY_CODE',
     defaultValue: '',
   );
+
+  /// 키오스크 고정 매장 ID
+  ///
+  /// 빌드 환경변수 `KIOSK_STORE_ID`로 주입.
+  /// 매장별 패드에 고정 설정하여 사용.
+  static const String kioskStoreId = String.fromEnvironment(
+    'KIOSK_STORE_ID',
+    defaultValue: '',
+  );
+
+  /// 키오스크 고정 매장 이름
+  ///
+  /// 빌드 환경변수 `KIOSK_STORE_NAME`로 주입.
+  static const String kioskStoreName = String.fromEnvironment(
+    'KIOSK_STORE_NAME',
+    defaultValue: '',
+  );
 }

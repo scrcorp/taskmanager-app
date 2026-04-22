@@ -21,6 +21,7 @@ import '../../services/storage_service.dart';
 import '../../utils/date_utils.dart';
 import '../../utils/toast_manager.dart';
 import '../../widgets/app_header.dart';
+import '../../widgets/app_modal.dart';
 import 'checklist_chat_screen.dart';
 
 /// 체크리스트 필터 탭
@@ -29,7 +30,9 @@ enum _ChecklistFilter { all, todo, done, rejected }
 /// 체크리스트 상세 화면 위젯
 class ChecklistScreen extends ConsumerStatefulWidget {
   final String id;
-  const ChecklistScreen({super.key, required this.id});
+  /// true면 조회 전용 (모바일 개인폰) — 완료/사진/Send Report 숨김
+  final bool readOnly;
+  const ChecklistScreen({super.key, required this.id, this.readOnly = false});
 
   @override
   ConsumerState<ChecklistScreen> createState() => _ChecklistScreenState();
@@ -112,6 +115,21 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
   void _onCheckTap(ChecklistItem item) async {
     if (_isUploading) return;
 
+    // 읽기 전용 모드 (모바일): 완료 항목은 내역 조회, 미완료는 안내 알럿
+    if (widget.readOnly) {
+      if (item.isCompleted) {
+        _showSubmittedDialog(item);
+      } else {
+        AppModal.show(
+          context,
+          title: 'Store Tablet Required',
+          message: 'Please use the store tablet to complete checklist items.',
+          type: ModalType.info,
+        );
+      }
+      return;
+    }
+
     // 반려 미해결 → resubmit 다이얼로그 (이전 제출 내용 미리 채움)
     if (item.isRejected && !item.isResolved) {
       await _handleResubmit(item);
@@ -136,6 +154,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
         builder: (_) => ChecklistChatScreen(
           scheduleId: widget.id,
           item: item,
+          readOnly: widget.readOnly,
         ),
       ),
     );
@@ -729,7 +748,8 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
                                 item: item,
                                 onCheckTap: () => _onCheckTap(item),
                                 onChatTap: () => _openChatScreen(item),
-                                onLongPress: () => _onItemLongPress(item),
+                                onLongPress: widget.readOnly ? () {} : () => _onItemLongPress(item),
+                                readOnly: widget.readOnly,
                               );
                             },
                           ),
@@ -737,10 +757,17 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
                 ),
                 // Send Report bottom bar
                 _SendReportBar(
-                  isEnabled: canReport,
+                  isEnabled: widget.readOnly ? false : canReport,
                   isReported: isReported,
                   isAllPassed: isAllPassed,
-                  onTap: _onSendReport,
+                  onTap: widget.readOnly
+                      ? () => AppModal.show(
+                            context,
+                            title: 'Store Tablet Required',
+                            message: 'Please use the store tablet to submit reports.',
+                            type: ModalType.info,
+                          )
+                      : _onSendReport,
                 ),
               ],
             ],
@@ -946,12 +973,14 @@ class _ChecklistItemTile extends StatelessWidget {
   final VoidCallback onCheckTap;
   final VoidCallback onChatTap;
   final VoidCallback onLongPress;
+  final bool readOnly;
 
   const _ChecklistItemTile({
     required this.item,
     required this.onCheckTap,
     required this.onChatTap,
     required this.onLongPress,
+    this.readOnly = false,
   });
 
   Color get _tileBgColor {
@@ -1137,6 +1166,10 @@ class _ChecklistItemTile extends StatelessWidget {
       bgColor = AppColors.accent;
       borderColor = AppColors.accent;
       child = const Icon(Icons.check_rounded, size: 14, color: AppColors.white);
+    } else if (readOnly) {
+      bgColor = AppColors.bg;
+      borderColor = AppColors.textMuted;
+      child = const Icon(Icons.lock_outline, size: 12, color: AppColors.textMuted);
     } else {
       bgColor = Colors.transparent;
       borderColor = AppColors.border;

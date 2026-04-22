@@ -58,4 +58,35 @@ class TokenStorage {
     final code = await getCompanyCode();
     return code != null && code.isNotEmpty;
   }
+
+  // ── Kiosk Store 설정 (매장 패드에 고정 저장) ──
+
+  static const _kioskStoreIdKey = 'taskmanager_kiosk_store_id';
+  static const _kioskStoreNameKey = 'taskmanager_kiosk_store_name';
+
+  /// 키오스크 매장 설정 저장
+  static Future<void> setKioskStore(String storeId, String storeName) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_kioskStoreIdKey, storeId);
+    await prefs.setString(_kioskStoreNameKey, storeName);
+  }
+
+  /// 키오스크 매장 ID 반환 (미설정 시 null)
+  static Future<String?> getKioskStoreId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_kioskStoreIdKey);
+  }
+
+  /// 키오스크 매장 이름 반환 (미설정 시 null)
+  static Future<String?> getKioskStoreName() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_kioskStoreNameKey);
+  }
+
+  /// 키오스크 매장 설정 삭제
+  static Future<void> clearKioskStore() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kioskStoreIdKey);
+    await prefs.remove(_kioskStoreNameKey);
+  }
 }

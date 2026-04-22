@@ -33,11 +33,14 @@ import '../../utils/toast_manager.dart';
 class ChecklistChatScreen extends ConsumerStatefulWidget {
   final String scheduleId;
   final ChecklistItem item;
+  /// true면 조회 전용 (모바일) — 입력바/제출카드 숨김, 타임라인만 표시
+  final bool readOnly;
 
   const ChecklistChatScreen({
     super.key,
     required this.scheduleId,
     required this.item,
+    this.readOnly = false,
   });
 
   @override
@@ -403,8 +406,8 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
                   ],
                 ),
               ),
-              // Chat input bar
-              _buildChatInputBar(),
+              // Chat input bar (읽기전용에서는 숨김)
+              if (!widget.readOnly) _buildChatInputBar(),
             ],
           ),
           if (_isUploading || _isSubmitting)
@@ -482,7 +485,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
       statusColor = AppColors.textSecondary;
     }
 
-    final showForm = _showResubmitCard;
+    final showForm = _showResubmitCard && !widget.readOnly;
 
     return Container(
       color: showForm

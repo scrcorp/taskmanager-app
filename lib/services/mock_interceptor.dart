@@ -16,8 +16,11 @@ class MockInterceptor extends Interceptor {
   ];
 
   static const _stores = [
-    {'id': 's1', 'name': 'Bean & Brew'},
-    {'id': 's2', 'name': 'The Pier'},
+    {'id': 's1', 'name': 'Bean & Brew', 'address': '123 Main St'},
+    {'id': 's2', 'name': 'The Pier', 'address': '456 Harbor Rd'},
+    {'id': 's3', 'name': 'Sunrise Cafe', 'address': '789 Dawn Ave'},
+    {'id': 's4', 'name': 'Downtown Deli', 'address': '321 Center Blvd'},
+    {'id': 's5', 'name': 'Park Side Kitchen', 'address': '654 Green Way'},
   ];
 
   static const _workRoles = [
@@ -285,6 +288,7 @@ class MockInterceptor extends Interceptor {
             'username': 'alex',
             'full_name': 'Alex Kim',
             'email': 'alex@example.com',
+            'email_verified': true,
             'is_active': true,
             'role_name': 'Staff',
             'role_level': 40,
@@ -320,6 +324,199 @@ class MockInterceptor extends Interceptor {
         DioException(requestOptions: options, message: 'Mock error: $e'),
       );
     }
+
+      // ── Clock endpoints ──
+
+      // POST /clock/in
+      if (path == '/clock/in' && method == 'POST') {
+        final pin = (options.data as Map<String, dynamic>?)?['pin'] ?? '';
+        if (pin == '123456' || pin == '111111' || pin == '222222') {
+          return handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'status': 'clocked_in',
+              'user_name': pin == '123456' ? 'Elena Rodriguez' : pin == '111111' ? 'Marcus Chen' : 'Jessica Warren',
+              'clock_in_time': DateTime.now().toIso8601String(),
+            },
+          ));
+        }
+        return handler.resolve(Response(
+          requestOptions: options,
+          statusCode: 401,
+          data: {'detail': 'Invalid Employee ID'},
+        ));
+      }
+
+      // POST /clock/out
+      if (path == '/clock/out' && method == 'POST') {
+        final pin = (options.data as Map<String, dynamic>?)?['pin'] ?? '';
+        if (pin == '123456' || pin == '111111' || pin == '222222') {
+          return handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'status': 'clocked_out',
+              'user_name': pin == '123456' ? 'Elena Rodriguez' : pin == '111111' ? 'Marcus Chen' : 'Jessica Warren',
+              'clock_out_time': DateTime.now().toIso8601String(),
+            },
+          ));
+        }
+        return handler.resolve(Response(
+          requestOptions: options,
+          statusCode: 401,
+          data: {'detail': 'Invalid Employee ID'},
+        ));
+      }
+
+      // POST /clock/break
+      if (path == '/clock/break' && method == 'POST') {
+        final pin = (options.data as Map<String, dynamic>?)?['pin'] ?? '';
+        if (pin == '123456' || pin == '111111' || pin == '222222') {
+          return handler.resolve(Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: {
+              'status': 'on_break',
+              'user_name': pin == '123456' ? 'Elena Rodriguez' : pin == '111111' ? 'Marcus Chen' : 'Jessica Warren',
+            },
+          ));
+        }
+        return handler.resolve(Response(
+          requestOptions: options,
+          statusCode: 401,
+          data: {'detail': 'Invalid Employee ID'},
+        ));
+      }
+
+      // GET /clock/on-shift
+      if (path == '/clock/on-shift' && method == 'GET') {
+        return handler.resolve(Response(
+          requestOptions: options,
+          statusCode: 200,
+          data: [
+            {'user_id': 'u1', 'name': 'Elena Rodriguez', 'role': 'AM·Barista', 'since': '09:32', 'status': 'working'},
+            {'user_id': 'u2', 'name': 'Marcus Chen', 'role': 'Floor Supervisor', 'since': '09:00', 'status': 'working'},
+            {'user_id': 'u3', 'name': 'Jessica Warren', 'role': 'PM·Grill', 'since': '14:00', 'status': 'break'},
+          ],
+        ));
+      }
+
+      // GET /clock/coming-up
+      if (path == '/clock/coming-up' && method == 'GET') {
+        return handler.resolve(Response(
+          requestOptions: options,
+          statusCode: 200,
+          data: [
+            {'user_id': 'u4', 'name': 'David Miller', 'role': 'Inventory', 'start_time': '11:00', 'end_time': '19:00'},
+            {'user_id': 'u5', 'name': 'Amara Okafor', 'role': 'Support', 'start_time': '10:30', 'end_time': '18:30'},
+          ],
+        ));
+      }
+
+
+      // GET /app/my/schedules (오늘 스케줄 + 체크리스트)
+      if (path == '/app/my/schedules' && method == 'GET') {
+        final today = DateTime.now();
+        final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+        return handler.resolve(Response(
+          requestOptions: options,
+          statusCode: 200,
+          data: [
+            {
+              'id': 'sched1',
+              'store': {'id': 's1', 'name': 'Bean & Brew'},
+              'work_role_id': 'wr1',
+              'work_role_name': 'AM·Barista',
+              'status': 'confirmed',
+              'work_date': todayStr,
+              'start_time': '09:00',
+              'end_time': '17:00',
+              'net_work_minutes': 480,
+              'checklist_instance_id': 'cl1',
+              'total_items': 5,
+              'completed_items': 2,
+              'checklist_snapshot': {
+                'template_id': 'tpl1',
+                'template_name': 'Opening Checklist',
+                'items': [
+                  {'id': 'ci1', 'item_index': 0, 'title': 'Clean counter tops', 'description': 'Wipe down all counter surfaces', 'verification_type': 'photo', 'min_photos': 1, 'max_photos': 3, 'sort_order': 0, 'recurrence_type': 'daily', 'is_completed': true, 'completed_at': '${todayStr}T09:15:00Z', 'completed_by_name': 'Alex Kim', 'files': [], 'submissions': [{'id': 'sub1', 'version': 1, 'note': 'All clean', 'submitted_at': '${todayStr}T09:15:00Z', 'submitted_by_name': 'Alex Kim'}], 'reviews_log': [], 'messages': [{'id': 'msg1', 'author_name': 'Manager', 'content': 'Good job, looks spotless!', 'created_at': '${todayStr}T09:20:00Z'}]},
+                  {'id': 'ci2', 'item_index': 1, 'title': 'Check espresso machine', 'description': 'Run test shot and check pressure', 'verification_type': 'photo_text', 'min_photos': 1, 'max_photos': 2, 'sort_order': 1, 'recurrence_type': 'daily', 'is_completed': true, 'completed_at': '${todayStr}T09:25:00Z', 'completed_by_name': 'Alex Kim', 'review_result': 'pass', 'reviewer_name': 'Manager', 'reviewed_at': '${todayStr}T09:30:00Z', 'files': [], 'submissions': [{'id': 'sub2', 'version': 1, 'note': 'Pressure at 9 bar, good', 'submitted_at': '${todayStr}T09:25:00Z', 'submitted_by_name': 'Alex Kim'}], 'reviews_log': [{'id': 'rl1', 'new_result': 'pass', 'comment': 'Looks good', 'changed_by_name': 'Manager', 'created_at': '${todayStr}T09:30:00Z'}], 'messages': []},
+                  {'id': 'ci3', 'item_index': 2, 'title': 'Restock milk & syrup', 'description': 'Check fridge inventory and restock if low', 'verification_type': 'photo', 'min_photos': 1, 'max_photos': 2, 'sort_order': 2, 'recurrence_type': 'daily', 'is_completed': false, 'files': [], 'submissions': [], 'reviews_log': [], 'messages': [{'id': 'msg2', 'author_name': 'Manager', 'content': 'We got a new shipment today, check the back', 'created_at': '${todayStr}T08:00:00Z'}]},
+                  {'id': 'ci4', 'item_index': 3, 'title': 'Set up display case', 'description': 'Arrange pastries in display', 'verification_type': 'photo', 'min_photos': 1, 'max_photos': 3, 'sort_order': 3, 'recurrence_type': 'daily', 'is_completed': false, 'files': [], 'submissions': [], 'reviews_log': [], 'messages': []},
+                  {'id': 'ci5', 'item_index': 4, 'title': 'Floor sweep & mop', 'description': 'Sweep and mop entire floor area', 'verification_type': 'none', 'sort_order': 4, 'recurrence_type': 'daily', 'is_completed': false, 'files': [], 'submissions': [], 'reviews_log': [], 'messages': []},
+                ],
+              },
+              'created_at': '${todayStr}T00:00:00Z',
+            },
+          ],
+        ));
+      }
+
+      // GET /app/my/schedules/:id (단일 스케줄 상세)
+      if (path.startsWith('/app/my/schedules/') && method == 'GET' && !path.contains('checklist')) {
+        final today = DateTime.now();
+        final todayStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+        return handler.resolve(Response(
+          requestOptions: options,
+          statusCode: 200,
+          data: {
+            'id': 'sched1',
+            'store': {'id': 's1', 'name': 'Bean & Brew'},
+            'work_role_id': 'wr1',
+            'work_role_name': 'AM·Barista',
+            'status': 'confirmed',
+            'work_date': todayStr,
+            'start_time': '09:00',
+            'end_time': '17:00',
+            'net_work_minutes': 480,
+            'checklist_instance_id': 'cl1',
+            'total_items': 5,
+            'completed_items': 2,
+            'checklist_snapshot': {
+              'template_id': 'tpl1',
+              'template_name': 'Opening Checklist',
+              'items': [
+                {'id': 'ci1', 'item_index': 0, 'title': 'Clean counter tops', 'description': 'Wipe down all counter surfaces', 'verification_type': 'photo', 'min_photos': 1, 'max_photos': 3, 'sort_order': 0, 'recurrence_type': 'daily', 'is_completed': true, 'completed_at': '${todayStr}T09:15:00Z', 'completed_by_name': 'Alex Kim', 'files': [], 'submissions': [{'id': 'sub1', 'version': 1, 'note': 'All clean', 'submitted_at': '${todayStr}T09:15:00Z', 'submitted_by_name': 'Alex Kim'}], 'reviews_log': [], 'messages': [{'id': 'msg1', 'author_name': 'Manager', 'content': 'Good job, looks spotless!', 'created_at': '${todayStr}T09:20:00Z'}]},
+                {'id': 'ci2', 'item_index': 1, 'title': 'Check espresso machine', 'description': 'Run test shot and check pressure', 'verification_type': 'photo_text', 'min_photos': 1, 'max_photos': 2, 'sort_order': 1, 'recurrence_type': 'daily', 'is_completed': true, 'completed_at': '${todayStr}T09:25:00Z', 'completed_by_name': 'Alex Kim', 'review_result': 'pass', 'reviewer_name': 'Manager', 'reviewed_at': '${todayStr}T09:30:00Z', 'files': [], 'submissions': [{'id': 'sub2', 'version': 1, 'note': 'Pressure at 9 bar, good', 'submitted_at': '${todayStr}T09:25:00Z', 'submitted_by_name': 'Alex Kim'}], 'reviews_log': [{'id': 'rl1', 'new_result': 'pass', 'comment': 'Looks good', 'changed_by_name': 'Manager', 'created_at': '${todayStr}T09:30:00Z'}], 'messages': []},
+                {'id': 'ci3', 'item_index': 2, 'title': 'Restock milk & syrup', 'description': 'Check fridge inventory and restock if low', 'verification_type': 'photo', 'min_photos': 1, 'max_photos': 2, 'sort_order': 2, 'recurrence_type': 'daily', 'is_completed': false, 'files': [], 'submissions': [], 'reviews_log': [], 'messages': [{'id': 'msg2', 'author_name': 'Manager', 'content': 'We got a new shipment today, check the back', 'created_at': '${todayStr}T08:00:00Z'}]},
+                {'id': 'ci4', 'item_index': 3, 'title': 'Set up display case', 'description': 'Arrange pastries in display', 'verification_type': 'photo', 'min_photos': 1, 'max_photos': 3, 'sort_order': 3, 'recurrence_type': 'daily', 'is_completed': false, 'files': [], 'submissions': [], 'reviews_log': [], 'messages': []},
+                {'id': 'ci5', 'item_index': 4, 'title': 'Floor sweep & mop', 'description': 'Sweep and mop entire floor area', 'verification_type': 'none', 'sort_order': 4, 'recurrence_type': 'daily', 'is_completed': false, 'files': [], 'submissions': [], 'reviews_log': [], 'messages': []},
+              ],
+            },
+            'created_at': '${todayStr}T00:00:00Z',
+          },
+        ));
+      }
+
+      // GET /app/my/attendance/summary (모바일 근태 요약)
+      if (path == '/app/my/attendance/summary' && method == 'GET') {
+        return handler.resolve(Response(
+          requestOptions: options,
+          statusCode: 200,
+          data: {
+            'days_worked': 14,
+            'late_count': 1,
+            'early_leave_count': 0,
+            'total_scheduled': 18,
+            'month': 'April 2026',
+          },
+        ));
+      }
+
+      // GET /app/my/today-team (모바일 오늘 동료)
+      if (path == '/app/my/today-team' && method == 'GET') {
+        return handler.resolve(Response(
+          requestOptions: options,
+          statusCode: 200,
+          data: [
+            {'user_id': 'u1', 'name': 'Elena Rodriguez', 'role': 'AM·Barista', 'shift': 'AM'},
+            {'user_id': 'u2', 'name': 'Marcus Chen', 'role': 'Floor Supervisor', 'shift': 'AM'},
+            {'user_id': 'u3', 'name': 'Jessica Warren', 'role': 'PM·Grill', 'shift': 'PM'},
+            {'user_id': 'u4', 'name': 'David Miller', 'role': 'Inventory', 'shift': 'AM'},
+          ],
+        ));
+      }
 
     // 매칭 안 되면 404
     handler.resolve(Response(
