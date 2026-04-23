@@ -11,6 +11,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../services/clockin_pin_service.dart';
 import '../../widgets/app_modal.dart';
 
 /// 서류 유형 정의 (key, 제목, 설명, 아이콘)
@@ -310,6 +311,8 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                         const SizedBox(height: 2),
                         Text(user.email!, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
                       ],
+                      const SizedBox(height: 2),
+                      const _ProfilePinRow(),
                     ],
                   ),
                 ),
@@ -428,6 +431,66 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
           const SizedBox(height: 20),
         ],
       ),
+    );
+  }
+}
+
+/// Profile 정보 한 줄 PIN row — masked 기본, 눈 아이콘 토글로 노출.
+///
+/// profile info 영역에 한 줄로 표시 ("PIN: ●●●●●● [eye]"). Regenerate 는 제거됨.
+class _ProfilePinRow extends ConsumerStatefulWidget {
+  const _ProfilePinRow();
+
+  @override
+  ConsumerState<_ProfilePinRow> createState() => _ProfilePinRowState();
+}
+
+class _ProfilePinRowState extends ConsumerState<_ProfilePinRow> {
+  String? _pin;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final data = await ref.read(clockinPinServiceProvider).getPin();
+      if (!mounted) return;
+      setState(() {
+        _pin = data['clockin_pin']?.toString();
+        _loading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final display = _loading ? '…' : (_pin ?? '—');
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text('PIN: ',
+            style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.text)),
+        Text(
+          display,
+          style: const TextStyle(
+            fontSize: 13,
+            color: AppColors.text,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 2,
+            fontFeatures: [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
     );
   }
 }
