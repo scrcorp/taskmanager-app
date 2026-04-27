@@ -36,6 +36,7 @@ class TodayStaffBreak {
 class TodayStaffRow {
   final String userId;
   final String userName;
+  final String? scheduleId;
   final DateTime? scheduledStart;
   final DateTime? scheduledEnd;
   final String? scheduledStartDisplay; // store tz 기준 HH:mm (서버 포매팅)
@@ -44,7 +45,7 @@ class TodayStaffRow {
   final DateTime? clockOut;
   final String? clockInDisplay;
   final String? clockOutDisplay;
-  final String status; // not_yet | working | on_break | late | clocked_out | no_show
+  final String status; // upcoming | soon | working | on_break | late | clocked_out | no_show | cancelled
   final TodayStaffBreak? currentBreak;
   final int paidBreakMinutes;
   final int unpaidBreakMinutes;
@@ -52,6 +53,7 @@ class TodayStaffRow {
   const TodayStaffRow({
     required this.userId,
     required this.userName,
+    required this.scheduleId,
     required this.scheduledStart,
     required this.scheduledEnd,
     required this.scheduledStartDisplay,
@@ -75,6 +77,7 @@ class TodayStaffRow {
     return TodayStaffRow(
       userId: json['user_id']?.toString() ?? '',
       userName: json['user_name']?.toString() ?? '',
+      scheduleId: json['schedule_id']?.toString(),
       scheduledStart: parse(json['scheduled_start']),
       scheduledEnd: parse(json['scheduled_end']),
       scheduledStartDisplay: json['scheduled_start_display']?.toString(),
@@ -83,7 +86,7 @@ class TodayStaffRow {
       clockOut: parse(json['clock_out']),
       clockInDisplay: json['clock_in_display']?.toString(),
       clockOutDisplay: json['clock_out_display']?.toString(),
-      status: json['status']?.toString() ?? 'not_yet',
+      status: json['status']?.toString() ?? 'upcoming',
       currentBreak: TodayStaffBreak.fromJson(
         json['current_break'] is Map
             ? Map<String, dynamic>.from(json['current_break'] as Map)

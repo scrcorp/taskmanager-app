@@ -13,7 +13,7 @@
 /// 태블릿 전용 (768px 미만 분기 없음).
 ///
 /// UX 흐름:
-///   1. 사용자가 리스트에서 본인 row 탭 → _selectedUserId 설정
+///   1. 사용자가 리스트에서 본인 row 탭 → _selectedKey 설정 (userId+scheduleId)
 ///   2. 사이드바에 해당 유저의 상태에 맞는 액션만 활성화
 ///   3. 액션 버튼 탭 → PIN 화면 (user_id + pin 서버 전송)
 ///   4. 성공 후 대시보드 복귀 시 선택 해제
@@ -96,8 +96,15 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
   late Timer _clockTimer;
   DateTime _now = DateTime.now();
 
-  /// 현재 리스트에서 선택된 직원. null 이면 사이드바 액션 전체 비활성.
-  String? _selectedUserId;
+  /// 현재 리스트에서 선택된 row 의 composite key.
+  /// split-shift 에서 같은 유저의 여러 shift 를 각각 구분하기 위해 (userId, scheduleId) pair.
+  /// walk-in 등 scheduleId 가 null 인 경우는 userId 단독.
+  /// null 이면 사이드바 액션 전체 비활성.
+  String? _selectedKey;
+
+  /// Row 의 composite key 계산.
+  static String _rowKey(TodayStaffRow r) =>
+      r.scheduleId == null ? 'u:${r.userId}' : 'u:${r.userId}|s:${r.scheduleId}';
 
   @override
   void initState() {
@@ -118,43 +125,52 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     super.dispose();
   }
 
-  /// Row 탭 핸들러 — 같은 유저 재탭 시 선택 해제, 다른 유저 탭 시 전환.
-  void _onRowTap(String userId) {
+  /// Row 탭 핸들러 — 같은 row 재탭 시 선택 해제, 다른 row 탭 시 전환.
+  /// split-shift 지원: 같은 userId 의 다른 scheduleId row 는 별개로 선택 가능.
+  void _onRowTap(TodayStaffRow row) {
+    final key = _rowKey(row);
     setState(() {
-      if (_selectedUserId == userId) {
-        _selectedUserId = null;
+      if (_selectedKey == key) {
+        _selectedKey = null;
       } else {
-        _selectedUserId = userId;
+        _selectedKey = key;
       }
     });
   }
 
-  /// 선택된 유저 찾기 (없으면 null).
+  /// 선택된 row 찾기 (없으면 null).
   /// build 안에서 호출될 때 dashboard 상태 변화에 반응하도록 watch 사용.
   /// (핸들러에서 호출될 때도 안전 — 이미 build 사이클 외부라면 dependency 구독만 발생)
   TodayStaffRow? get _selectedRow {
-    if (_selectedUserId == null) return null;
+    if (_selectedKey == null) return null;
     final dashboard = ref.watch(attendanceDashboardProvider);
     for (final r in dashboard.staff) {
-      if (r.userId == _selectedUserId) return r;
+      if (_rowKey(r) == _selectedKey) return r;
     }
     return null;
   }
 
   /// 유저 상태 기준으로 특정 액션이 활성화 가능한지 판단.
   /// 상태 매핑:
-  ///   - not_yet / (late_waiting) → Clock In
-  ///   - no_show                  → Clock In
-  ///   - working / late           → Clock Out, Short Break, Long Break
-  ///   - on_break                 → End Break, Clock Out
-  ///   - clocked_out              → (모두 비활성)
-  bool _isActionAllowed(AttendanceAction action, String status) {
+  ///   - upcoming / soon / late / no_show → Clock In
+  ///   - working                          → Clock Out, Short Break, Long Break
+  ///   - on_break                         → End Break, Clock Out
+  ///   - clocked_out / cancelled          → (모두 비활성)
+  bool _isActionAllowed(AttendanceAction action, String status, {bool clockedIn = false}) {
     switch (status) {
-      case 'not_yet':
+      case 'upcoming':
+      case 'soon':
       case 'no_show':
         return action == AttendanceAction.clockIn;
-      case 'working':
       case 'late':
+        // 'late' 는 서버에서 두 가지 경우에 쓰임:
+        //  - clock-in 아직 안 함 → Clock In 가능
+        //  - clock-in 이미 했는데 지각 기록 → Clock Out / Break 가능
+        if (!clockedIn) return action == AttendanceAction.clockIn;
+        return action == AttendanceAction.clockOut ||
+            action == AttendanceAction.breakShortPaid ||
+            action == AttendanceAction.breakLongUnpaid;
+      case 'working':
         return action == AttendanceAction.clockOut ||
             action == AttendanceAction.breakShortPaid ||
             action == AttendanceAction.breakLongUnpaid;
@@ -162,6 +178,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
         return action == AttendanceAction.breakEnd ||
             action == AttendanceAction.clockOut;
       case 'clocked_out':
+      case 'cancelled':
       default:
         return false;
     }
@@ -181,7 +198,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     );
     // 성공/실패 모두 대시보드 복귀 시 선택 해제
     if (mounted) {
-      setState(() => _selectedUserId = null);
+      setState(() => _selectedKey = null);
     }
   }
 
@@ -371,7 +388,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
 
     // 특정 액션의 활성 여부 결정. 선택 없으면 모두 비활성.
     bool allowed(AttendanceAction a) =>
-        hasSelection && _isActionAllowed(a, status);
+        hasSelection && _isActionAllowed(a, status, clockedIn: selected.clockIn != null);
 
     // 안내 텍스트 — 선택 유무에 따라 전환
     final String helpText;
@@ -449,7 +466,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                 ),
                 const SizedBox(height: 6),
                 GestureDetector(
-                  onTap: () => setState(() => _selectedUserId = null),
+                  onTap: () => setState(() => _selectedKey = null),
                   child: const Row(
                     children: [
                       Icon(Icons.close, size: 12, color: AppColors.textMuted),
@@ -591,8 +608,8 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (_, i) => _OnShiftCard(
                       row: rows[i],
-                      selected: rows[i].userId == _selectedUserId,
-                      onTap: () => _onRowTap(rows[i].userId),
+                      selected: _rowKey(rows[i]) == _selectedKey,
+                      onTap: () => _onRowTap(rows[i]),
                     ),
                   ),
           ),
@@ -611,32 +628,36 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
 
   // ─── 중: Coming Up Next ───────────────────────────────────────────
   //
-  // 3 그룹 → (a) upcoming_future (not_yet + scheduled_start 미래)
-  //        → (b) late_waiting   (not_yet + scheduled_start 과거, 아직 안 옴)
-  //        → (c) no_show
+  // 4 그룹 (server 가 status 로 내려줌) → upcoming → soon → late → no_show
   // 각 그룹 내 정렬: scheduled_start 오름차순.
   // storeNow 는 _now 를 store tz offset 만큼 보정한 "벽시계" 시각.
 
   Widget _buildComingUpSection() {
     final dashboard = ref.watch(attendanceDashboardProvider);
 
-    // 긴급도 오름차순: upcoming → soon (5분 이내) → late (지남) → noShow.
-    // scheduled_start 는 store tz offset 포함 ISO → UTC epoch 비교.
+    // Eager 모델 전환 후: 서버가 effective status (upcoming/soon/late/no_show)를
+    // 이미 계산해서 내려준다. 클라이언트는 status 로만 분기한다.
     _ComingUpGroup classify(TodayStaffRow r) {
-      if (r.status == 'no_show') return _ComingUpGroup.noShow;
-      final start = r.scheduledStart;
-      if (start == null) return _ComingUpGroup.upcoming;
-      final startUtc = start.toUtc();
-      final nowUtc = _now.toUtc();
-      if (startUtc.isBefore(nowUtc)) return _ComingUpGroup.late_;
-      final diffMin = startUtc.difference(nowUtc).inMinutes;
-      if (diffMin <= _soonThresholdMinutes) return _ComingUpGroup.soon;
-      return _ComingUpGroup.upcoming;
+      switch (r.status) {
+        case 'no_show':
+          return _ComingUpGroup.noShow;
+        case 'late':
+          return _ComingUpGroup.late_;
+        case 'soon':
+          return _ComingUpGroup.soon;
+        default:
+          return _ComingUpGroup.upcoming;
+      }
     }
 
-    // not_yet + no_show 모두 포함
+    // 아직 출근 안 한 상태들 — 서버가 보내주는 값 기준.
+    // 'late' 는 2가지 경우:
+    //   (a) clock_in 전인데 시간 지남 → Not Clocked In 섹션에 표시 (선택 후 Clock In 가능)
+    //   (b) clock_in 후에도 지각으로 기록됨 → 이미 On Shift 섹션에서 표시됨
+    // 이 섹션에서는 (a) 만 후보로 포함 (clockIn == null).
     final candidates = dashboard.staff
-        .where((r) => r.status == 'not_yet' || r.status == 'no_show')
+        .where((r) => const {'upcoming', 'soon', 'late', 'no_show'}.contains(r.status))
+        .where((r) => r.clockIn == null)
         .toList();
 
     final upcoming = <TodayStaffRow>[];
@@ -757,8 +778,8 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                     itemBuilder: (_, i) => _ComingUpRow(
                       row: rows[i].row,
                       group: rows[i].group,
-                      selected: rows[i].row.userId == _selectedUserId,
-                      onTap: () => _onRowTap(rows[i].row.userId),
+                      selected: _rowKey(rows[i].row) == _selectedKey,
+                      onTap: () => _onRowTap(rows[i].row),
                     ),
                   ),
           ),
@@ -852,8 +873,8 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (_, i) => _CompletedRow(
                       row: rows[i],
-                      selected: rows[i].userId == _selectedUserId,
-                      onTap: () => _onRowTap(rows[i].userId),
+                      selected: _rowKey(rows[i]) == _selectedKey,
+                      onTap: () => _onRowTap(rows[i]),
                     ),
                   ),
           ),

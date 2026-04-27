@@ -9,10 +9,10 @@ class AppConstants {
   /// 백엔드 API 기본 URL
   ///
   /// 빌드 환경변수 `API_BASE_URL`로 주입.
-  /// 미지정 시 로컬 개발서버(`localhost:8000`)를 기본값으로 사용.
+  /// 미지정 시 로컬 개발서버(`localhost:58000`)를 기본값으로 사용.
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://localhost:8000/api/v1',
+    defaultValue: 'http://localhost:58000/api/v1',
   );
 
   /// 기본 회사 코드
