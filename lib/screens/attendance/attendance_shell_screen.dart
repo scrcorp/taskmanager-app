@@ -11,6 +11,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../config/theme.dart';
 import '../../providers/attendance_device_provider.dart';
+import '../../services/attendance_device_service.dart';
+import '../../utils/app_version_gate.dart';
 import 'attendance_access_code_screen.dart';
 import 'attendance_main_screen.dart';
 import 'attendance_store_select_screen.dart';
@@ -24,16 +26,37 @@ class AttendanceShellScreen extends ConsumerStatefulWidget {
 }
 
 class _AttendanceShellScreenState extends ConsumerState<AttendanceShellScreen> {
+  AppVersionStatus? _versionStatus;
+  bool _bannerDismissed = false;
+
   @override
   void initState() {
     super.initState();
     // 첫 프레임 후 상태 체크 (build 사이클과 겹치지 않도록)
-    Future.microtask(() => ref.read(attendanceDeviceProvider.notifier).checkStatus());
+    Future.microtask(() async {
+      await ref.read(attendanceDeviceProvider.notifier).checkStatus();
+      _refreshVersionStatus();
+    });
+  }
+
+  Future<void> _refreshVersionStatus() async {
+    // device token 이 있어야 endpoint 호출 가능. 없으면 skip.
+    final state = ref.read(attendanceDeviceProvider);
+    if (state.device == null) return;
+    final svc = ref.read(attendanceDeviceServiceProvider);
+    final status = await fetchAppVersionStatus(svc);
+    if (!mounted) return;
+    setState(() => _versionStatus = status);
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(attendanceDeviceProvider);
+
+    // 등록된 기기인데 강제 업데이트 필요 → 모든 화면을 가리는 blocker
+    if (_versionStatus != null && _versionStatus!.blocking) {
+      return UpdateBlockerScreen(status: _versionStatus!);
+    }
 
     Widget child;
     switch (state.status) {
@@ -45,16 +68,39 @@ class _AttendanceShellScreenState extends ConsumerState<AttendanceShellScreen> {
         child = const AttendanceAccessCodeScreen();
         break;
       case AttendanceDeviceStatus.needsStore:
+        // store 선택 직전에도 버전 체크가 가능하면 호출
+        if (_versionStatus == null) {
+          Future.microtask(_refreshVersionStatus);
+        }
         child = const AttendanceStoreSelectScreen();
         break;
       case AttendanceDeviceStatus.ready:
+        if (_versionStatus == null) {
+          Future.microtask(_refreshVersionStatus);
+        }
         child = const AttendanceMainScreen();
         break;
     }
 
+    final showBanner = _versionStatus != null &&
+        !_versionStatus!.blocking &&
+        _versionStatus!.hasUpdate &&
+        !_bannerDismissed;
+
     return Scaffold(
       backgroundColor: AppColors.bg,
-      body: SafeArea(child: child),
+      body: SafeArea(
+        child: Column(
+          children: [
+            if (showBanner)
+              UpdateAvailableBanner(
+                status: _versionStatus!,
+                onDismiss: () => setState(() => _bannerDismissed = true),
+              ),
+            Expanded(child: child),
+          ],
+        ),
+      ),
     );
   }
 }

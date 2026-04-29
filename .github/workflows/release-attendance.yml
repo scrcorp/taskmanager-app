@@ -1,0 +1,97 @@
+name: Release Attendance APK
+
+# Tag 형식:
+#   attendance-staging-vX.Y.Z   → staging 빌드 + 업로드
+#   attendance-vX.Y.Z           → production 빌드 + 업로드
+#
+# Required GitHub Secrets:
+#   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY  (S3 PutObject — 기존 web 배포용 키 재활용)
+#
+# 서버 POST /admin/app-versions 는 임시로 인증 없이 공개 (TODO: service 계정 도입 후 잠금)
+
+on:
+  push:
+    tags:
+      - 'attendance-v*'
+      - 'attendance-staging-v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Determine environment from tag
+        id: env
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          if [[ "$TAG" == attendance-staging-v* ]]; then
+            VERSION="${TAG#attendance-staging-v}"
+            echo "channel=attendance_staging" >> $GITHUB_OUTPUT
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "flavor=attendancestaging" >> $GITHUB_OUTPUT
+            echo "api_base=https://stg-api.hermesops.site/api/v1" >> $GITHUB_OUTPUT
+            echo "app_env=staging" >> $GITHUB_OUTPUT
+            echo "app_flavor=STAGING" >> $GITHUB_OUTPUT
+            echo "s3_bucket=taskmanager-storage-staging" >> $GITHUB_OUTPUT
+          elif [[ "$TAG" == attendance-v* ]]; then
+            VERSION="${TAG#attendance-v}"
+            echo "channel=attendance_production" >> $GITHUB_OUTPUT
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+            echo "flavor=attendanceproduction" >> $GITHUB_OUTPUT
+            echo "api_base=https://api.hermesops.site/api/v1" >> $GITHUB_OUTPUT
+            echo "app_env=production" >> $GITHUB_OUTPUT
+            echo "app_flavor=" >> $GITHUB_OUTPUT
+            echo "s3_bucket=taskmanager-storage-prod" >> $GITHUB_OUTPUT
+          else
+            echo "Unknown tag pattern: $TAG"
+            exit 1
+          fi
+          echo "s3_key=app-releases/attendance/v$VERSION/tma.apk" >> $GITHUB_OUTPUT
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+
+      - run: flutter pub get
+
+      - name: Build APK
+        run: |
+          ARGS="--flavor ${{ steps.env.outputs.flavor }} -t lib/main_attendance.dart --release"
+          ARGS="$ARGS --dart-define=API_BASE_URL=${{ steps.env.outputs.api_base }}"
+          ARGS="$ARGS --dart-define=APP_ENV=${{ steps.env.outputs.app_env }}"
+          ARGS="$ARGS --dart-define=DEFAULT_COMPANY_CODE=3Y1FII"
+          if [ -n "${{ steps.env.outputs.app_flavor }}" ]; then
+            ARGS="$ARGS --dart-define=APP_FLAVOR=${{ steps.env.outputs.app_flavor }}"
+          fi
+          flutter build apk $ARGS
+
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+
+      - name: Upload APK to S3
+        run: |
+          aws s3 cp \
+            build/app/outputs/flutter-apk/app-${{ steps.env.outputs.flavor }}-release.apk \
+            s3://${{ steps.env.outputs.s3_bucket }}/${{ steps.env.outputs.s3_key }}
+
+      - name: Register release with server
+        run: |
+          curl -sS -X POST \
+            "${{ steps.env.outputs.api_base }}/admin/app-versions" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"channel\": \"${{ steps.env.outputs.channel }}\",
+              \"version\": \"${{ steps.env.outputs.version }}\",
+              \"s3_key\": \"${{ steps.env.outputs.s3_key }}\",
+              \"is_latest\": true,
+              \"is_min_required\": false,
+              \"release_notes\": \"Released via tag ${GITHUB_REF#refs/tags/}\"
+            }" | tee response.json
+          if grep -q '"detail"' response.json; then
+            echo "Server returned error"
+            exit 1
+          fi
