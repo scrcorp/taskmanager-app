@@ -554,12 +554,13 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
 
   Widget _buildOnShiftSection() {
     final dashboard = ref.watch(attendanceDashboardProvider);
-    // working, on_break, late 상태인 유저 표시
+    // 출근 후 working / on_break, 또는 지각이지만 clock-in 한 케이스만 포함.
+    // (late + clockIn null 인 케이스는 Not Clocked In 섹션에서 처리)
     final rows = dashboard.staff
         .where((r) =>
             r.status == 'working' ||
             r.status == 'on_break' ||
-            r.status == 'late')
+            (r.status == 'late' && r.clockIn != null))
         .toList();
 
     return _PanelCard(

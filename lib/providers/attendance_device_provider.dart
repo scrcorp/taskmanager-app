@@ -10,6 +10,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/attendance_device_service.dart';
 import '../utils/attendance_device_storage.dart';
+import '../utils/kiosk_intent.dart';
+import '../utils/kiosk_lock.dart';
 
 /// 기기 상태 phase
 enum AttendanceDeviceStatus {
@@ -174,6 +176,12 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
         return false;
       }
       await AttendanceDeviceStorage.setToken(token);
+      await AttendanceDeviceStorage.setAccessCode(accessCode);
+      // 재등록 = 키오스크 의도 켜기 + 잠금 즉시 시작
+      await KioskIntent.setEnabled(true);
+      if (!await KioskLock.isLocked()) {
+        await KioskLock.start();
+      }
       // register 응답이 store_id를 포함할 수 있지만 me를 한 번 더 호출해 일관된 상태 구성
       final meData = await _service.getMe();
       final device = DeviceInfo.fromJson(meData);
@@ -236,6 +244,7 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
       // 서버 호출 실패해도 로컬 토큰은 반드시 삭제
     }
     await AttendanceDeviceStorage.clearToken();
+    await AttendanceDeviceStorage.clearAccessCode();
     state = const AttendanceDeviceState(status: AttendanceDeviceStatus.needsRegister);
   }
 

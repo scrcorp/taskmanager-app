@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 class AttendanceDeviceStorage {
   static const _tokenKey = 'attendance_device_token';
   static const _fingerprintKey = 'attendance_device_fingerprint';
+  static const _accessCodeKey = 'attendance_device_access_code';
 
   /// 기기 토큰 저장
   static Future<void> setToken(String token) async {
@@ -41,5 +42,21 @@ class AttendanceDeviceStorage {
   static Future<void> setFingerprint(String fingerprint) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_fingerprintKey, fingerprint);
+  }
+
+  /// kiosk 잠금 해제용 access code (register 시 입력한 값) 저장
+  static Future<void> setAccessCode(String code) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_accessCodeKey, code.trim().toUpperCase());
+  }
+
+  static Future<String?> getAccessCode() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_accessCodeKey);
+  }
+
+  static Future<void> clearAccessCode() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_accessCodeKey);
   }
 }

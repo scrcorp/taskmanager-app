@@ -55,6 +55,14 @@ class AttendanceDeviceService {
     return Map<String, dynamic>.from(response.data as Map);
   }
 
+  /// 앱 버전 정보 — sideload APK update enforcement 용.
+  /// 응답 필드 (모두 nullable):
+  ///   { min_version, latest_version, download_url, release_notes }
+  Future<Map<String, dynamic>> getAppVersion() async {
+    final response = await _dio.get('/attendance/app-version');
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
   /// 매장 할당/변경
   Future<Map<String, dynamic>> setStore(String storeId) async {
     final response = await _dio.put('/attendance/store', data: {
