@@ -27,7 +27,7 @@ import '../../models/checklist.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/my_schedule_provider.dart';
 import '../../services/storage_service.dart';
-import '../../utils/toast_manager.dart';
+import '../../widgets/app_modal.dart';
 
 /// 체크리스트 항목 채팅 전체 화면 위젯
 class ChecklistChatScreen extends ConsumerStatefulWidget {
@@ -183,7 +183,12 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
       _saveDraft();
     } catch (e) {
       if (mounted) {
-        ToastManager().error(context, 'Photo upload failed');
+        await AppModal.show(
+          context,
+          title: "Couldn't upload",
+          message: 'Photo upload failed',
+          type: ModalType.error,
+        );
       }
     } finally {
       if (mounted) setState(() => _isUploading = false);
@@ -203,7 +208,12 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
     final item = _item;
     // 사진 필요한데 없으면 안내
     if (item.requiresPhoto && _pendingPhotoUrls.isEmpty) {
-      ToastManager().error(context, 'Please attach a photo.');
+      await AppModal.show(
+        context,
+        title: 'Photo required',
+        message: 'Please attach a photo.',
+        type: ModalType.error,
+      );
       return;
     }
 
@@ -240,7 +250,12 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
       _scrollToBottom();
     } catch (e) {
       if (mounted) {
-        ToastManager().error(context, 'Failed to submit. Please try again.');
+        await AppModal.show(
+          context,
+          title: "Couldn't submit",
+          message: 'Failed to submit. Please try again.',
+          type: ModalType.error,
+        );
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
@@ -266,7 +281,12 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
       _scrollToBottom();
     } catch (e) {
       if (mounted) {
-        ToastManager().error(context, 'Send failed');
+        await AppModal.show(
+          context,
+          title: "Couldn't send",
+          message: 'Send failed',
+          type: ModalType.error,
+        );
       }
     }
   }
@@ -302,7 +322,12 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
       _scrollToBottom();
     } catch (e) {
       if (mounted) {
-        ToastManager().error(context, 'Photo send failed');
+        await AppModal.show(
+          context,
+          title: "Couldn't send photo",
+          message: 'Photo send failed',
+          type: ModalType.error,
+        );
       }
     } finally {
       if (mounted) setState(() => _isUploading = false);

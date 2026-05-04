@@ -23,6 +23,8 @@ class User {
   final Set<String> permissions;
   /// 관리자가 비밀번호를 초기화한 경우 true — 비밀번호 변경 권장 배너 표시용
   final bool mustChangePassword;
+  /// 선호 언어 (정보 수집용, en/es/ko, default 'en')
+  final String preferredLanguage;
 
   const User({
     required this.id,
@@ -39,6 +41,7 @@ class User {
     this.organizationTimezone,
     this.permissions = const {},
     this.mustChangePassword = false,
+    this.preferredLanguage = 'en',
   });
 
   /// fullName에서 첫 단어만 추출 (인사말 등에 사용)
@@ -76,6 +79,7 @@ class User {
       organizationTimezone: json['organization_timezone'] as String?,
       permissions: permList.map((e) => e as String).toSet(),
       mustChangePassword: json['must_change_password'] as bool? ?? false,
+      preferredLanguage: json['preferred_language'] as String? ?? 'en',
     );
   }
 }

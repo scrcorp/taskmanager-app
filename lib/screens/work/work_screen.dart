@@ -29,7 +29,7 @@ import '../../providers/my_schedule_provider.dart';
 import '../../providers/task_provider.dart';
 import 'checklist_chat_screen.dart';
 import '../../services/storage_service.dart';
-import '../../utils/toast_manager.dart';
+import '../../widgets/app_modal.dart';
 
 /// 근무 화면 메인 위젯 — Today/Past 체크리스트 + 추가 업무
 class WorkScreen extends ConsumerStatefulWidget {
@@ -2218,7 +2218,12 @@ class _ChecklistBottomSheetState
       return urls['file_url'];
     } catch (e) {
       if (mounted) {
-        ToastManager().error(context, 'Photo upload failed');
+        await AppModal.show(
+          context,
+          title: "Couldn't upload",
+          message: 'Photo upload failed',
+          type: ModalType.error,
+        );
       }
       return null;
     } finally {

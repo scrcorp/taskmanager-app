@@ -52,6 +52,72 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
   final Map<String, Uint8List> _documents = {};
   final Map<String, DateTime> _uploadedAt = {};
 
+  String _languageLabel(String? code) {
+    switch (code) {
+      case 'es':
+        return 'Español';
+      case 'ko':
+        return '한국어';
+      default:
+        return 'English';
+    }
+  }
+
+  Future<void> _showLanguagePicker() async {
+    final user = ref.read(authProvider).user;
+    if (user == null) return;
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.only(top: 12, bottom: 16),
+              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: Text('Preferred Language', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
+            ),
+            for (final entry in const [
+              MapEntry('en', 'English'),
+              MapEntry('es', 'Español'),
+              MapEntry('ko', '한국어'),
+            ])
+              ListTile(
+                title: Text(entry.value),
+                trailing: user.preferredLanguage == entry.key
+                    ? const Icon(Icons.check, color: AppColors.accent)
+                    : null,
+                onTap: () => Navigator.pop(ctx, entry.key),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+    if (selected == null || selected == user.preferredLanguage) return;
+    final success = await ref.read(authProvider.notifier).updateProfile({
+      'preferred_language': selected,
+    });
+    if (!mounted) return;
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Language preference saved'), backgroundColor: AppColors.success),
+      );
+    } else {
+      final error = ref.read(authProvider).error ?? 'Failed to update language';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error), backgroundColor: AppColors.danger),
+      );
+    }
+  }
+
   Future<void> _showEditUsernameDialog() async {
     final user = ref.read(authProvider).user;
     if (user == null) return;
@@ -407,6 +473,15 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                 _MenuItem(
                   label: 'Edit Username',
                   onTap: _showEditUsernameDialog,
+                ),
+                const Divider(height: 1),
+                _MenuItem(
+                  label: 'Preferred Language',
+                  trailing: Text(
+                    _languageLabel(ref.watch(authProvider).user?.preferredLanguage),
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  ),
+                  onTap: _showLanguagePicker,
                 ),
                 const Divider(height: 1),
                 _MenuItem(
