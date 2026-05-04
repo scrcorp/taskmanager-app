@@ -12,7 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
 import '../../services/auth_service.dart';
-import '../../utils/toast_manager.dart';
+import '../../widgets/app_modal.dart';
 
 class ResetPasswordScreen extends ConsumerStatefulWidget {
   const ResetPasswordScreen({super.key});
@@ -69,7 +69,12 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     final username = _usernameCtrl.text.trim();
     final email = _emailCtrl.text.trim();
     if (username.isEmpty || email.isEmpty) {
-      ToastManager().warning(context, 'Please enter your username and email.');
+      await AppModal.show(
+        context,
+        title: 'Heads up',
+        message: 'Please enter your username and email.',
+        type: ModalType.warning,
+      );
       return;
     }
     setState(() => _isLoading = true);
@@ -83,12 +88,22 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
           _isLoading = false;
         });
         _startTimer(expiresIn);
-        ToastManager().success(context, 'Verification code sent.');
+        await AppModal.show(
+          context,
+          title: 'Code Sent',
+          message: 'Verification code sent.',
+          type: ModalType.success,
+        );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ToastManager().error(context, _parseApiError(e, 'No account found.'));
+        await AppModal.show(
+          context,
+          title: 'Account not found',
+          message: _parseApiError(e, 'No account found.'),
+          type: ModalType.error,
+        );
       }
     }
   }
@@ -104,12 +119,22 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         final expiresIn = data['expires_in'] as int? ?? 300;
         setState(() { _isLoading = false; _codeCtrl.clear(); });
         _startTimer(expiresIn);
-        ToastManager().success(context, 'Verification code resent.');
+        await AppModal.show(
+          context,
+          title: 'Code Resent',
+          message: 'Verification code resent.',
+          type: ModalType.success,
+        );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ToastManager().error(context, _parseApiError(e, 'Failed to resend code.'));
+        await AppModal.show(
+          context,
+          title: "Couldn't resend code",
+          message: _parseApiError(e, 'Failed to resend code.'),
+          type: ModalType.error,
+        );
       }
     }
   }
@@ -117,7 +142,12 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   Future<void> _verifyCode() async {
     final code = _codeCtrl.text.trim();
     if (code.isEmpty || code.length != 6) {
-      ToastManager().warning(context, 'Please enter the 6-digit code.');
+      await AppModal.show(
+        context,
+        title: 'Heads up',
+        message: 'Please enter the 6-digit code.',
+        type: ModalType.warning,
+      );
       return;
     }
     setState(() => _isLoading = true);
@@ -135,7 +165,12 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ToastManager().error(context, _parseApiError(e, 'Verification failed.'));
+        await AppModal.show(
+          context,
+          title: 'Verification Failed',
+          message: _parseApiError(e, 'Verification failed.'),
+          type: ModalType.error,
+        );
       }
     }
   }
@@ -144,11 +179,21 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     final newPassword = _newPasswordCtrl.text;
     final confirmPassword = _confirmPasswordCtrl.text;
     if (newPassword.isEmpty || confirmPassword.isEmpty) {
-      ToastManager().warning(context, 'Please fill in all fields.');
+      await AppModal.show(
+        context,
+        title: 'Heads up',
+        message: 'Please fill in all fields.',
+        type: ModalType.warning,
+      );
       return;
     }
     if (newPassword != confirmPassword) {
-      ToastManager().error(context, 'Passwords do not match.');
+      await AppModal.show(
+        context,
+        title: 'Passwords do not match',
+        message: 'Passwords do not match.',
+        type: ModalType.error,
+      );
       return;
     }
     setState(() => _isLoading = true);
@@ -164,7 +209,12 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ToastManager().error(context, _parseApiError(e, 'Failed to reset password.'));
+        await AppModal.show(
+          context,
+          title: "Couldn't reset password",
+          message: _parseApiError(e, 'Failed to reset password.'),
+          type: ModalType.error,
+        );
       }
     }
   }

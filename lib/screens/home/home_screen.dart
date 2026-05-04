@@ -19,7 +19,7 @@ import '../../providers/task_provider.dart';
 import '../../providers/announcement_provider.dart';
 import '../../providers/voice_provider.dart';
 import '../../models/announcement.dart';
-import '../../utils/toast_manager.dart';
+import '../../widgets/app_modal.dart';
 import 'widgets/schedule_summary_card.dart';
 
 /// 의견 제출 카테고리 맵 (키: API 값, 값: 표시 라벨)
@@ -93,9 +93,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (!mounted) return;
     if (ok) {
       _ideaCtrl.clear();
-      ToastManager().success(context, 'Thanks for sharing!');
+      await AppModal.show(
+        context,
+        title: 'Submitted',
+        message: 'Thanks for sharing!',
+        type: ModalType.success,
+      );
     } else {
-      ToastManager().error(context, 'Failed to submit. Please try again.');
+      await AppModal.show(
+        context,
+        title: "Couldn't submit",
+        message: 'Failed to submit. Please try again.',
+        type: ModalType.error,
+      );
     }
   }
 

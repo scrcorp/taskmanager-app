@@ -21,6 +21,7 @@ import '../../services/storage_service.dart';
 import '../../utils/date_utils.dart';
 import '../../utils/toast_manager.dart';
 import '../../widgets/app_header.dart';
+import '../../widgets/app_modal.dart';
 import 'checklist_chat_screen.dart';
 
 /// 체크리스트 필터 탭
@@ -70,7 +71,12 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
   void _showCompletionToast() {
     if (_celebrationShown) return;
     _celebrationShown = true;
-    ToastManager().success(context, 'All items completed! Great work.');
+    AppModal.show(
+      context,
+      title: 'All Done',
+      message: 'All items completed! Great work.',
+      type: ModalType.success,
+    );
   }
 
   List<ChecklistItem> _applyFilter(List<ChecklistItem> items) {
@@ -168,9 +174,23 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
             responseComment: result.note,
             photoUrls: result.photoUrls,
           );
-      if (mounted) ToastManager().success(context, 'Resubmitted.');
+      if (mounted) {
+        await AppModal.show(
+          context,
+          title: 'Resubmitted',
+          message: 'Resubmitted.',
+          type: ModalType.success,
+        );
+      }
     } catch (e) {
-      if (mounted) ToastManager().error(context, 'Failed to resubmit. Please try again.');
+      if (mounted) {
+        await AppModal.show(
+          context,
+          title: "Couldn't resubmit",
+          message: 'Failed to resubmit. Please try again.',
+          type: ModalType.error,
+        );
+      }
     }
   }
 
@@ -197,7 +217,12 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
           );
     } catch (e) {
       if (mounted) {
-        ToastManager().error(context, 'Failed to complete item. Please try again.');
+        await AppModal.show(
+          context,
+          title: "Couldn't complete",
+          message: 'Failed to complete item. Please try again.',
+          type: ModalType.error,
+        );
       }
     }
   }
@@ -227,7 +252,12 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
           );
     } catch (e) {
       if (mounted) {
-        ToastManager().error(context, 'Failed to undo. Please try again.');
+        await AppModal.show(
+          context,
+          title: "Couldn't undo",
+          message: 'Failed to undo. Please try again.',
+          type: ModalType.error,
+        );
       }
     }
   }
@@ -391,11 +421,21 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
       if (instanceId == null) return;
       await ref.read(myScheduleProvider.notifier).sendReport(instanceId, scheduleId: widget.id);
       if (mounted) {
-        ToastManager().success(context, 'Report submitted.');
+        await AppModal.show(
+          context,
+          title: 'Submitted',
+          message: 'Report submitted.',
+          type: ModalType.success,
+        );
       }
     } catch (e) {
       if (mounted) {
-        ToastManager().error(context, 'Failed to submit report. Please try again.');
+        await AppModal.show(
+          context,
+          title: "Couldn't submit report",
+          message: 'Failed to submit report. Please try again.',
+          type: ModalType.error,
+        );
       }
     }
   }
@@ -421,7 +461,12 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
       return urls['file_url'];
     } catch (e) {
       if (mounted) {
-        ToastManager().error(context, 'Photo upload failed');
+        await AppModal.show(
+          context,
+          title: "Couldn't upload",
+          message: 'Photo upload failed',
+          type: ModalType.error,
+        );
       }
       return null;
     } finally {
@@ -1510,7 +1555,14 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
       }
       _saveDraft();
     } catch (e) {
-      if (mounted) ToastManager().error(context, 'Photo upload failed');
+      if (mounted) {
+        await AppModal.show(
+          context,
+          title: "Couldn't upload",
+          message: 'Photo upload failed',
+          type: ModalType.error,
+        );
+      }
     } finally {
       if (mounted) setState(() => _isUploading = false);
     }
@@ -1525,7 +1577,12 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
 
   void _showPhotoSource() async {
     if (_photoMaxReached) {
-      ToastManager().error(context, 'Maximum $_maxPhotos photos allowed');
+      await AppModal.show(
+        context,
+        title: 'Limit reached',
+        message: 'Maximum $_maxPhotos photos allowed',
+        type: ModalType.error,
+      );
       return;
     }
     final source = await showDialog<ImageSource>(

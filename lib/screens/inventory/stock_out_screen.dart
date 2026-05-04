@@ -16,7 +16,7 @@ import '../../providers/inventory_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/inventory_service.dart';
 import '../../widgets/app_header.dart';
-import '../../utils/toast_manager.dart';
+import '../../widgets/app_modal.dart';
 
 /// Mutable line item for the stock-out form
 class _LineItem {
@@ -395,10 +395,21 @@ class _StockOutScreenState extends ConsumerState<StockOutScreen> {
     setState(() => _isSaving = false);
 
     if (ok) {
-      ToastManager().success(context, 'Stock out recorded successfully');
+      await AppModal.show(
+        context,
+        title: 'Saved',
+        message: 'Stock out recorded successfully',
+        type: ModalType.success,
+      );
+      if (!mounted) return;
       context.pop();
     } else {
-      ToastManager().error(context, 'Failed to save. Please try again.');
+      await AppModal.show(
+        context,
+        title: "Couldn't save",
+        message: 'Failed to save. Please try again.',
+        type: ModalType.error,
+      );
     }
   }
 }

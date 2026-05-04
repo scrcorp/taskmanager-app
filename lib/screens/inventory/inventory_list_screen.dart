@@ -15,7 +15,6 @@ import '../../providers/inventory_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/app_header.dart';
 import '../../widgets/app_modal.dart';
-import '../../utils/toast_manager.dart';
 
 class InventoryListScreen extends ConsumerStatefulWidget {
   final String storeId;
@@ -282,7 +281,13 @@ class _InventoryListScreenState
           if (!mounted) return;
           if (ok) {
             final label = type == 'in' ? 'Stock in recorded' : 'Stock out recorded';
-            ToastManager().success(context, label);
+            await AppModal.show(
+              context,
+              title: 'Saved',
+              message: label,
+              type: ModalType.success,
+            );
+            if (!mounted) return;
             await ref.read(inventoryProvider.notifier).loadSummary(widget.storeId);
             // Close bottom sheet and reopen with updated data
             if (mounted) {
@@ -294,7 +299,12 @@ class _InventoryListScreenState
               if (updated != null) _showDetailSheet(updated, manage);
             }
           } else {
-            ToastManager().error(context, 'Failed to record. Please try again.');
+            await AppModal.show(
+              context,
+              title: "Couldn't save",
+              message: 'Failed to record. Please try again.',
+              type: ModalType.error,
+            );
           }
         },
       ),
@@ -317,7 +327,13 @@ class _InventoryListScreenState
               );
           if (!mounted) return;
           if (ok) {
-            ToastManager().success(context, 'Quantity adjusted');
+            await AppModal.show(
+              context,
+              title: 'Adjusted',
+              message: 'Quantity adjusted',
+              type: ModalType.success,
+            );
+            if (!mounted) return;
             await ref.read(inventoryProvider.notifier).loadSummary(widget.storeId);
             // Close bottom sheet and reopen with updated data
             if (mounted) {
@@ -329,7 +345,12 @@ class _InventoryListScreenState
               if (updated != null) _showDetailSheet(updated, manage);
             }
           } else {
-            ToastManager().error(context, 'Failed to adjust. Please try again.');
+            await AppModal.show(
+              context,
+              title: "Couldn't adjust",
+              message: 'Failed to adjust. Please try again.',
+              type: ModalType.error,
+            );
           }
         },
       ),

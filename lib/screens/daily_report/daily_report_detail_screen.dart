@@ -15,8 +15,8 @@ import '../../providers/auth_provider.dart';
 import '../../providers/daily_report_provider.dart';
 import '../../services/daily_report_service.dart';
 import '../../utils/date_utils.dart';
-import '../../utils/toast_manager.dart';
 import '../../widgets/app_header.dart';
+import '../../widgets/app_modal.dart';
 
 class DailyReportDetailScreen extends ConsumerStatefulWidget {
   final String? id;
@@ -108,7 +108,12 @@ class _DailyReportDetailScreenState
 
   Future<void> _createAndLoadTemplate() async {
     if (_selectedStore == null) {
-      ToastManager().warning(context, 'Please select a store');
+      await AppModal.show(
+        context,
+        title: 'Heads up',
+        message: 'Please select a store',
+        type: ModalType.warning,
+      );
       return;
     }
     setState(() => _isCreating = true);
@@ -119,7 +124,14 @@ class _DailyReportDetailScreenState
     final template = ref.read(dailyReportProvider).template;
 
     if (template == null) {
-      if (mounted) ToastManager().error(context, 'Failed to load template');
+      if (mounted) {
+        await AppModal.show(
+          context,
+          title: "Couldn't load template",
+          message: 'Failed to load template',
+          type: ModalType.error,
+        );
+      }
       setState(() => _isCreating = false);
       return;
     }
@@ -144,11 +156,23 @@ class _DailyReportDetailScreenState
           return;
         }
       }
-      ToastManager().error(context, 'Failed to create report');
+      await AppModal.show(
+        context,
+        title: "Couldn't create report",
+        message: 'Failed to create report',
+        type: ModalType.error,
+      );
       setState(() => _isCreating = false);
       return;
     } catch (_) {
-      if (mounted) ToastManager().error(context, 'Failed to create report');
+      if (mounted) {
+        await AppModal.show(
+          context,
+          title: "Couldn't create report",
+          message: 'Failed to create report',
+          type: ModalType.error,
+        );
+      }
       setState(() => _isCreating = false);
       return;
     }
@@ -200,11 +224,22 @@ class _DailyReportDetailScreenState
         .updateReport(report.id, sections);
     if (mounted) {
       if (ok) {
-        ToastManager().success(context, 'Draft saved');
+        await AppModal.show(
+          context,
+          title: 'Saved',
+          message: 'Draft saved',
+          type: ModalType.success,
+        );
+        if (!mounted) return;
         await ref.read(dailyReportProvider.notifier).loadReports();
         if (mounted) context.pop();
       } else {
-        ToastManager().error(context, 'Failed to save');
+        await AppModal.show(
+          context,
+          title: "Couldn't save",
+          message: 'Failed to save',
+          type: ModalType.error,
+        );
       }
     }
   }
@@ -243,7 +278,14 @@ class _DailyReportDetailScreenState
           .read(dailyReportProvider.notifier)
           .updateReport(report.id, sections);
       if (!saved) {
-        if (mounted) ToastManager().error(context, 'Failed to save');
+        if (mounted) {
+          await AppModal.show(
+            context,
+            title: "Couldn't save",
+            message: 'Failed to save',
+            type: ModalType.error,
+          );
+        }
         return;
       }
     }
@@ -257,11 +299,22 @@ class _DailyReportDetailScreenState
           _isEditing = false;
           _emptySectionIds = {};
         });
-        ToastManager().success(context, 'Report submitted');
+        await AppModal.show(
+          context,
+          title: 'Submitted',
+          message: 'Report submitted',
+          type: ModalType.success,
+        );
+        if (!mounted) return;
         await ref.read(dailyReportProvider.notifier).loadReports();
         if (mounted) context.pop();
       } else {
-        ToastManager().error(context, 'Failed to submit');
+        await AppModal.show(
+          context,
+          title: "Couldn't submit",
+          message: 'Failed to submit',
+          type: ModalType.error,
+        );
       }
     }
   }
@@ -292,11 +345,22 @@ class _DailyReportDetailScreenState
     final ok = await ref.read(dailyReportProvider.notifier).deleteReport(report.id);
     if (mounted) {
       if (ok) {
-        ToastManager().success(context, 'Draft deleted');
+        await AppModal.show(
+          context,
+          title: 'Deleted',
+          message: 'Draft deleted',
+          type: ModalType.success,
+        );
+        if (!mounted) return;
         await ref.read(dailyReportProvider.notifier).loadReports();
         if (mounted) context.pop();
       } else {
-        ToastManager().error(context, 'Failed to delete');
+        await AppModal.show(
+          context,
+          title: "Couldn't delete",
+          message: 'Failed to delete',
+          type: ModalType.error,
+        );
       }
     }
   }

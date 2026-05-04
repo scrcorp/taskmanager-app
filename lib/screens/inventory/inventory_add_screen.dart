@@ -19,7 +19,7 @@ import '../../providers/inventory_provider.dart';
 import '../../services/inventory_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/app_header.dart';
-import '../../utils/toast_manager.dart';
+import '../../widgets/app_modal.dart';
 
 class InventoryAddScreen extends ConsumerStatefulWidget {
   final String storeId;
@@ -273,7 +273,12 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
     } catch (_) {
       if (mounted) {
         setState(() => _isUploadingImage = false);
-        ToastManager().error(context, 'Image upload failed');
+        await AppModal.show(
+          context,
+          title: "Couldn't upload",
+          message: 'Image upload failed',
+          type: ModalType.error,
+        );
       }
     }
   }
@@ -928,7 +933,12 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
     if (val.isEmpty) return;
     final normalized = val[0].toUpperCase() + val.substring(1);
     if (_categories.any((c) => c.name.toLowerCase() == normalized.toLowerCase())) {
-      ToastManager().error(context, '"$normalized" already exists');
+      await AppModal.show(
+        context,
+        title: 'Already exists',
+        message: '"$normalized" already exists',
+        type: ModalType.error,
+      );
       return;
     }
     try {
@@ -944,7 +954,12 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      ToastManager().error(context, 'Failed to create category');
+      await AppModal.show(
+        context,
+        title: "Couldn't create category",
+        message: 'Failed to create category',
+        type: ModalType.error,
+      );
     }
   }
 
@@ -1049,7 +1064,12 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      ToastManager().error(context, 'Failed to create subcategory');
+      await AppModal.show(
+        context,
+        title: "Couldn't create subcategory",
+        message: 'Failed to create subcategory',
+        type: ModalType.error,
+      );
     }
   }
 
@@ -1148,7 +1168,12 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
     final val = _newSubUnitCtrl.text.trim().toLowerCase();
     if (val.isEmpty) return;
     if (_allSubUnits.any((u) => u.code == val)) {
-      ToastManager().error(context, '"$val" already exists');
+      await AppModal.show(
+        context,
+        title: 'Already exists',
+        message: '"$val" already exists',
+        type: ModalType.error,
+      );
       return;
     }
     try {
@@ -1169,7 +1194,12 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      ToastManager().error(context, 'Failed to create sub unit');
+      await AppModal.show(
+        context,
+        title: "Couldn't create sub unit",
+        message: 'Failed to create sub unit',
+        type: ModalType.error,
+      );
     }
   }
 
@@ -1211,11 +1241,22 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
       if (!mounted) return;
       await ref.read(inventoryProvider.notifier).loadInventory(widget.storeId);
       await ref.read(inventoryProvider.notifier).loadSummary(widget.storeId);
-      ToastManager().success(context, '${product.name} added to store');
+      await AppModal.show(
+        context,
+        title: 'Added',
+        message: '${product.name} added to store',
+        type: ModalType.success,
+      );
+      if (!mounted) return;
       context.pop();
     } catch (_) {
       if (!mounted) return;
-      ToastManager().error(context, 'Failed to add product');
+      await AppModal.show(
+        context,
+        title: "Couldn't add product",
+        message: 'Failed to add product',
+        type: ModalType.error,
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -1273,11 +1314,22 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
       if (!mounted) return;
       await ref.read(inventoryProvider.notifier).loadInventory(widget.storeId);
       await ref.read(inventoryProvider.notifier).loadSummary(widget.storeId);
-      ToastManager().success(context, '$name created and added to store');
+      await AppModal.show(
+        context,
+        title: 'Created',
+        message: '$name created and added to store',
+        type: ModalType.success,
+      );
+      if (!mounted) return;
       context.pop();
     } catch (_) {
       if (!mounted) return;
-      ToastManager().error(context, 'Failed to create product');
+      await AppModal.show(
+        context,
+        title: "Couldn't create product",
+        message: 'Failed to create product',
+        type: ModalType.error,
+      );
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }

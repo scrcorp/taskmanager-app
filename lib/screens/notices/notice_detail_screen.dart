@@ -10,8 +10,8 @@ import '../../config/theme.dart';
 import '../../models/announcement.dart';
 import '../../providers/announcement_provider.dart';
 import '../../utils/date_utils.dart';
-import '../../utils/toast_manager.dart';
 import '../../widgets/app_header.dart';
+import '../../widgets/app_modal.dart';
 
 /// 공지사항 상세 화면 위젯
 class NoticeDetailScreen extends ConsumerStatefulWidget {
@@ -49,11 +49,16 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
     ref.read(announcementProvider.notifier).addComment(widget.id, text: text);
   }
 
-  void _toggleAcknowledge() {
+  Future<void> _toggleAcknowledge() async {
     final current = ref.read(announcementProvider).selected;
     ref.read(announcementProvider.notifier).toggleAcknowledge(widget.id);
     if (current != null && !current.isAcknowledged) {
-      ToastManager().success(context, 'Acknowledged');
+      await AppModal.show(
+        context,
+        title: 'Acknowledged',
+        message: 'Acknowledged',
+        type: ModalType.success,
+      );
     }
   }
 

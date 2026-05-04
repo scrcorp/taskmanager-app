@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../config/theme.dart';
 import '../../providers/attendance_device_provider.dart';
+import '../../widgets/app_modal.dart';
 
 /// Access code 화면 사용 목적
 enum AccessCodeMode {
@@ -61,8 +62,11 @@ class _AttendanceAccessCodeScreenState
     setState(() => _submitting = false);
     if (!ok) {
       final error = ref.read(attendanceDeviceProvider).error ?? 'Invalid access code';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error), backgroundColor: AppColors.danger),
+      await AppModal.show(
+        context,
+        title: 'Couldn\'t register device',
+        message: error,
+        type: ModalType.error,
       );
       return;
     }

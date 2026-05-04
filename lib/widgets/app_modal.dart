@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import '../config/theme.dart';
 
 /// 모달 타입 열거형
-enum ModalType { error, warning, confirm, info }
+enum ModalType { error, warning, confirm, info, success }
 
 /// 모달 다이얼로그 유틸리티 클래스
 class AppModal {
@@ -161,6 +161,13 @@ class AppModal {
           icon: Icons.info_rounded,
           iconColor: AppColors.accent,
           bgColor: AppColors.accentBg,
+          buttonFgColor: AppColors.white,
+        );
+      case ModalType.success:
+        return _ModalConfig(
+          icon: Icons.check_circle_rounded,
+          iconColor: AppColors.success,
+          bgColor: AppColors.successBg,
           buttonFgColor: AppColors.white,
         );
     }
