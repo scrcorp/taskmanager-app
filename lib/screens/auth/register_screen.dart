@@ -47,6 +47,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _idCtrl = TextEditingController();
   final _pwCtrl = TextEditingController();
   final _confirmPwCtrl = TextEditingController();
+  String _preferredLanguage = 'en';
 
   // Step 4: Email verification
   final _emailCtrl = TextEditingController();
@@ -258,6 +259,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       email: _emailCtrl.text.trim(),
       verificationToken: _verificationToken!,
       storeIds: _selectedStoreIds.toList(),
+      preferredLanguage: _preferredLanguage,
     );
     if (!mounted) return;
     setState(() => _isLoading = false);
@@ -644,6 +646,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           ? 'Passwords do not match'
                           : null,
                     ),
+                  ),
+                  const SizedBox(height: 20),
+                  const _FormLabel('Preferred Language'),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: _preferredLanguage,
+                    decoration: const InputDecoration(),
+                    items: const [
+                      DropdownMenuItem(value: 'en', child: Text('English')),
+                      DropdownMenuItem(value: 'es', child: Text('Español')),
+                      DropdownMenuItem(value: 'ko', child: Text('한국어')),
+                    ],
+                    onChanged: (v) => setState(() => _preferredLanguage = v ?? 'en'),
                   ),
                   const SizedBox(height: 24),
                 ],
