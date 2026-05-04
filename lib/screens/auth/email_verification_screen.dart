@@ -10,7 +10,7 @@ import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
-import '../../utils/toast_manager.dart';
+import '../../widgets/app_modal.dart';
 
 class EmailVerificationScreen extends ConsumerStatefulWidget {
   const EmailVerificationScreen({super.key});
@@ -66,7 +66,12 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
   Future<void> _sendCode() async {
     final email = _emailCtrl.text.trim();
     if (email.isEmpty) {
-      ToastManager().warning(context, 'Please enter your email.');
+      await AppModal.show(
+        context,
+        title: 'Heads up',
+        message: 'Please enter your email.',
+        type: ModalType.warning,
+      );
       return;
     }
     setState(() => _isLoading = true);
@@ -76,12 +81,22 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
       if (mounted) {
         setState(() { _codeSent = true; _isLoading = false; });
         _startTimer();
-        ToastManager().success(context, 'Verification code sent.');
+        await AppModal.show(
+          context,
+          title: 'Code Sent',
+          message: 'Verification code sent.',
+          type: ModalType.success,
+        );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ToastManager().error(context, _parseApiError(e, 'Failed to send code.'));
+        await AppModal.show(
+          context,
+          title: "Couldn't send code",
+          message: _parseApiError(e, 'Failed to send code.'),
+          type: ModalType.error,
+        );
       }
     }
   }
@@ -89,7 +104,12 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
   Future<void> _verifyCode() async {
     final code = _codeCtrl.text.trim();
     if (code.isEmpty || code.length != 6) {
-      ToastManager().warning(context, 'Please enter the 6-digit code.');
+      await AppModal.show(
+        context,
+        title: 'Heads up',
+        message: 'Please enter the 6-digit code.',
+        type: ModalType.warning,
+      );
       return;
     }
     setState(() => _isLoading = true);
@@ -105,7 +125,12 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ToastManager().error(context, _parseApiError(e, 'Verification failed.'));
+        await AppModal.show(
+          context,
+          title: 'Verification Failed',
+          message: _parseApiError(e, 'Verification failed.'),
+          type: ModalType.error,
+        );
       }
     }
   }

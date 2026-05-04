@@ -11,8 +11,8 @@ import '../../config/theme.dart';
 import '../../models/task.dart';
 import '../../providers/task_provider.dart';
 import '../../utils/date_utils.dart';
-import '../../utils/toast_manager.dart';
 import '../../widgets/app_header.dart';
+import '../../widgets/app_modal.dart';
 
 /// 추가 업무 상세 화면 위젯
 class TaskDetailScreen extends ConsumerStatefulWidget {
@@ -118,7 +118,12 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                                   .read(taskProvider.notifier)
                                   .completeTask(widget.id);
                               if (mounted) {
-                                ToastManager().success(context, 'Task marked as complete');
+                                await AppModal.show(
+                                  context,
+                                  title: 'Completed',
+                                  message: 'Task marked as complete',
+                                  type: ModalType.success,
+                                );
                               }
                             },
                       child: state.isLoading

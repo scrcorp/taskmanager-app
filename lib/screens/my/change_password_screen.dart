@@ -8,7 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
-import '../../utils/toast_manager.dart';
+import '../../widgets/app_modal.dart';
 
 class ChangePasswordScreen extends ConsumerStatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -40,11 +40,21 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     final confirm = _confirmCtrl.text;
 
     if (current.isEmpty || newPw.isEmpty || confirm.isEmpty) {
-      ToastManager().warning(context, 'Please fill in all fields.');
+      await AppModal.show(
+        context,
+        title: 'Heads up',
+        message: 'Please fill in all fields.',
+        type: ModalType.warning,
+      );
       return;
     }
     if (newPw != confirm) {
-      ToastManager().error(context, 'Passwords do not match.');
+      await AppModal.show(
+        context,
+        title: 'Passwords do not match',
+        message: 'Passwords do not match.',
+        type: ModalType.error,
+      );
       return;
     }
 
@@ -54,11 +64,22 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     setState(() => _isLoading = false);
 
     if (success) {
-      ToastManager().success(context, 'Password changed successfully.');
+      await AppModal.show(
+        context,
+        title: 'Password Changed',
+        message: 'Password changed successfully.',
+        type: ModalType.success,
+      );
+      if (!mounted) return;
       context.pop();
     } else {
       final error = ref.read(authProvider).error ?? 'Failed to change password.';
-      ToastManager().error(context, error);
+      await AppModal.show(
+        context,
+        title: "Couldn't change password",
+        message: error,
+        type: ModalType.error,
+      );
     }
   }
 

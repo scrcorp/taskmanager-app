@@ -16,7 +16,6 @@ import '../../models/inventory.dart';
 import '../../providers/inventory_provider.dart';
 import '../../widgets/app_header.dart';
 import '../../widgets/app_modal.dart';
-import '../../utils/toast_manager.dart';
 
 class InventoryAuditScreen extends ConsumerStatefulWidget {
   final String storeId;
@@ -445,9 +444,19 @@ class _InventoryAuditScreenState
 
     if (ok) {
       setState(() => _completed = true);
-      ToastManager().success(context, 'Audit completed');
+      await AppModal.show(
+        context,
+        title: 'Completed',
+        message: 'Audit completed',
+        type: ModalType.success,
+      );
     } else {
-      ToastManager().error(context, 'Failed to submit audit');
+      await AppModal.show(
+        context,
+        title: "Couldn't submit audit",
+        message: 'Failed to submit audit',
+        type: ModalType.error,
+      );
     }
   }
 

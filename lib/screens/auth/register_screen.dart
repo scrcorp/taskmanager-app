@@ -16,7 +16,6 @@ import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
-import '../../utils/toast_manager.dart';
 import '../../widgets/app_modal.dart';
 
 /// 회원가입 화면 위젯 — IndexedStack으로 5단계를 전환
@@ -47,6 +46,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _idCtrl = TextEditingController();
   final _pwCtrl = TextEditingController();
   final _confirmPwCtrl = TextEditingController();
+  String _preferredLanguage = 'en';
 
   // Step 4: Email verification
   final _emailCtrl = TextEditingController();
@@ -93,7 +93,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   // Step 1 validation
   Future<void> _validateStep1() async {
     if (!_term1 || !_term2) {
-      ToastManager().warning(context, 'Please agree to all required terms.');
+      await AppModal.show(
+        context,
+        title: 'Heads up',
+        message: 'Please agree to all required terms.',
+        type: ModalType.warning,
+      );
       return;
     }
     _nextStep();
@@ -132,30 +137,55 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }).toList();
   }
 
-  void _validateStep2() {
+  Future<void> _validateStep2() async {
     if (_selectedStoreIds.isEmpty) {
-      ToastManager().warning(context, 'Please select at least one store.');
+      await AppModal.show(
+        context,
+        title: 'Heads up',
+        message: 'Please select at least one store.',
+        type: ModalType.warning,
+      );
       return;
     }
     _nextStep();
   }
 
   // Step 3: Info validation → move to email step
-  void _validateStep3() {
+  Future<void> _validateStep3() async {
     if (_nameCtrl.text.trim().isEmpty) {
-      ToastManager().warning(context, 'Please enter your name.');
+      await AppModal.show(
+        context,
+        title: 'Heads up',
+        message: 'Please enter your name.',
+        type: ModalType.warning,
+      );
       return;
     }
     if (_idCtrl.text.trim().isEmpty) {
-      ToastManager().warning(context, 'Please enter a username.');
+      await AppModal.show(
+        context,
+        title: 'Heads up',
+        message: 'Please enter a username.',
+        type: ModalType.warning,
+      );
       return;
     }
     if (_pwCtrl.text.isEmpty) {
-      ToastManager().warning(context, 'Please enter a password.');
+      await AppModal.show(
+        context,
+        title: 'Heads up',
+        message: 'Please enter a password.',
+        type: ModalType.warning,
+      );
       return;
     }
     if (_confirmPwCtrl.text != _pwCtrl.text) {
-      ToastManager().warning(context, 'Passwords do not match.');
+      await AppModal.show(
+        context,
+        title: 'Heads up',
+        message: 'Passwords do not match.',
+        type: ModalType.warning,
+      );
       return;
     }
     _nextStep();
@@ -185,7 +215,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Future<void> _sendCode() async {
     final email = _emailCtrl.text.trim();
     if (email.isEmpty || !_emailRegex.hasMatch(email)) {
-      ToastManager().warning(context, 'Please enter a valid email address.');
+      await AppModal.show(
+        context,
+        title: 'Heads up',
+        message: 'Please enter a valid email address.',
+        type: ModalType.warning,
+      );
       return;
     }
     setState(() { _isLoading = true; _emailError = null; });
@@ -195,7 +230,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (mounted) {
         setState(() { _codeSent = true; _isLoading = false; });
         _startTimer();
-        ToastManager().success(context, 'Verification code sent.');
+        await AppModal.show(
+          context,
+          title: 'Code Sent',
+          message: 'Verification code sent.',
+          type: ModalType.success,
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -204,7 +244,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         if (e is DioException && e.response?.statusCode == 409) {
           setState(() { _emailError = msg; });
         } else {
-          ToastManager().error(context, msg);
+          await AppModal.show(
+            context,
+            title: "Couldn't send code",
+            message: msg,
+            type: ModalType.error,
+          );
         }
       }
     }
@@ -213,7 +258,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Future<void> _verifyCode() async {
     final code = _codeCtrl.text.trim();
     if (code.isEmpty || code.length != 6) {
-      ToastManager().warning(context, 'Please enter the 6-digit code.');
+      await AppModal.show(
+        context,
+        title: 'Heads up',
+        message: 'Please enter the 6-digit code.',
+        type: ModalType.warning,
+      );
       return;
     }
     setState(() => _isLoading = true);
@@ -239,7 +289,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ToastManager().error(context, _parseApiError(e, 'Verification failed.'));
+        await AppModal.show(
+          context,
+          title: 'Verification Failed',
+          message: _parseApiError(e, 'Verification failed.'),
+          type: ModalType.error,
+        );
       }
     }
   }
@@ -247,7 +302,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   /// Email verified → register → complete
   Future<void> _submitRegistration() async {
     if (!_emailVerified) {
-      ToastManager().warning(context, 'Please verify your email first.');
+      await AppModal.show(
+        context,
+        title: 'Heads up',
+        message: 'Please verify your email first.',
+        type: ModalType.warning,
+      );
       return;
     }
     setState(() => _isLoading = true);
@@ -258,6 +318,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       email: _emailCtrl.text.trim(),
       verificationToken: _verificationToken!,
       storeIds: _selectedStoreIds.toList(),
+      preferredLanguage: _preferredLanguage,
     );
     if (!mounted) return;
     setState(() => _isLoading = false);
@@ -644,6 +705,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           ? 'Passwords do not match'
                           : null,
                     ),
+                  ),
+                  const SizedBox(height: 20),
+                  const _FormLabel('Preferred Language'),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: _preferredLanguage,
+                    decoration: const InputDecoration(),
+                    items: const [
+                      DropdownMenuItem(value: 'en', child: Text('English')),
+                      DropdownMenuItem(value: 'es', child: Text('Español')),
+                      DropdownMenuItem(value: 'ko', child: Text('한국어')),
+                    ],
+                    onChanged: (v) => setState(() => _preferredLanguage = v ?? 'en'),
                   ),
                   const SizedBox(height: 24),
                 ],

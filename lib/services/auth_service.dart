@@ -59,6 +59,7 @@ class AuthService {
     required String email,
     required String verificationToken,
     List<String> storeIds = const [],
+    String preferredLanguage = 'en',
   }) async {
     final companyCode = await TokenStorage.getCompanyCode()
         ?? (AppConstants.defaultCompanyCode.isNotEmpty ? AppConstants.defaultCompanyCode : null);
@@ -70,6 +71,7 @@ class AuthService {
       'company_code': companyCode,
       'verification_token': verificationToken,
       'store_ids': storeIds,
+      'preferred_language': preferredLanguage,
     });
     await TokenStorage.setTokens(
       response.data['access_token'],

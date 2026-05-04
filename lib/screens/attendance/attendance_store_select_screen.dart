@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../config/theme.dart';
 import '../../providers/attendance_device_provider.dart';
 import '../../services/attendance_device_service.dart';
+import '../../widgets/app_modal.dart';
 
 /// dart-define fallback — 서버 매장 목록 조회 실패 시 사용
 const _presetStoreIdsRaw = String.fromEnvironment(
@@ -112,8 +113,11 @@ class _AttendanceStoreSelectScreenState
     setState(() => _submitting = false);
     if (!ok) {
       final error = ref.read(attendanceDeviceProvider).error ?? 'Failed to assign store';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error), backgroundColor: AppColors.danger),
+      await AppModal.show(
+        context,
+        title: 'Couldn\'t assign store',
+        message: error,
+        type: ModalType.error,
       );
     }
   }
