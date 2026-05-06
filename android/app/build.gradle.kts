@@ -33,12 +33,21 @@ android {
         create("staff") {
             dimension = "mode"
             applicationId = "com.tigersplus.taskmanager"
+<<<<<<< HEAD
             manifestPlaceholders["appBaseName"] = "HTM"
+=======
+            manifestPlaceholders["appBaseName"] = "TaskManager"
+            // staff 는 가로/세로 자유 (휴대폰에서 주로 세로)
+            manifestPlaceholders["screenOrientation"] = "unspecified"
+>>>>>>> feat/native-attendance-htma
         }
         create("attendance") {
             dimension = "mode"
             applicationId = "com.tigersplus.taskmanager.attendance"
-            manifestPlaceholders["appBaseName"] = "TMA"
+            manifestPlaceholders["appBaseName"] = "HTMA"
+            // 매장 태블릿 가로 강제 (Samsung 등 일부 기기는 sensorLandscape 무시 가능 —
+            // MainActivity onCreate 에서 추가 강제)
+            manifestPlaceholders["screenOrientation"] = "sensorLandscape"
         }
         create("dev") {
             dimension = "env"
