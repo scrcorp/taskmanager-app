@@ -17,12 +17,14 @@ import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/auth/reset_password_screen.dart';
 import '../screens/my/change_password_screen.dart';
+import '../screens/my/alert_settings_screen.dart';
+import '../screens/my/settings_screen.dart';
 import '../screens/clock/clock_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/my/my_page_screen.dart';
 import '../screens/notices/notice_detail_screen.dart';
 import '../screens/notices/notice_list_screen.dart';
-import '../screens/notifications/notification_screen.dart';
+import '../screens/alerts/alert_screen.dart';
 import '../screens/ojt/ojt_screen.dart';
 import '../screens/schedule/schedule_screen.dart';
 import '../screens/daily_report/daily_report_detail_screen.dart';
@@ -122,7 +124,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/daily-reports/:id', builder: (_, state) => DailyReportDetailScreen(id: state.pathParameters['id']!)),
       GoRoute(path: '/my', builder: (_, state) => MyPageScreen(returnTo: state.extra as String?)),
       GoRoute(path: '/my/change-password', builder: (_, __) => const ChangePasswordScreen()),
-      GoRoute(path: '/alerts', builder: (_, __) => const NotificationScreen()),
+      GoRoute(path: '/my/alert-settings', builder: (_, __) => const AlertSettingsScreen()),
+      GoRoute(path: '/my/settings', builder: (_, __) => const SettingsScreen()),
+      GoRoute(path: '/alerts', builder: (_, __) => const AlertScreen()),
 
       // ── Inventory screens (no bottom nav) ──
       GoRoute(path: '/inventory', builder: (_, __) => const StoreSelectScreen()),

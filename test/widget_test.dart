@@ -1,6 +1,6 @@
 /// 기본 위젯 테스트 — Flutter 프로젝트 생성 시 자동 생성된 파일
 ///
-/// 현재 MyApp 참조가 유효하지 않아 실행되지 않음 (앱 엔트리가 TaskManagerApp).
+/// 현재 MyApp 참조가 유효하지 않아 실행되지 않음 (앱 엔트리가 HtmApp).
 /// TODO: 실제 앱에 맞는 테스트로 교체 필요.
 
 import 'package:flutter/material.dart';

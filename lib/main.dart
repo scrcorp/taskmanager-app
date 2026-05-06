@@ -1,4 +1,4 @@
-/// TaskManager 앱의 진입점 (Entry Point)
+/// HTM 앱의 진입점 (Entry Point)
 ///
 /// Flutter + Riverpod 기반의 직원용 모바일 앱.
 /// ProviderScope로 전역 상태관리를 초기화하고,
@@ -13,10 +13,10 @@ import 'utils/web_title.dart';
 // 환경별 브라우저 탭 타이틀
 const _appEnv = String.fromEnvironment('APP_ENV');
 const appTitle = _appEnv == 'production'
-    ? 'TaskManager'
+    ? 'HTM'
     : _appEnv == 'staging'
-        ? '[STG] TaskManager'
-        : '[DEV] TaskManager';
+        ? '[STG] HTM'
+        : '[DEV] HTM';
 
 void main() {
   setWebTitle(appTitle);
@@ -24,21 +24,21 @@ void main() {
   // Flutter 엔진 바인딩 초기화 (runApp 전에 플러그인 사용 시 필요)
   WidgetsFlutterBinding.ensureInitialized();
   // Riverpod ProviderScope로 전체 앱을 감싸서 상태관리 활성화
-  runApp(const ProviderScope(child: TaskManagerApp()));
+  runApp(const ProviderScope(child: HtmApp()));
 }
 
 /// 앱 최상위 위젯
 ///
 /// ConsumerStatefulWidget을 사용하여 Riverpod 상태를 구독하고,
 /// GoRouter 기반 라우팅과 앱 테마를 설정한다.
-class TaskManagerApp extends ConsumerStatefulWidget {
-  const TaskManagerApp({super.key});
+class HtmApp extends ConsumerStatefulWidget {
+  const HtmApp({super.key});
 
   @override
-  ConsumerState<TaskManagerApp> createState() => _TaskManagerAppState();
+  ConsumerState<HtmApp> createState() => _HtmAppState();
 }
 
-class _TaskManagerAppState extends ConsumerState<TaskManagerApp> {
+class _HtmAppState extends ConsumerState<HtmApp> {
   @override
   void initState() {
     super.initState();

@@ -70,7 +70,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               Text.rich(
                 TextSpan(children: [
                   TextSpan(text: '● ', style: TextStyle(color: AppColors.accent, fontSize: 32, fontWeight: FontWeight.w800)),
-                  TextSpan(text: 'TaskManager', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: AppColors.text)),
+                  TextSpan(text: 'HTM', style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: AppColors.text)),
                 ]),
                 textAlign: TextAlign.center,
               ),
