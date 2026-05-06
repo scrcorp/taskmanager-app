@@ -10,7 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/notification_provider.dart';
+import '../../providers/alert_provider.dart';
 import '../../services/clockin_pin_service.dart';
 import '../../widgets/app_modal.dart';
 
@@ -309,7 +309,7 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(authProvider).user;
-    final unread = ref.watch(notificationProvider).unreadCount;
+    final unread = ref.watch(alertProvider).unreadCount;
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
@@ -471,22 +471,8 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                 ),
                 const Divider(height: 1),
                 _MenuItem(
-                  label: 'Edit Username',
-                  onTap: _showEditUsernameDialog,
-                ),
-                const Divider(height: 1),
-                _MenuItem(
-                  label: 'Preferred Language',
-                  trailing: Text(
-                    _languageLabel(ref.watch(authProvider).user?.preferredLanguage),
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                  ),
-                  onTap: _showLanguagePicker,
-                ),
-                const Divider(height: 1),
-                _MenuItem(
-                  label: 'Change Password',
-                  onTap: () => context.push('/my/change-password'),
+                  label: 'Settings',
+                  onTap: () => context.push('/my/settings'),
                 ),
                 const Divider(height: 1),
                 _MenuItem(

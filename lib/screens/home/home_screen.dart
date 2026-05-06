@@ -16,9 +16,9 @@ import '../../models/task.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/my_schedule_provider.dart';
 import '../../providers/task_provider.dart';
-import '../../providers/announcement_provider.dart';
+import '../../providers/notice_provider.dart';
 import '../../providers/voice_provider.dart';
-import '../../models/announcement.dart';
+import '../../models/notice.dart';
 import '../../widgets/app_modal.dart';
 import 'widgets/schedule_summary_card.dart';
 
@@ -72,7 +72,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // No date param → server determines "today" per store timezone
       ref.read(myScheduleProvider.notifier).loadSchedules();
       ref.read(taskProvider.notifier).loadTasks();
-      ref.read(announcementProvider.notifier).loadAnnouncements();
+      ref.read(noticeProvider.notifier).loadNotices();
     });
   }
 
@@ -114,7 +114,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final user = ref.watch(authProvider).user;
     final scheduleState = ref.watch(myScheduleProvider);
     final tasks = ref.watch(taskProvider);
-    final announcements = ref.watch(announcementProvider);
+    final notices = ref.watch(noticeProvider);
     final today = DateTime.now();
 
     final firstName = user?.firstName ?? 'Staff';
@@ -128,7 +128,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }).length;
     final totalTasks = tasks.tasks.length;
     final completedTasks = tasks.tasks.where((t) => t.status == 'completed').length;
-    final noticeCount = announcements.announcements.length;
+    final noticeCount = notices.notices.length;
 
     final mustChangePw = (user?.mustChangePassword ?? false) && !_passwordBannerDismissed;
 
@@ -138,7 +138,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         await Future.wait([
           ref.read(myScheduleProvider.notifier).loadSchedules(),
           ref.read(taskProvider.notifier).loadTasks(),
-          ref.read(announcementProvider.notifier).loadAnnouncements(),
+          ref.read(noticeProvider.notifier).loadNotices(),
         ]);
       },
       child: ListView(
@@ -479,12 +479,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           const SizedBox(height: 32),
 
           // ── Important notice banner ──
-          if (announcements.announcements.isNotEmpty)
+          if (notices.notices.isNotEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: _ImportantNoticeBanner(
-                announcement: announcements.announcements.first,
-                onTap: () => context.push('/notices/${announcements.announcements.first.id}'),
+                notice: notices.notices.first,
+                onTap: () => context.push('/notices/${notices.notices.first.id}'),
               ),
             ),
           const SizedBox(height: 32),
@@ -633,11 +633,11 @@ class _QuickActionCard extends StatelessWidget {
 // ─── Important notice banner ────────────────────────────────────────────────
 
 class _ImportantNoticeBanner extends StatelessWidget {
-  final Announcement announcement;
+  final Notice notice;
   final VoidCallback onTap;
 
   const _ImportantNoticeBanner({
-    required this.announcement,
+    required this.notice,
     required this.onTap,
   });
 
@@ -689,9 +689,9 @@ class _ImportantNoticeBanner extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                if (announcement.createdAt != null)
+                if (notice.createdAt != null)
                   Text(
-                    DateFormat('MM/dd').format(announcement.createdAt!),
+                    DateFormat('MM/dd').format(notice.createdAt!),
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.white.withValues(alpha: 0.5),
@@ -701,7 +701,7 @@ class _ImportantNoticeBanner extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(
-              announcement.title,
+              notice.title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
@@ -714,7 +714,7 @@ class _ImportantNoticeBanner extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              announcement.content,
+              notice.content,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(

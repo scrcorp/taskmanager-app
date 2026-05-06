@@ -7,8 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
-import '../../models/announcement.dart';
-import '../../providers/announcement_provider.dart';
+import '../../models/notice.dart';
+import '../../providers/notice_provider.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/app_header.dart';
 import '../../widgets/app_modal.dart';
@@ -31,7 +31,7 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
   void initState() {
     super.initState();
     Future.microtask(() =>
-        ref.read(announcementProvider.notifier).loadAnnouncement(widget.id));
+        ref.read(noticeProvider.notifier).loadNotice(widget.id));
   }
 
   @override
@@ -46,12 +46,12 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
     if (text.isEmpty) return;
     _commentController.clear();
     _commentFocus.unfocus();
-    ref.read(announcementProvider.notifier).addComment(widget.id, text: text);
+    ref.read(noticeProvider.notifier).addComment(widget.id, text: text);
   }
 
   Future<void> _toggleAcknowledge() async {
-    final current = ref.read(announcementProvider).selected;
-    ref.read(announcementProvider.notifier).toggleAcknowledge(widget.id);
+    final current = ref.read(noticeProvider).selected;
+    ref.read(noticeProvider.notifier).toggleAcknowledge(widget.id);
     if (current != null && !current.isAcknowledged) {
       await AppModal.show(
         context,
@@ -64,17 +64,17 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(announcementProvider);
-    final announcement = state.selected;
+    final state = ref.watch(noticeProvider);
+    final notice = state.selected;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: Column(
         children: [
           AppHeader(title: 'Notice', isDetail: true, onBack: () => context.pop()),
-          if (state.isLoading && announcement == null)
+          if (state.isLoading && notice == null)
             const Expanded(child: Center(child: CircularProgressIndicator()))
-          else if (announcement == null)
+          else if (notice == null)
             Expanded(
               child: Center(
                 child: Text(state.error ?? 'Notice not found',
@@ -88,19 +88,19 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ── Header: title + meta ──
-                    _buildHeader(announcement),
+                    _buildHeader(notice),
                     const SizedBox(height: 8),
                     // ── Content body ──
-                    _buildBody(announcement),
+                    _buildBody(notice),
                     const SizedBox(height: 8),
                     // ── Acknowledgment section ──
                     _AcknowledgmentSection(
-                      announcement: announcement,
+                      notice: notice,
                       onToggle: _toggleAcknowledge,
                     ),
                     const SizedBox(height: 8),
                     // ── Comments section ──
-                    _buildCommentsSection(announcement),
+                    _buildCommentsSection(notice),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -114,7 +114,7 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
     );
   }
 
-  Widget _buildHeader(Announcement announcement) {
+  Widget _buildHeader(Notice notice) {
     return Container(
       width: double.infinity,
       color: AppColors.white,
@@ -122,7 +122,7 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(announcement.title,
+          Text(notice.title,
               style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
@@ -136,44 +136,44 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: announcement.store != null
+                  color: notice.store != null
                       ? AppColors.accentBg
                       : AppColors.bg,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: announcement.store != null
+                    color: notice.store != null
                         ? AppColors.accent.withValues(alpha: 0.3)
                         : AppColors.border,
                   ),
                 ),
-                child: Text(announcement.scope,
+                child: Text(notice.scope,
                     style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        color: announcement.store != null
+                        color: notice.store != null
                             ? AppColors.accent
                             : AppColors.textSecondary)),
               ),
-              if (announcement.createdByName != null)
+              if (notice.createdByName != null)
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(Icons.person_outline,
                         size: 14, color: AppColors.textMuted),
                     const SizedBox(width: 4),
-                    Text(announcement.createdByName ?? 'Unknown',
+                    Text(notice.createdByName ?? 'Unknown',
                         style: const TextStyle(
                             fontSize: 13, color: AppColors.textSecondary)),
                   ],
                 ),
-              if (announcement.createdAt != null)
+              if (notice.createdAt != null)
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(Icons.calendar_today,
                         size: 13, color: AppColors.textMuted),
                     const SizedBox(width: 4),
-                    Text(formatDate(announcement.createdAt!),
+                    Text(formatDate(notice.createdAt!),
                         style: const TextStyle(
                             fontSize: 13, color: AppColors.textSecondary)),
                   ],
@@ -185,18 +185,18 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
     );
   }
 
-  Widget _buildBody(Announcement announcement) {
+  Widget _buildBody(Notice notice) {
     return Container(
       width: double.infinity,
       color: AppColors.white,
       padding: const EdgeInsets.all(20),
-      child: Text(announcement.content,
+      child: Text(notice.content,
           style: const TextStyle(
               fontSize: 14, height: 1.6, color: AppColors.text)),
     );
   }
 
-  Widget _buildCommentsSection(Announcement announcement) {
+  Widget _buildCommentsSection(Notice notice) {
     return Container(
       width: double.infinity,
       color: AppColors.white,
@@ -205,14 +205,14 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Comments (${announcement.comments.length})',
+            'Comments (${notice.comments.length})',
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppColors.text,
             ),
           ),
-          if (announcement.comments.isEmpty) ...[
+          if (notice.comments.isEmpty) ...[
             const SizedBox(height: 20),
             Center(
               child: Column(
@@ -236,7 +236,7 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
             const SizedBox(height: 12),
           ] else ...[
             const SizedBox(height: 16),
-            ...announcement.comments
+            ...notice.comments
                 .map((comment) => _NoticeCommentTile(comment: comment)),
           ],
         ],
@@ -305,18 +305,18 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
 // ─── Acknowledgment Section ─────────────────────────────────────────────────
 
 class _AcknowledgmentSection extends StatelessWidget {
-  final Announcement announcement;
+  final Notice notice;
   final VoidCallback onToggle;
 
   const _AcknowledgmentSection({
-    required this.announcement,
+    required this.notice,
     required this.onToggle,
   });
 
   @override
   Widget build(BuildContext context) {
-    final acks = announcement.acknowledgments;
-    final isAcked = announcement.isAcknowledged;
+    final acks = notice.acknowledgments;
+    final isAcked = notice.isAcknowledged;
 
     return Container(
       width: double.infinity,

@@ -1,11 +1,11 @@
-/// 공지사항(Announcement) 데이터 모델
+/// 공지사항(Notice) 데이터 모델
 ///
 /// 관리자가 작성한 공지사항과 관련 댓글/확인(acknowledge) 정보를 포함.
 /// store가 null이면 전체 공지, store가 있으면 해당 매장 한정 공지.
 import 'store.dart';
 
 /// 공지사항 본체
-class Announcement {
+class Notice {
   final String id;
   /// 공지 대상 매장 (null이면 전체 조직 대상)
   final Store? store;
@@ -20,7 +20,7 @@ class Announcement {
   /// 현재 사용자의 확인 여부
   final bool isAcknowledged;
 
-  const Announcement({
+  const Notice({
     required this.id,
     this.store,
     required this.title,
@@ -36,12 +36,12 @@ class Announcement {
   String get scope => store?.name ?? 'All';
 
   /// 댓글/확인 상태만 변경한 새 인스턴스 생성
-  Announcement copyWith({
+  Notice copyWith({
     List<NoticeComment>? comments,
     List<NoticeAcknowledgment>? acknowledgments,
     bool? isAcknowledged,
   }) {
-    return Announcement(
+    return Notice(
       id: id,
       store: store,
       title: title,
@@ -54,9 +54,9 @@ class Announcement {
     );
   }
 
-  /// 서버 JSON → Announcement 객체 변환
-  factory Announcement.fromJson(Map<String, dynamic> json) {
-    return Announcement(
+  /// 서버 JSON → Notice 객체 변환
+  factory Notice.fromJson(Map<String, dynamic> json) {
+    return Notice(
       id: json['id'],
       store: json['store'] != null ? Store.fromJson(json['store']) : null,
       title: json['title'],
