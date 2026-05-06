@@ -1,7 +1,15 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     id("com.android.application")
     id("kotlin-android")
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
 }
 
 android {
@@ -14,9 +22,8 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
-    }
+    // kotlinOptions block is removed in Kotlin Gradle Plugin 2.2.x
+    // Use the new compilerOptions DSL via the kotlin extension.
 
     defaultConfig {
         minSdk = flutter.minSdkVersion
@@ -33,13 +40,9 @@ android {
         create("staff") {
             dimension = "mode"
             applicationId = "com.tigersplus.taskmanager"
-<<<<<<< HEAD
             manifestPlaceholders["appBaseName"] = "HTM"
-=======
-            manifestPlaceholders["appBaseName"] = "TaskManager"
             // staff 는 가로/세로 자유 (휴대폰에서 주로 세로)
             manifestPlaceholders["screenOrientation"] = "unspecified"
->>>>>>> feat/native-attendance-htma
         }
         create("attendance") {
             dimension = "mode"
