@@ -254,7 +254,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                     Text('Verify Your Email', style: Theme.of(context).textTheme.headlineLarge),
                     const SizedBox(height: 8),
                     Text(
-                      'To continue using TaskManager,\nplease verify your email address.',
+                      'To continue using HTM,\nplease verify your email address.',
                       style: Theme.of(context).textTheme.bodyMedium,
                       textAlign: TextAlign.center,
                     ),

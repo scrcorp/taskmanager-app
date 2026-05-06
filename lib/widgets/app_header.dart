@@ -47,7 +47,7 @@ class _AppHeaderState extends ConsumerState<AppHeader> {
       case '/notices': return 'Notices';
       case '/clock': return 'Clock In Out';
       case '/schedule': return 'Schedule';
-      default: return widget.title ?? 'TaskManager';
+      default: return widget.title ?? 'HTM';
     }
   }
 

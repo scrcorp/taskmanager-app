@@ -1,4 +1,4 @@
-/// Attendance Kiosk 엔트리 포인트 (TMA — TaskManager Attendance)
+/// Attendance Kiosk 엔트리 포인트 (TMA — HTM Attendance)
 ///
 /// 매장 공용 태블릿 단말 전용 빌드. JWT 흐름을 거치지 않고
 /// 진입 즉시 AttendanceShellScreen 으로 부팅한다.

@@ -33,7 +33,7 @@ android {
         create("staff") {
             dimension = "mode"
             applicationId = "com.tigersplus.taskmanager"
-            manifestPlaceholders["appBaseName"] = "TaskManager"
+            manifestPlaceholders["appBaseName"] = "HTM"
         }
         create("attendance") {
             dimension = "mode"

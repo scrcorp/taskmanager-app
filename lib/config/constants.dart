@@ -4,7 +4,7 @@
 /// 빌드 시 --dart-define=API_BASE_URL=... 으로 오버라이드 가능.
 class AppConstants {
   /// 앱 이름 (타이틀바 등에 사용)
-  static const String appName = 'TaskManager';
+  static const String appName = 'HTM';
 
   /// 백엔드 API 기본 URL
   ///

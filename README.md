@@ -1,4 +1,4 @@
-# TaskManager App (Flutter)
+# HTM App (Flutter)
 
 ## Environment
 
