@@ -1,7 +1,7 @@
 name: app
 description: HTM Staff App
 publish_to: 'none'
-version: 1.0.5+20
+version: 1.0.5+21
 
 environment:
   sdk: ^3.10.8

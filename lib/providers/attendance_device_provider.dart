@@ -243,6 +243,11 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
     } catch (_) {
       // 서버 호출 실패해도 로컬 토큰은 반드시 삭제
     }
+    // 키오스크 잠금이 걸려있으면 같이 해제 — unregister 후 잠금 잔존 방지
+    await KioskIntent.setEnabled(false);
+    if (await KioskLock.isLocked()) {
+      await KioskLock.stop();
+    }
     await AttendanceDeviceStorage.clearToken();
     await AttendanceDeviceStorage.clearAccessCode();
     state = const AttendanceDeviceState(status: AttendanceDeviceStatus.needsRegister);
