@@ -1,33 +1,33 @@
-/// 공지사항(Announcement) 상태 관리 Provider
+/// 공지사항(Notice) 상태 관리 Provider
 ///
 /// 공지 목록 조회, 상세 조회, 댓글 작성, 확인(acknowledge) 토글을 관리.
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/announcement.dart';
-import '../services/announcement_service.dart';
+import '../models/notice.dart';
+import '../services/notice_service.dart';
 
 /// 공지사항 상태 데이터
-class AnnouncementState {
-  final List<Announcement> announcements;
+class NoticeState {
+  final List<Notice> notices;
   /// 현재 상세 보기 중인 공지
-  final Announcement? selected;
+  final Notice? selected;
   final bool isLoading;
   final String? error;
 
-  const AnnouncementState({
-    this.announcements = const [],
+  const NoticeState({
+    this.notices = const [],
     this.selected,
     this.isLoading = false,
     this.error,
   });
 
-  AnnouncementState copyWith({
-    List<Announcement>? announcements,
-    Announcement? selected,
+  NoticeState copyWith({
+    List<Notice>? notices,
+    Notice? selected,
     bool? isLoading,
     String? error,
   }) {
-    return AnnouncementState(
-      announcements: announcements ?? this.announcements,
+    return NoticeState(
+      notices: notices ?? this.notices,
       selected: selected ?? this.selected,
       isLoading: isLoading ?? this.isLoading,
       error: error,
@@ -36,45 +36,45 @@ class AnnouncementState {
 }
 
 /// 공지사항 Provider (앱 전역에서 접근)
-final announcementProvider =
-    StateNotifierProvider<AnnouncementNotifier, AnnouncementState>((ref) {
-  return AnnouncementNotifier(ref.read(announcementServiceProvider));
+final noticeProvider =
+    StateNotifierProvider<NoticeNotifier, NoticeState>((ref) {
+  return NoticeNotifier(ref.read(noticeServiceProvider));
 });
 
 /// 공지사항 상태 관리 Notifier
-class AnnouncementNotifier extends StateNotifier<AnnouncementState> {
-  final AnnouncementService _service;
+class NoticeNotifier extends StateNotifier<NoticeState> {
+  final NoticeService _service;
 
-  AnnouncementNotifier(this._service) : super(const AnnouncementState());
+  NoticeNotifier(this._service) : super(const NoticeState());
 
   /// 공지 목록 로드 (내게 해당하는 공지만)
-  Future<void> loadAnnouncements() async {
+  Future<void> loadNotices() async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final announcements = await _service.getAnnouncements();
-      state = state.copyWith(announcements: announcements, isLoading: false);
+      final notices = await _service.getNotices();
+      state = state.copyWith(notices: notices, isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
   /// 공지 상세 로드 (댓글/확인 목록 포함)
-  Future<void> loadAnnouncement(String id) async {
+  Future<void> loadNotice(String id) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final announcement = await _service.getAnnouncement(id);
-      state = state.copyWith(selected: announcement, isLoading: false);
+      final notice = await _service.getNotice(id);
+      state = state.copyWith(selected: notice, isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
   /// 공지에 댓글 추가 (서버 응답으로 새 댓글을 로컬 상태에 추가)
-  Future<void> addComment(String announcementId, {required String text}) async {
+  Future<void> addComment(String noticeId, {required String text}) async {
     try {
-      final comment = await _service.addComment(announcementId, text);
+      final comment = await _service.addComment(noticeId, text);
       final current = state.selected;
-      if (current != null && current.id == announcementId) {
+      if (current != null && current.id == noticeId) {
         state = state.copyWith(
           selected: current.copyWith(
             comments: [...current.comments, comment],
@@ -87,11 +87,11 @@ class AnnouncementNotifier extends StateNotifier<AnnouncementState> {
   }
 
   /// 공지 확인(읽음) 상태 토글
-  Future<void> toggleAcknowledge(String announcementId) async {
+  Future<void> toggleAcknowledge(String noticeId) async {
     try {
-      await _service.toggleAcknowledge(announcementId);
+      await _service.toggleAcknowledge(noticeId);
       final current = state.selected;
-      if (current != null && current.id == announcementId) {
+      if (current != null && current.id == noticeId) {
         state = state.copyWith(
           selected: current.copyWith(
             isAcknowledged: !current.isAcknowledged,

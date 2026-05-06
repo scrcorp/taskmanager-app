@@ -459,7 +459,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                     child: const Text(
                       'Terms of Service\n\n'
-                      'These terms govern your use of the TaskManager service. '
+                      'These terms govern your use of the HTM service. '
                       'Please read them carefully before using the service.\n\n'
                       'Article 1 (Purpose)\n'
                       'These terms define the rights, obligations, and responsibilities '

@@ -1,49 +1,61 @@
-/// 알림(Notification) 목록 화면
+/// 알림(Alert) 목록 화면
 ///
 /// 미읽음/읽음 알림을 카드 형태로 표시.
 /// 미읽음 알림은 파란 점 + 강조 배경으로 구분.
 /// 상단에 "Mark all read" 버튼으로 일괄 읽음 처리.
 /// 탭 시 referenceType에 따라 해당 상세 화면으로 네비게이션
-/// (work_assignment → 근무배정, additional_task → 업무, announcement → 공지).
+/// (work_assignment → 근무배정, additional_task → 업무, notice → 공지).
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../config/theme.dart';
-import '../../providers/notification_provider.dart';
+import '../../providers/alert_provider.dart';
 import '../../widgets/app_header.dart';
 
 /// 알림 목록 화면 위젯
-class NotificationScreen extends ConsumerStatefulWidget {
-  const NotificationScreen({super.key});
+class AlertScreen extends ConsumerStatefulWidget {
+  const AlertScreen({super.key});
 
   @override
-  ConsumerState<NotificationScreen> createState() => _NotificationScreenState();
+  ConsumerState<AlertScreen> createState() => _AlertScreenState();
 }
 
-class _NotificationScreenState extends ConsumerState<NotificationScreen> {
+class _AlertScreenState extends ConsumerState<AlertScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(() => ref.read(notificationProvider.notifier).loadNotifications());
+    Future.microtask(() => ref.read(alertProvider.notifier).loadAlerts());
   }
 
   void _navigateToReference(String? type, String? id) {
     if (type == null || id == null) return;
+    // 서버가 보내는 reference_type 매핑.
+    // cl_instances / cl_instance_items / checklist_review 모두 체크리스트 화면으로.
     switch (type) {
       case 'schedule':
       case 'work_assignment': // backward compat
         context.push('/work/$id');
       case 'additional_task':
         context.push('/tasks/$id');
-      case 'announcement':
+      case 'notice':
         context.push('/notices/$id');
+      case 'cl_instances':
+      case 'cl_instance_items':
+      case 'checklist_review':
+        context.push('/work/$id');
+      case 'daily_report':
+        context.push('/daily-reports/$id');
+      case 'attendance':
+        // attendance correction 알림은 보통 GM/SV 대상.
+        // app 내 attendance 상세 화면이 아직 없어 clock 화면으로 fallback.
+        context.push('/clock');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(notificationProvider);
+    final state = ref.watch(alertProvider);
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -62,7 +74,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                   Text('${state.unreadCount} unread',
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
                   GestureDetector(
-                    onTap: () => ref.read(notificationProvider.notifier).markAllAsRead(),
+                    onTap: () => ref.read(alertProvider.notifier).markAllAsRead(),
                     child: const Text('Mark all read',
                         style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.accent)),
                   ),
@@ -76,14 +88,14 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
     );
   }
 
-  Widget _buildBody(NotificationState state) {
-    if (state.isLoading && state.notifications.isEmpty) {
+  Widget _buildBody(AlertState state) {
+    if (state.isLoading && state.alerts.isEmpty) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.accent),
       );
     }
 
-    if (state.error != null && state.notifications.isEmpty) {
+    if (state.error != null && state.alerts.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -94,14 +106,14 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                   size: 48, color: AppColors.textMuted),
               const SizedBox(height: 12),
               const Text(
-                'Failed to load notifications',
+                'Failed to load alerts',
                 style: TextStyle(
                     fontSize: 15, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () =>
-                    ref.read(notificationProvider.notifier).loadNotifications(),
+                    ref.read(alertProvider.notifier).loadAlerts(),
                 child: const Text('Retry'),
               ),
             ],
@@ -110,7 +122,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
       );
     }
 
-    if (state.notifications.isEmpty) {
+    if (state.alerts.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(20),
@@ -121,7 +133,7 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
                   size: 48, color: AppColors.textMuted),
               SizedBox(height: 12),
               Text(
-                'No notifications yet',
+                'No alerts yet',
                 style: TextStyle(fontSize: 15, color: AppColors.textSecondary),
               ),
             ],
@@ -133,17 +145,17 @@ class _NotificationScreenState extends ConsumerState<NotificationScreen> {
     return RefreshIndicator(
       color: AppColors.accent,
       onRefresh: () =>
-          ref.read(notificationProvider.notifier).loadNotifications(),
+          ref.read(alertProvider.notifier).loadAlerts(),
       child: ListView.separated(
         padding: const EdgeInsets.all(16),
-        itemCount: state.notifications.length,
+        itemCount: state.alerts.length,
         separatorBuilder: (_, __) => const SizedBox(height: 8),
         itemBuilder: (context, index) {
-          final n = state.notifications[index];
+          final n = state.alerts[index];
           return InkWell(
             onTap: () {
               if (!n.isRead) {
-                ref.read(notificationProvider.notifier).markAsRead(n.id);
+                ref.read(alertProvider.notifier).markAsRead(n.id);
               }
               _navigateToReference(n.referenceType, n.referenceId);
             },

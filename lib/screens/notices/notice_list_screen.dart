@@ -8,8 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../config/theme.dart';
-import '../../models/announcement.dart';
-import '../../providers/announcement_provider.dart';
+import '../../models/notice.dart';
+import '../../providers/notice_provider.dart';
 import '../../widgets/app_header.dart';
 
 /// 공지사항 목록 화면 위젯
@@ -24,12 +24,12 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
   void initState() {
     super.initState();
     Future.microtask(
-        () => ref.read(announcementProvider.notifier).loadAnnouncements());
+        () => ref.read(noticeProvider.notifier).loadNotices());
   }
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(announcementProvider);
+    final state = ref.watch(noticeProvider);
 
     return Scaffold(
       backgroundColor: AppColors.bg,
@@ -39,19 +39,19 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
           Expanded(
             child: state.isLoading
                 ? const Center(child: CircularProgressIndicator())
-                : state.announcements.isEmpty
+                : state.notices.isEmpty
                     ? const Center(
                         child: Text('No notices',
                             style: TextStyle(color: AppColors.textMuted)))
                     : RefreshIndicator(
                         onRefresh: () =>
-                            ref.read(announcementProvider.notifier).loadAnnouncements(),
+                            ref.read(noticeProvider.notifier).loadNotices(),
                         child: ListView.builder(
                           padding:
                               const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                          itemCount: state.announcements.length,
+                          itemCount: state.notices.length,
                           itemBuilder: (_, i) =>
-                              _NoticeCard(announcement: state.announcements[i]),
+                              _NoticeCard(notice: state.notices[i]),
                         ),
                       ),
           ),
@@ -62,15 +62,15 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
 }
 
 class _NoticeCard extends StatelessWidget {
-  final Announcement announcement;
-  const _NoticeCard({required this.announcement});
+  final Notice notice;
+  const _NoticeCard({required this.notice});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: GestureDetector(
-        onTap: () => context.push('/notices/${announcement.id}'),
+        onTap: () => context.push('/notices/${notice.id}'),
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -82,7 +82,7 @@ class _NoticeCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Title
-              Text(announcement.title,
+              Text(notice.title,
                   style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
@@ -97,27 +97,27 @@ class _NoticeCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: announcement.store != null
+                      color: notice.store != null
                           ? AppColors.accentBg
                           : AppColors.bg,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(announcement.scope,
+                    child: Text(notice.scope,
                         style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
-                            color: announcement.store != null
+                            color: notice.store != null
                                 ? AppColors.accent
                                 : AppColors.textSecondary)),
                   ),
                   const SizedBox(width: 8),
 
                   // Author
-                  if (announcement.createdByName != null) ...[
+                  if (notice.createdByName != null) ...[
                     Icon(Icons.person_outline,
                         size: 13, color: AppColors.textMuted),
                     const SizedBox(width: 3),
-                    Text(announcement.createdByName ?? 'Unknown',
+                    Text(notice.createdByName ?? 'Unknown',
                         style: const TextStyle(
                             fontSize: 12, color: AppColors.textMuted)),
                     const SizedBox(width: 8),
@@ -126,9 +126,9 @@ class _NoticeCard extends StatelessWidget {
                   const Spacer(),
 
                   // Date
-                  if (announcement.createdAt != null)
+                  if (notice.createdAt != null)
                     Text(
-                        DateFormat('MMM d, yyyy').format(announcement.createdAt!),
+                        DateFormat('MMM d, yyyy').format(notice.createdAt!),
                         style: const TextStyle(
                             fontSize: 12, color: AppColors.textMuted)),
                 ],

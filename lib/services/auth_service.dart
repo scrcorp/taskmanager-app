@@ -174,6 +174,24 @@ class AuthService {
     return response.data;
   }
 
+  /// 내 알림 선호 + 카테고리 메타 조회.
+  ///
+  /// 응답: { categories: [...], preferences: { code: { in_app, email } } }
+  Future<Map<String, dynamic>> getAlertPreferences() async {
+    final response = await _dio.get('/app/profile/alert-preferences');
+    return response.data;
+  }
+
+  /// 알림 선호 부분 업데이트 — 클라이언트가 변경한 카테고리/채널만 보냄.
+  Future<Map<String, dynamic>> updateAlertPreferences(
+      Map<String, dynamic> preferences) async {
+    final response = await _dio.put(
+      '/app/profile/alert-preferences',
+      data: {'preferences': preferences},
+    );
+    return response.data;
+  }
+
   /// 내 정보 조회 — JWT 토큰으로 현재 사용자 프로필 반환
   Future<Map<String, dynamic>> getMe() async {
     final response = await _dio.get('/auth/me');

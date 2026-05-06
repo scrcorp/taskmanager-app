@@ -12,7 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../config/theme.dart';
-import '../providers/notification_provider.dart';
+import '../providers/alert_provider.dart';
 
 /// 앱 공통 헤더 — SafeArea + 52px 높이의 상단 바
 class AppHeader extends ConsumerStatefulWidget {
@@ -33,7 +33,7 @@ class _AppHeaderState extends ConsumerState<AppHeader> {
     super.initState();
     // 미읽음 알림 수를 가볍게 조회 (배지 표시용)
     Future.microtask(() {
-      ref.read(notificationProvider.notifier).getUnreadCount();
+      ref.read(alertProvider.notifier).getUnreadCount();
     });
   }
 
@@ -47,13 +47,13 @@ class _AppHeaderState extends ConsumerState<AppHeader> {
       case '/notices': return 'Notices';
       case '/clock': return 'Clock In Out';
       case '/schedule': return 'Schedule';
-      default: return widget.title ?? 'TaskManager';
+      default: return widget.title ?? 'HTM';
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final unreadCount = ref.watch(notificationProvider).unreadCount;
+    final unreadCount = ref.watch(alertProvider).unreadCount;
 
     return SafeArea(
       bottom: false,
