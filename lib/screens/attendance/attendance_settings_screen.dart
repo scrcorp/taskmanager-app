@@ -246,14 +246,22 @@ class _AttendanceSettingsScreenState
                         message:
                             'This device will be removed from the organization. You will need a new access code to register again.',
                         type: ModalType.confirm,
-                        confirmText: 'Unregister',
+                        confirmText: 'Continue',
                       );
-                      if (confirmed == true) {
-                        await ref
-                            .read(attendanceDeviceProvider.notifier)
-                            .unregister();
-                        if (context.mounted) Navigator.of(context).pop();
-                      }
+                      if (confirmed != true) return;
+                      if (!context.mounted) return;
+                      // 매니저 access code 재확인 — 직원 임의 unregister 방지
+                      final ok = await _verifyAccessCode(
+                        context,
+                        dialogTitle: 'Confirm Unregister',
+                        confirmLabel: 'Unregister',
+                      );
+                      if (!ok) return;
+                      if (!context.mounted) return;
+                      await ref
+                          .read(attendanceDeviceProvider.notifier)
+                          .unregister();
+                      if (context.mounted) Navigator.of(context).pop();
                     },
                   ),
                 ],
