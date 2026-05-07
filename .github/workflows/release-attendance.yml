@@ -18,6 +18,9 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/attendance
     steps:
       - uses: actions/checkout@v5
 
@@ -57,10 +60,9 @@ jobs:
 
       - name: Build APK
         run: |
-          ARGS="--flavor ${{ steps.env.outputs.flavor }} -t lib/main_attendance.dart --release"
+          ARGS="--flavor ${{ steps.env.outputs.flavor }} --release"
           ARGS="$ARGS --dart-define=API_BASE_URL=${{ steps.env.outputs.api_base }}"
           ARGS="$ARGS --dart-define=APP_ENV=${{ steps.env.outputs.app_env }}"
-          ARGS="$ARGS --dart-define=DEFAULT_COMPANY_CODE=3Y1FII"
           if [ -n "${{ steps.env.outputs.app_flavor }}" ]; then
             ARGS="$ARGS --dart-define=APP_FLAVOR=${{ steps.env.outputs.app_flavor }}"
           fi
