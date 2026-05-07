@@ -1,0 +1,18 @@
+name: htm_core
+description: HTM 공유 패키지 — 테마, 키오스크 락, 공통 위젯 등 staff/attendance 양쪽에서 쓰는 코드
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.8
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_preferences: ^2.3.0
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

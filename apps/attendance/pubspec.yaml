@@ -1,0 +1,30 @@
+name: attendance
+description: HTM Attendance Kiosk App (tablet APK, device-token auth)
+publish_to: 'none'
+version: 1.0.6+22
+
+environment:
+  sdk: ^3.10.8
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.6.0
+  dio: ^5.7.0
+  shared_preferences: ^2.3.0
+  intl: ^0.19.0
+  package_info_plus: ^8.0.0
+  url_launcher: ^6.3.0
+  htm_core:
+    path: ../../packages/htm_core
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.1
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/
