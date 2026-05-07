@@ -7,12 +7,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../../providers/attendance_device_provider.dart';
 import '../../utils/attendance_device_storage.dart';
-import '../../utils/kiosk_intent.dart';
-import '../../utils/kiosk_lock.dart';
-import '../../widgets/app_modal.dart';
 import 'attendance_access_code_screen.dart';
 
 /// 기기 설정 화면

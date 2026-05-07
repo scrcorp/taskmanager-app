@@ -10,9 +10,8 @@ import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../services/attendance_device_service.dart';
-import '../widgets/app_modal.dart';
 
 class AppVersionStatus {
   final String current;

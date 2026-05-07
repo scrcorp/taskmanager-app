@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../../models/daily_report.dart';
 import '../../models/store.dart';
 import '../../providers/auth_provider.dart';
@@ -16,7 +16,6 @@ import '../../providers/daily_report_provider.dart';
 import '../../services/daily_report_service.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/app_header.dart';
-import '../../widgets/app_modal.dart';
 
 class DailyReportDetailScreen extends ConsumerStatefulWidget {
   final String? id;

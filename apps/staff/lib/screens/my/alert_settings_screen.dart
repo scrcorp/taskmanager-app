@@ -4,10 +4,9 @@
 /// 클라이언트는 받은 그대로 렌더만 한다. Save 시 변경된 카테고리만 PUT.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/app_header.dart';
-import '../../widgets/app_modal.dart';
 
 class AlertSettingsScreen extends ConsumerStatefulWidget {
   const AlertSettingsScreen({super.key});

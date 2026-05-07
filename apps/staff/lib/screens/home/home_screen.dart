@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../../models/task.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/my_schedule_provider.dart';
@@ -19,7 +19,6 @@ import '../../providers/task_provider.dart';
 import '../../providers/notice_provider.dart';
 import '../../providers/voice_provider.dart';
 import '../../models/notice.dart';
-import '../../widgets/app_modal.dart';
 import 'widgets/schedule_summary_card.dart';
 
 /// 의견 제출 카테고리 맵 (키: API 값, 값: 표시 라벨)

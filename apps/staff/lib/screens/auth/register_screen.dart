@@ -10,10 +10,9 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
-import '../../widgets/app_modal.dart';
 
 /// 회원가입 화면 위젯 — IndexedStack으로 5단계를 전환
 class RegisterScreen extends ConsumerStatefulWidget {

@@ -5,7 +5,7 @@
 /// 이미 계정이 있으면 로그인 화면으로 이동 가능.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../../utils/token_storage.dart';
 
 /// 회사 코드 입력 화면 위젯

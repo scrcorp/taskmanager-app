@@ -13,13 +13,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../../models/inventory.dart';
 import '../../providers/inventory_provider.dart';
 import '../../services/inventory_service.dart';
 import '../../services/storage_service.dart';
 import '../../widgets/app_header.dart';
-import '../../widgets/app_modal.dart';
 
 class InventoryAddScreen extends ConsumerStatefulWidget {
   final String storeId;

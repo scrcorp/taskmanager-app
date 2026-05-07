@@ -5,7 +5,7 @@
 /// AppShell 위젯 내에서 사용되어 ShellRoute 하위 화면에 항상 표시.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import '../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 
 /// 하단 네비게이션 바 위젯
 class BottomNav extends StatelessWidget {

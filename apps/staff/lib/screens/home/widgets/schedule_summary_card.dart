@@ -4,7 +4,7 @@
 /// and rejected alert. Uses schedule provider data.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../../../models/schedule.dart';
 import '../../../providers/schedule_provider.dart';
 

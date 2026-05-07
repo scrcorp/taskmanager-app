@@ -6,12 +6,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../../models/notice.dart';
 import '../../providers/notice_provider.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/app_header.dart';
-import '../../widgets/app_modal.dart';
 
 /// 공지사항 상세 화면 위젯
 class NoticeDetailScreen extends ConsumerStatefulWidget {

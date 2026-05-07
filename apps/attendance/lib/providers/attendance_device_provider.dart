@@ -10,8 +10,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/attendance_device_service.dart';
 import '../utils/attendance_device_storage.dart';
-import '../utils/kiosk_intent.dart';
-import '../utils/kiosk_lock.dart';
+import 'package:htm_core/htm_core.dart';
 
 /// 기기 상태 phase
 enum AttendanceDeviceStatus {
@@ -270,6 +269,7 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
     required String userId,
     required String pin,
     String? breakType,
+    String? reason,
   }) async {
     try {
       Map<String, dynamic> result;
@@ -278,7 +278,7 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
           result = await _service.clockIn(userId: userId, pin: pin);
           break;
         case 'clock-out':
-          result = await _service.clockOut(userId: userId, pin: pin);
+          result = await _service.clockOut(userId: userId, pin: pin, reason: reason);
           break;
         case 'break-start':
           if (breakType == null || breakType.isEmpty) {

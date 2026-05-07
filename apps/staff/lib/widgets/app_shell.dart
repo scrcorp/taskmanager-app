@@ -4,7 +4,7 @@
 /// 구조: AppHeader (상단) + child (본문) + BottomNav (하단)
 /// 하단 네비게이션이 있는 모든 탭 화면(Home, Work, Clock, Schedule)에 적용.
 import 'package:flutter/material.dart';
-import '../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import 'app_header.dart';
 import 'bottom_nav.dart';
 

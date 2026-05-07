@@ -7,10 +7,9 @@
 /// 실패하거나 빈 결과일 때 수동 입력/preset UI를 표시.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../../providers/attendance_device_provider.dart';
 import '../../services/attendance_device_service.dart';
-import '../../widgets/app_modal.dart';
 
 /// dart-define fallback — 서버 매장 목록 조회 실패 시 사용
 const _presetStoreIdsRaw = String.fromEnvironment(

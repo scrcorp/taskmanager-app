@@ -9,7 +9,7 @@
 /// 기존 auth guard(JWT) 영향을 받지 않는 독립 shell.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../../providers/attendance_device_provider.dart';
 import '../../services/attendance_device_service.dart';
 import '../../utils/app_version_gate.dart';

@@ -5,8 +5,8 @@
 /// 앱 시작 시 저장된 토큰으로 인증 상태를 자동 확인한다.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:htm_core/htm_core.dart';
 import 'config/router.dart';
-import 'config/theme.dart';
 import 'providers/auth_provider.dart';
 import 'utils/web_title.dart';
 

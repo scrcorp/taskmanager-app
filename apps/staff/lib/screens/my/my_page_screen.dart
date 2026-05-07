@@ -8,11 +8,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/alert_provider.dart';
 import '../../services/clockin_pin_service.dart';
-import '../../widgets/app_modal.dart';
 
 /// 서류 유형 정의 (key, 제목, 설명, 아이콘)
 class _DocumentType {

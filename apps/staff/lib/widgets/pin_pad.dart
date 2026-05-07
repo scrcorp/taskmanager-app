@@ -4,7 +4,7 @@
 /// 완료 시 `onCompleted(pin)` 콜백으로 값 전달.
 /// `enabled`가 false이면 버튼 비활성화 (서버 호출 중).
 import 'package:flutter/material.dart';
-import '../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 
 /// PIN 패드 위젯
 class PinPad extends StatefulWidget {

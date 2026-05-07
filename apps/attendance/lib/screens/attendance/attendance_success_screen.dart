@@ -7,7 +7,7 @@
 /// (main → pin → success 스택이므로 success pop → pin pop → main 복귀).
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import 'attendance_main_screen.dart';
 
 class AttendanceSuccessScreen extends StatefulWidget {

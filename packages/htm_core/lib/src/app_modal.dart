@@ -5,7 +5,7 @@
 /// `AppModal.show()` 정적 메서드로 호출하며 bool? 반환
 /// (confirm: true=확인/false=취소, 나머지: true=OK).
 import 'package:flutter/material.dart';
-import '../config/theme.dart';
+import 'theme.dart';
 
 /// 모달 타입 열거형
 enum ModalType { error, warning, confirm, info, success }

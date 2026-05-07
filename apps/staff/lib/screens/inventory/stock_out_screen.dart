@@ -10,13 +10,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../../models/inventory.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/inventory_service.dart';
 import '../../widgets/app_header.dart';
-import '../../widgets/app_modal.dart';
 
 /// Mutable line item for the stock-out form
 class _LineItem {

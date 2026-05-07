@@ -10,9 +10,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../../providers/attendance_device_provider.dart';
-import '../../widgets/app_modal.dart';
 
 /// Access code 화면 사용 목적
 enum AccessCodeMode {

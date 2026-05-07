@@ -13,7 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../../models/checklist.dart';
 import '../../models/my_schedule.dart';
 import '../../providers/my_schedule_provider.dart';
@@ -21,7 +21,6 @@ import '../../services/storage_service.dart';
 import '../../utils/date_utils.dart';
 import '../../utils/toast_manager.dart';
 import '../../widgets/app_header.dart';
-import '../../widgets/app_modal.dart';
 import 'checklist_chat_screen.dart';
 
 /// 체크리스트 필터 탭

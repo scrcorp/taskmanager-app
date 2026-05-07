@@ -3,7 +3,7 @@
 /// 추후 직원 교육/훈련 모듈이 구현될 예정.
 /// 현재는 "Coming soon" 메시지만 표시.
 import 'package:flutter/material.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 
 /// OJT 훈련 화면 — 미구현 상태
 class OjtScreen extends StatelessWidget {

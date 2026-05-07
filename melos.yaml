@@ -1,0 +1,13 @@
+name: htm
+
+packages:
+  - apps/**
+  - packages/**
+
+# 양쪽 앱과 공유 패키지의 pub get을 한 번에 실행:
+#   melos bootstrap        # 모든 패키지 pub get
+#   melos exec -- flutter analyze
+#   melos exec -- flutter test
+ide:
+  intellij:
+    enabled: false

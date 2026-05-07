@@ -7,7 +7,7 @@
 /// ToastManager에 의해 Overlay에 삽입되어 사용됨.
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 
 /// 토스트 타입 열거형
 enum ToastType { success, error, warning, info }

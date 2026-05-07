@@ -14,7 +14,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../widgets/app_modal.dart';
+import 'app_modal.dart';
 import 'kiosk_intent.dart';
 import 'kiosk_lock.dart';
 

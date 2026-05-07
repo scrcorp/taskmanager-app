@@ -8,10 +8,9 @@
 /// Device token 기반 `attendanceDeviceProvider.performClockAction` 사용.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../../providers/attendance_dashboard_provider.dart';
 import '../../providers/attendance_device_provider.dart';
-import '../../widgets/app_modal.dart';
 import 'attendance_main_screen.dart';
 import 'attendance_success_screen.dart';
 
@@ -19,11 +18,14 @@ class AttendancePinScreen extends ConsumerStatefulWidget {
   final AttendanceAction action;
   final String userId;
   final String userName;
+  /// Early clock-out 시 main 화면에서 받아온 사유. server 가 검증.
+  final String? reason;
   const AttendancePinScreen({
     super.key,
     required this.action,
     required this.userId,
     required this.userName,
+    this.reason,
   });
 
   @override
@@ -67,6 +69,7 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
           userId: widget.userId,
           pin: _pin,
           breakType: widget.action.breakType,
+          reason: widget.reason,
         );
 
     if (!mounted) return;
@@ -206,131 +209,146 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
   }
 
   Widget _buildPinContent() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Column(
-        children: [
-          const SizedBox(height: 40),
-          if (widget.userName.isNotEmpty) ...[
-            Text(
-              'Hi, ${widget.userName}',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: AppColors.accent,
-              ),
-            ),
-            const SizedBox(height: 6),
-          ],
-          const Text(
-            'Enter Your PIN',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: AppColors.text,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Please use your $_pinLength-digit number to proceed',
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 32),
-          _buildPinDisplay(),
-          const SizedBox(height: 32),
-          _buildNumberPad(),
-          const SizedBox(height: 24),
-          Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // 가용 가로/세로 기준으로 크기 산정. 폰 landscape에서도 overflow 안 나게
+        // height 기반 clamp가 dominant — numpad 4행 + PIN row + 헤더 + 버튼이 전부
+        // 들어가도록 보수적 상한.
+        final w = constraints.maxWidth;
+        final h = constraints.maxHeight;
+        final pinBoxW = ((w * 0.72) / _pinLength - 14).clamp(48.0, 90.0);
+        final pinBoxH = (pinBoxW * 1.15).clamp(56.0, h * 0.16);
+        final pinFontSize = (pinBoxH * 0.45).clamp(24.0, 48.0);
+        final padW = (w * 0.78).clamp(320.0, 640.0);
+        final keyH = (h * 0.10).clamp(52.0, 84.0);
+        final keyFont = (keyH * 0.42).clamp(20.0, 36.0);
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+          child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              GestureDetector(
-                onTap: _loading ? null : () => Navigator.of(context).pop(),
-                child: const Padding(
-                  padding:
-                      EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      Icon(Icons.arrow_back,
-                          size: 16, color: AppColors.textSecondary),
-                      SizedBox(width: 6),
-                      Text(
-                        'Cancel & Return',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                    ],
+              if (widget.userName.isNotEmpty) ...[
+                Text(
+                  'Hi, ${widget.userName}',
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.accent,
                   ),
+                ),
+                const SizedBox(height: 6),
+              ],
+              const Text(
+                'Enter Your PIN',
+                style: TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.text,
                 ),
               ),
-              const SizedBox(width: 24),
-              SizedBox(
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: (_pin.length == _pinLength && !_loading)
-                      ? _verify
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    disabledBackgroundColor:
-                        AppColors.accent.withValues(alpha: 0.4),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 32),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: _loading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : const Text(
-                          'Verify Identity',
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
+              const SizedBox(height: 8),
+              Text(
+                'Please use your $_pinLength-digit number to proceed',
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: AppColors.textSecondary,
                 ),
+              ),
+              SizedBox(height: h * 0.025),
+              _buildPinDisplay(pinBoxW, pinBoxH, pinFontSize),
+              SizedBox(height: h * 0.025),
+              _buildNumberPad(padW, keyH, keyFont),
+              SizedBox(height: h * 0.02),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  GestureDetector(
+                    onTap: _loading ? null : () => Navigator.of(context).pop(),
+                    child: const Padding(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      child: Row(
+                        children: [
+                          Icon(Icons.arrow_back,
+                              size: 18, color: AppColors.textSecondary),
+                          SizedBox(width: 6),
+                          Text(
+                            'Cancel & Return',
+                            style: TextStyle(
+                              fontSize: 15,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  SizedBox(
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: (_pin.length == _pinLength && !_loading)
+                          ? _verify
+                          : null,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accent,
+                        disabledBackgroundColor:
+                            AppColors.accent.withValues(alpha: 0.4),
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 40),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: _loading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text(
+                              'Verify Identity',
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.white,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 32),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildPinDisplay() {
+  Widget _buildPinDisplay(double boxW, double boxH, double fontSize) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(_pinLength, (i) {
         final filled = i < _pin.length;
         return Container(
-          width: 52,
-          height: 60,
-          margin: const EdgeInsets.symmetric(horizontal: 6),
+          width: boxW,
+          height: boxH,
+          margin: const EdgeInsets.symmetric(horizontal: 7),
           decoration: BoxDecoration(
             color: filled ? AppColors.accentBg : AppColors.bg,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: filled ? AppColors.accent : AppColors.border,
-              width: filled ? 2 : 1.5,
+              width: filled ? 2.5 : 1.5,
             ),
           ),
           alignment: Alignment.center,
           child: filled
               ? Text(
                   _pin[i],
-                  style: const TextStyle(
-                    fontSize: 24,
+                  style: TextStyle(
+                    fontSize: fontSize,
                     fontWeight: FontWeight.w800,
                     color: AppColors.accent,
                   ),
@@ -341,34 +359,35 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
     );
   }
 
-  Widget _buildNumberPad() {
+  Widget _buildNumberPad(double width, double keyHeight, double keyFont) {
     return SizedBox(
-      width: 280,
+      width: width,
       child: Column(
         children: [
-          _padRow(['1', '2', '3']),
-          const SizedBox(height: 10),
-          _padRow(['4', '5', '6']),
-          const SizedBox(height: 10),
-          _padRow(['7', '8', '9']),
-          const SizedBox(height: 10),
-          _padRow(['CLEAR', '0', 'DEL']),
+          _padRow(['1', '2', '3'], keyHeight, keyFont),
+          const SizedBox(height: 12),
+          _padRow(['4', '5', '6'], keyHeight, keyFont),
+          const SizedBox(height: 12),
+          _padRow(['7', '8', '9'], keyHeight, keyFont),
+          const SizedBox(height: 12),
+          _padRow(['CLEAR', '0', 'DEL'], keyHeight, keyFont),
         ],
       ),
     );
   }
 
-  Widget _padRow(List<String> keys) {
+  Widget _padRow(List<String> keys, double keyHeight, double keyFont) {
     return Row(
       children: keys.map((key) {
         if (key == 'CLEAR') {
           return Expanded(
             child: _PadKey(
+              height: keyHeight,
               onTap: _onClear,
-              child: const Text(
+              child: Text(
                 'CLEAR',
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: (keyFont * 0.55).clamp(15.0, 24.0),
                   fontWeight: FontWeight.w700,
                   color: AppColors.accent,
                 ),
@@ -379,19 +398,22 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
         if (key == 'DEL') {
           return Expanded(
             child: _PadKey(
+              height: keyHeight,
               onTap: _onBackspace,
-              child: const Icon(Icons.backspace_outlined,
-                  size: 22, color: AppColors.textSecondary),
+              child: Icon(Icons.backspace_outlined,
+                  size: (keyFont * 0.9).clamp(24.0, 38.0),
+                  color: AppColors.textSecondary),
             ),
           );
         }
         return Expanded(
           child: _PadKey(
+            height: keyHeight,
             onTap: () => _onNumberTap(key),
             child: Text(
               key,
-              style: const TextStyle(
-                fontSize: 22,
+              style: TextStyle(
+                fontSize: keyFont,
                 fontWeight: FontWeight.w600,
                 color: AppColors.text,
               ),
@@ -508,19 +530,20 @@ class _InfoCard extends StatelessWidget {
 class _PadKey extends StatelessWidget {
   final Widget child;
   final VoidCallback onTap;
+  final double height;
 
-  const _PadKey({required this.child, required this.onTap});
+  const _PadKey({required this.child, required this.onTap, this.height = 56});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: 56,
-        margin: const EdgeInsets.symmetric(horizontal: 5),
+        height: height,
+        margin: const EdgeInsets.symmetric(horizontal: 6),
         decoration: BoxDecoration(
           color: AppColors.bg,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
         ),
         alignment: Alignment.center,
         child: child,

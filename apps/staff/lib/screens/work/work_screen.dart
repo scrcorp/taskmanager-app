@@ -19,7 +19,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../../models/my_schedule.dart';
 import '../../models/checklist.dart';
 import '../../models/task.dart';
@@ -29,7 +29,6 @@ import '../../providers/my_schedule_provider.dart';
 import '../../providers/task_provider.dart';
 import 'checklist_chat_screen.dart';
 import '../../services/storage_service.dart';
-import '../../widgets/app_modal.dart';
 
 /// 근무 화면 메인 위젯 — Today/Past 체크리스트 + 추가 업무
 class WorkScreen extends ConsumerStatefulWidget {

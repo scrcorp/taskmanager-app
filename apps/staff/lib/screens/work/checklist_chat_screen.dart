@@ -22,12 +22,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../../models/checklist.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/my_schedule_provider.dart';
 import '../../services/storage_service.dart';
-import '../../widgets/app_modal.dart';
 
 /// 체크리스트 항목 채팅 전체 화면 위젯
 class ChecklistChatScreen extends ConsumerStatefulWidget {

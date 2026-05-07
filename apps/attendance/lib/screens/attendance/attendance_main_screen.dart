@@ -21,7 +21,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import '../../config/theme.dart';
+import 'package:htm_core/htm_core.dart';
 import '../../providers/attendance_dashboard_provider.dart';
 import '../../providers/attendance_device_provider.dart';
 import 'attendance_pin_screen.dart';
@@ -102,6 +102,13 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
   /// null 이면 사이드바 액션 전체 비활성.
   String? _selectedKey;
 
+  /// Hidden 5-tap unlock — 헤더의 store name을 4초 안에 5번 연속 탭하면
+  /// 키오스크 락이 임시 해제됨. 관리자가 settings 진입을 위한 비밀 제스처.
+  int _hiddenTapCount = 0;
+  Timer? _hiddenTapResetTimer;
+  static const _hiddenTapTarget = 5;
+  static const _hiddenTapWindow = Duration(seconds: 4);
+
   /// Row 의 composite key 계산.
   static String _rowKey(TodayStaffRow r) =>
       r.scheduleId == null ? 'u:${r.userId}' : 'u:${r.userId}|s:${r.scheduleId}';
@@ -122,7 +129,30 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
   @override
   void dispose() {
     _clockTimer.cancel();
+    _hiddenTapResetTimer?.cancel();
     super.dispose();
+  }
+
+  /// 헤더 store name 탭 핸들러 — 4초 안에 5번 연속이면 키오스크 락 임시 해제.
+  Future<void> _onHiddenTap() async {
+    _hiddenTapCount++;
+    _hiddenTapResetTimer?.cancel();
+    _hiddenTapResetTimer = Timer(_hiddenTapWindow, () {
+      _hiddenTapCount = 0;
+    });
+    if (_hiddenTapCount < _hiddenTapTarget) return;
+    _hiddenTapCount = 0;
+    _hiddenTapResetTimer?.cancel();
+    await KioskIntent.disableTemporarily();
+    await KioskLock.stop();
+    if (!mounted) return;
+    await AppModal.show(
+      context,
+      title: 'Kiosk Unlocked',
+      message:
+          'Kiosk lock temporarily disabled. It will re-lock automatically in 5 minutes.',
+      type: ModalType.info,
+    );
   }
 
   /// Row 탭 핸들러 — 같은 row 재탭 시 선택 해제, 다른 row 탭 시 전환.
@@ -184,15 +214,37 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     }
   }
 
+  /// schedule end 5분 이전 clock-out 이면 early 로 간주.
+  /// admin Settings 의 attendance.early_leave_threshold_minutes 와 mismatch 가능 —
+  /// 클라는 보수적 default 사용. 서버가 최종 검증.
+  static const int _earlyClockOutThresholdMinutes = 5;
+
   Future<void> _openPin(AttendanceAction action) async {
     final row = _selectedRow;
     if (row == null) return;
+
+    String? reason;
+    if (action == AttendanceAction.clockOut) {
+      final end = row.scheduledEnd;
+      if (end != null) {
+        final cutoff = end.subtract(const Duration(minutes: _earlyClockOutThresholdMinutes));
+        if (DateTime.now().isBefore(cutoff)) {
+          reason = await _promptEarlyClockOutReason(end);
+          if (reason == null) {
+            // 사용자가 취소 — clock-out 흐름 중단
+            return;
+          }
+        }
+      }
+    }
+
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => AttendancePinScreen(
           action: action,
           userId: row.userId,
           userName: row.userName,
+          reason: reason,
         ),
       ),
     );
@@ -200,6 +252,83 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     if (mounted) {
       setState(() => _selectedKey = null);
     }
+  }
+
+  /// Early clock-out 시 사용자에게 confirm + 사유 입력. 사용자가 취소하면 null,
+  /// 사유 입력 후 Continue 면 trim 된 사유 문자열 반환.
+  Future<String?> _promptEarlyClockOutReason(DateTime scheduledEnd) async {
+    final controller = TextEditingController();
+    final remaining = scheduledEnd.difference(DateTime.now());
+    final h = remaining.inHours;
+    final m = remaining.inMinutes % 60;
+    final remainText = h > 0 ? '${h}h ${m}m' : '${remaining.inMinutes}m';
+
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSt) {
+            final hasReason = controller.text.trim().isNotEmpty;
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: AppColors.warning),
+                  SizedBox(width: 10),
+                  Text('Clocking out early'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Your shift still has $remainText remaining. Are you sure '
+                    'you want to clock out now?',
+                    style: const TextStyle(fontSize: 14, color: AppColors.text),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Please enter a reason — required for early clock-out.',
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: controller,
+                    onChanged: (_) => setSt(() {}),
+                    autofocus: true,
+                    minLines: 2,
+                    maxLines: 4,
+                    maxLength: 300,
+                    decoration: const InputDecoration(
+                      hintText: 'e.g. Family emergency, feeling unwell',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(null),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: hasReason
+                      ? () => Navigator.of(ctx).pop(controller.text.trim())
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.warning,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Continue'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   void _openSettings() {
@@ -296,26 +425,30 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     return Row(
       children: [
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                storeName,
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.text,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _onHiddenTap,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  storeName,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.text,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                deviceName,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textMuted,
+                const SizedBox(height: 2),
+                Text(
+                  deviceName,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         if (workDateDisplay != null)
@@ -386,19 +519,23 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     final hasSelection = selected != null;
     final status = selected?.status ?? '';
 
-    // 특정 액션의 활성 여부 결정. 선택 없으면 모두 비활성.
-    bool allowed(AttendanceAction a) =>
-        hasSelection && _isActionAllowed(a, status, clockedIn: selected.clockIn != null);
-
-    // 안내 텍스트 — 선택 유무에 따라 전환
-    final String helpText;
-    if (!hasSelection) {
-      helpText = 'Tap your name from the list first';
-    } else if (status == 'clocked_out') {
-      helpText = 'Your shift is already completed';
-    } else {
-      helpText = 'Choose an action below';
-    }
+    // 통일된 라벨 — 'ATTENDANCE' (펼치는 모달 안에서 status 별 적합 액션 활성).
+    final IconData triggerIcon = hasSelection
+        ? Icons.fact_check_rounded
+        : Icons.touch_app_rounded;
+    final String triggerLabel = 'ATTENDANCE';
+    final String triggerSubtitle = !hasSelection
+        ? 'Select your name first'
+        : status == 'clocked_out' || status == 'cancelled'
+            ? 'Shift already completed'
+            : 'Tap to choose action';
+    final Color triggerColor =
+        (!hasSelection || status == 'clocked_out' || status == 'cancelled')
+            ? AppColors.textMuted
+            : AppColors.accent;
+    final triggerEnabled = hasSelection &&
+        status != 'clocked_out' &&
+        status != 'cancelled';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -486,67 +623,124 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
           )
         else
           const SizedBox.shrink(),
-        const SizedBox(height: 16),
-        const Text(
-          'Shift Actions',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: AppColors.text,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          helpText,
-          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-        ),
-        const SizedBox(height: 20),
-        _ShiftActionButton(
-          icon: Icons.login_rounded,
-          label: 'CLOCK IN',
-          subtitle: 'Start Workday',
-          color: AppColors.accent,
-          enabled: allowed(AttendanceAction.clockIn),
-          onTap: () => _openPin(AttendanceAction.clockIn),
-        ),
-        const SizedBox(height: 12),
-        _ShiftActionButton(
-          icon: Icons.logout_rounded,
-          label: 'CLOCK OUT',
-          subtitle: 'End Schedule',
-          color: AppColors.textSecondary,
-          enabled: allowed(AttendanceAction.clockOut),
-          onTap: () => _openPin(AttendanceAction.clockOut),
-        ),
-        const SizedBox(height: 12),
-        _ShiftActionButton(
-          icon: Icons.coffee_rounded,
-          label: 'SHORT BREAK',
-          subtitle: 'Paid · 10 min',
-          color: AppColors.warning,
-          enabled: allowed(AttendanceAction.breakShortPaid),
-          onTap: () => _openPin(AttendanceAction.breakShortPaid),
-        ),
-        const SizedBox(height: 12),
-        _ShiftActionButton(
-          icon: Icons.free_breakfast_rounded,
-          label: 'LONG BREAK',
-          subtitle: 'Unpaid · 30 min',
-          color: AppColors.warning,
-          isFilled: true,
-          enabled: allowed(AttendanceAction.breakLongUnpaid),
-          onTap: () => _openPin(AttendanceAction.breakLongUnpaid),
-        ),
-        const SizedBox(height: 12),
-        _ShiftActionButton(
-          icon: Icons.play_circle_outline_rounded,
-          label: 'END BREAK',
-          subtitle: 'Resume Work',
-          color: AppColors.success,
-          enabled: allowed(AttendanceAction.breakEnd),
-          onTap: () => _openPin(AttendanceAction.breakEnd),
+        const SizedBox(height: 24),
+        // 단일 trigger 버튼 — 누르면 modal로 액션 전체 펼침.
+        _ShiftActionTrigger(
+          icon: triggerIcon,
+          label: triggerLabel,
+          subtitle: triggerSubtitle,
+          color: triggerColor,
+          enabled: triggerEnabled,
+          onTap: _openActionsSheet,
         ),
       ],
+    );
+  }
+
+  /// 액션 펼침 모달 — 선택된 직원의 status 에 맞는 버튼만 활성.
+  Future<void> _openActionsSheet() async {
+    final selected = _selectedRow;
+    if (selected == null) return;
+    final status = selected.status;
+    final clockedIn = selected.clockIn != null;
+    bool allowed(AttendanceAction a) => _isActionAllowed(a, status, clockedIn: clockedIn);
+
+    await showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Close',
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      transitionDuration: const Duration(milliseconds: 180),
+      pageBuilder: (ctx, _, __) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(40),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: Material(
+                color: Colors.transparent,
+                child: Container(
+                  padding: const EdgeInsets.all(28),
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'CHOOSE ACTION',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.accent,
+                                    letterSpacing: 1.2,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  selected.userName.isEmpty ? 'Unknown' : selected.userName,
+                                  style: const TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.text,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.of(ctx).pop(),
+                            icon: const Icon(Icons.close_rounded,
+                                size: 28, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      // 2-column grid — 5개 버튼.
+                      Wrap(
+                        spacing: 14,
+                        runSpacing: 14,
+                        children: [
+                          for (final entry in const [
+                            (AttendanceAction.clockIn,    Icons.login_rounded,            'CLOCK IN',     'Start Workday',   AppColors.accent,      false),
+                            (AttendanceAction.clockOut,   Icons.logout_rounded,           'CLOCK OUT',    'End Schedule',    AppColors.textSecondary, false),
+                            (AttendanceAction.breakShortPaid, Icons.coffee_rounded,        'SHORT BREAK',  'Paid · 10 min',   AppColors.warning,     false),
+                            (AttendanceAction.breakLongUnpaid, Icons.free_breakfast_rounded,'LONG BREAK',   'Unpaid · 30 min', AppColors.warning,     true),
+                            (AttendanceAction.breakEnd,   Icons.play_circle_outline_rounded,'END BREAK',   'Resume Work',     AppColors.success,     false),
+                          ])
+                            SizedBox(
+                              width: 200,
+                              child: _ShiftActionButton(
+                                icon: entry.$2,
+                                label: entry.$3,
+                                subtitle: entry.$4,
+                                color: entry.$5,
+                                isFilled: entry.$6,
+                                enabled: allowed(entry.$1),
+                                onTap: () {
+                                  Navigator.of(ctx).pop();
+                                  _openPin(entry.$1);
+                                },
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -1081,12 +1275,12 @@ class _OnShiftCard extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(28),
         decoration: BoxDecoration(
           color: AppColors.bg,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(color: borderColor, width: borderWidth),
           boxShadow: selected
               ? [
@@ -1101,20 +1295,20 @@ class _OnShiftCard extends StatelessWidget {
         child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 64,
+            height: 64,
             decoration: BoxDecoration(
               color: isOnBreak ? AppColors.warningBg : AppColors.accentBg,
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(14),
             ),
             alignment: Alignment.center,
             child: Icon(
               isOnBreak ? Icons.pause_rounded : Icons.person_rounded,
-              size: 20,
+              size: 32,
               color: isOnBreak ? AppColors.warning : AppColors.accent,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 20),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1125,7 +1319,7 @@ class _OnShiftCard extends StatelessWidget {
                       child: Text(
                         row.userName.isEmpty ? 'Unknown' : row.userName,
                         style: const TextStyle(
-                          fontSize: 14,
+                          fontSize: 22,
                           fontWeight: FontWeight.w700,
                           color: AppColors.text,
                         ),
@@ -1136,19 +1330,19 @@ class _OnShiftCard extends StatelessWidget {
                     if (isLate) _buildLateBadge(),
                   ],
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 6),
                 Text(
                   schedule,
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 16,
                     color: AppColors.textMuted,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
                 Text(
                   'Clocked in at $clockIn',
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textSecondary,
                   ),
@@ -1169,15 +1363,15 @@ class _OnShiftCard extends StatelessWidget {
             ? 'Short Paid'
             : 'On Break';
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.warningBg,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
         'On Break · $label',
         style: const TextStyle(
-          fontSize: 10,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
           color: AppColors.warning,
           letterSpacing: 0.3,
@@ -1188,15 +1382,15 @@ class _OnShiftCard extends StatelessWidget {
 
   Widget _buildLateBadge() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.dangerBg,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: const Text(
         'Late',
         style: TextStyle(
-          fontSize: 10,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
           color: AppColors.danger,
           letterSpacing: 0.3,
@@ -1326,12 +1520,12 @@ class _ComingUpRow extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(14),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+        padding: const EdgeInsets.symmetric(vertical: 22, horizontal: 22),
         decoration: BoxDecoration(
           color: AppColors.bg,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(14),
           border: border,
           boxShadow: selected
               ? [
@@ -1345,8 +1539,8 @@ class _ComingUpRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icon, size: 16, color: iconColor),
-            const SizedBox(width: 10),
+            Icon(icon, size: 28, color: iconColor),
+            const SizedBox(width: 18),
             Expanded(
               child: Row(
                 children: [
@@ -1354,7 +1548,7 @@ class _ComingUpRow extends StatelessWidget {
                     child: Text(
                       row.userName.isEmpty ? 'Unknown' : row.userName,
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: 21,
                         fontWeight: FontWeight.w600,
                         color: AppColors.text,
                       ),
@@ -1362,17 +1556,17 @@ class _ComingUpRow extends StatelessWidget {
                     ),
                   ),
                   if (trailingBadge != null) ...[
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 12),
                     trailingBadge,
                   ],
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             Text(
               range,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 19,
                 fontWeight: FontWeight.w700,
                 color: timeColor,
               ),
@@ -1432,6 +1626,7 @@ class _CompletedRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final inTime = row.clockInDisplay ?? '--:--';
     final outTime = row.clockOutDisplay ?? '--:--';
+    // 완료된 shift는 더 이상 액션 대상 아니라 컴팩트하게 유지.
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
@@ -1537,6 +1732,104 @@ class _NoticeRow extends StatelessWidget {
 
 // ─── Shift Action Button ────────────────────────────────────────────
 
+/// 사이드바의 단일 trigger 버튼 — 누르면 _openActionsSheet 모달 호출.
+/// 가로로 큼직, 우측에 chevron 으로 "여기서 펼쳐진다"는 affordance 표시.
+class _ShiftActionTrigger extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String subtitle;
+  final Color color;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _ShiftActionTrigger({
+    required this.icon,
+    required this.label,
+    required this.subtitle,
+    required this.color,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = enabled ? color : AppColors.textMuted;
+    final bgColor = enabled ? AppColors.white : AppColors.bg;
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: Opacity(
+        opacity: enabled ? 1.0 : 0.6,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 14),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: enabled ? color : AppColors.border, width: 2),
+            boxShadow: enabled
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.18),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : const [],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: enabled ? color.withValues(alpha: 0.12) : AppColors.border,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Icon(icon, size: 24, color: fg),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: fg,
+                        letterSpacing: 0.6,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 24,
+                color: enabled ? color : AppColors.textMuted,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ShiftActionButton extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -1587,10 +1880,10 @@ class _ShiftActionButton extends StatelessWidget {
         child: Container(
           width: double.infinity,
           padding:
-              const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+              const EdgeInsets.symmetric(vertical: 26, horizontal: 18),
           decoration: BoxDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: borderColor),
             boxShadow: enabled
                 ? [
@@ -1604,22 +1897,22 @@ class _ShiftActionButton extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Icon(icon, size: 28, color: contentColor),
-              const SizedBox(height: 6),
+              Icon(icon, size: 38, color: contentColor),
+              const SizedBox(height: 10),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 16,
                   fontWeight: FontWeight.w800,
                   color: contentColor,
                   letterSpacing: 0.5,
                 ),
               ),
               if (subtitle.isNotEmpty) ...[
-                const SizedBox(height: 2),
+                const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: TextStyle(fontSize: 10, color: subtitleColor),
+                  style: TextStyle(fontSize: 13, color: subtitleColor),
                 ),
               ],
             ],

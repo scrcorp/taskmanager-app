@@ -94,12 +94,21 @@ class AttendanceDeviceService {
     return _postAction('/attendance/clock-in', userId: userId, pin: pin);
   }
 
-  /// Clock Out — user_id + 6자리 PIN으로 퇴근 기록
+  /// Clock Out — user_id + 6자리 PIN으로 퇴근 기록.
+  /// [reason] 은 schedule end 의 early-leave threshold 이전 clock-out 시 필수.
   Future<Map<String, dynamic>> clockOut({
     required String userId,
     required String pin,
+    String? reason,
   }) async {
-    return _postAction('/attendance/clock-out', userId: userId, pin: pin);
+    return _postAction(
+      '/attendance/clock-out',
+      userId: userId,
+      pin: pin,
+      extra: (reason != null && reason.trim().isNotEmpty)
+          ? {'reason': reason.trim()}
+          : null,
+    );
   }
 
   /// Break Start — user_id + 6자리 PIN으로 휴식 시작
