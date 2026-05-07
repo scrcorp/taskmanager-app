@@ -5,9 +5,6 @@
 /// Step 3: 개인정보 입력 (이름, 사용자명 중복 확인, 비밀번호)
 /// Step 4: 이메일 입력 + 인증코드 발송/검증
 /// Step 5: 가입 완료 및 서비스 시작
-///
-/// URL 쿼리에서 company_code를 받아와 표시하며,
-/// Step 4 이메일 인증 완료 후 authProvider.register()로 실제 가입 처리.
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
@@ -27,7 +24,6 @@ class RegisterScreen extends ConsumerStatefulWidget {
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   int _currentStep = 0;
-  String _companyCode = '';
 
   // Step 1: Terms
   bool _term1 = false;
@@ -59,13 +55,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String? _emailError;
 
   bool _isLoading = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final uri = GoRouterState.of(context).uri;
-    _companyCode = uri.queryParameters['company_code'] ?? '';
-  }
 
   @override
   void dispose() {
@@ -647,20 +636,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           Text('Tell us about yourself', style: Theme.of(context).textTheme.headlineLarge),
           const SizedBox(height: 8),
           Text('Enter your basic information to get started.', style: Theme.of(context).textTheme.bodyMedium),
-          if (_companyCode.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.accentBg,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                'Company: $_companyCode',
-                style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600, fontSize: 13),
-              ),
-            ),
-          ],
           const SizedBox(height: 28),
           Expanded(
             child: SingleChildScrollView(

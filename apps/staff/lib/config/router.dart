@@ -9,8 +9,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/auth_provider.dart';
-import '../screens/attendance/attendance_shell_screen.dart';
-import '../screens/auth/company_code_screen.dart';
 import '../screens/auth/email_verification_screen.dart';
 import '../screens/auth/find_username_screen.dart';
 import '../screens/auth/login_screen.dart';
@@ -68,10 +66,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isAuth = authState.status == AuthStatus.authenticated;
       final user = authState.user;
       final path = state.uri.path;
-      // attendance-temp: device token 기반 별도 auth, JWT guard를 타지 않음
-      if (path.startsWith('/attendance-temp')) return null;
-      // 인증 관련 경로 (로그인, 회원가입, 회사코드 입력, 아이디 찾기, 비밀번호 재설정)
-      final isAuthRoute = path == '/login' || path == '/register' || path == '/company-code'
+      // 인증 관련 경로 (로그인, 회원가입, 아이디 찾기, 비밀번호 재설정)
+      final isAuthRoute = path == '/login' || path == '/register'
           || path == '/find-username' || path == '/reset-password';
       final isVerifyRoute = path == '/verify-email';
       // 미인증 + 비인증 경로 접근 → 로그인으로 리다이렉트
@@ -87,11 +83,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      // ── Attendance tablet kiosk shell (device token 기반 별도 auth) ──
-      GoRoute(path: '/attendance-temp', builder: (_, __) => const AttendanceShellScreen()),
-
       // ── 인증 화면 (ShellRoute 바깥 = 하단 네비게이션 없음) ──
-      GoRoute(path: '/company-code', builder: (_, __) => const CompanyCodeScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(path: '/verify-email', builder: (_, __) => const EmailVerificationScreen()),

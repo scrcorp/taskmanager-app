@@ -5,7 +5,6 @@
 /// 성공 시 JWT 토큰을 TokenStorage에 자동 저장.
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../config/constants.dart';
 import '../utils/token_storage.dart';
 import 'api_client.dart';
 
@@ -20,17 +19,14 @@ class AuthService {
 
   AuthService(this._dio);
 
-  /// 로그인 — username/password + company_code로 인증
+  /// 로그인 — username/password로 인증
   ///
-  /// 성공 시 access/refresh 토큰을 로컬에 저장.
-  /// company_code는 TokenStorage에서 이전에 저장한 값을 자동으로 포함.
+  /// 성공 시 access/refresh 토큰을 로컬에 저장. company_code는 보내지 않으며
+  /// 서버가 단일 organization을 자동 매칭한다 (multi-tenant 비활성화 상태).
   Future<void> login(String username, String password) async {
-    final companyCode = await TokenStorage.getCompanyCode()
-        ?? (AppConstants.defaultCompanyCode.isNotEmpty ? AppConstants.defaultCompanyCode : null);
     final response = await _dio.post('/app/auth/login', data: {
       'username': username,
       'password': password,
-      if (companyCode != null) 'company_code': companyCode,
     });
     await TokenStorage.setTokens(
       response.data['access_token'],
@@ -38,19 +34,13 @@ class AuthService {
     );
   }
 
-  /// 매장 목록 조회 — login/register와 동일 패턴으로 TokenStorage에서 company_code 사용
+  /// 매장 목록 조회 — 단일 organization 자동 매칭으로 동작
   Future<List<Map<String, dynamic>>> getStores() async {
-    final companyCode = await TokenStorage.getCompanyCode()
-        ?? (AppConstants.defaultCompanyCode.isNotEmpty ? AppConstants.defaultCompanyCode : null);
-    final response = await _dio.get('/app/auth/stores', queryParameters: {
-      if (companyCode != null) 'company_code': companyCode,
-    });
+    final response = await _dio.get('/app/auth/stores');
     return List<Map<String, dynamic>>.from(response.data);
   }
 
-  /// 회원가입 — 직원이 company_code를 통해 조직에 가입
-  ///
-  /// company_code는 TokenStorage에서 가져옴 (로그인과 동일).
+  /// 회원가입 — 단일 organization 자동 매칭으로 가입.
   /// 성공 시 자동 로그인되어 토큰이 저장됨.
   Future<void> register({
     required String username,
@@ -61,14 +51,11 @@ class AuthService {
     List<String> storeIds = const [],
     String preferredLanguage = 'en',
   }) async {
-    final companyCode = await TokenStorage.getCompanyCode()
-        ?? (AppConstants.defaultCompanyCode.isNotEmpty ? AppConstants.defaultCompanyCode : null);
     final response = await _dio.post('/app/auth/register', data: {
       'username': username,
       'password': password,
       'full_name': fullName,
       'email': email,
-      'company_code': companyCode,
       'verification_token': verificationToken,
       'store_ids': storeIds,
       'preferred_language': preferredLanguage,
