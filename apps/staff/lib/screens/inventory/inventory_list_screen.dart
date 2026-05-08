@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/inventory.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -64,6 +65,7 @@ class _InventoryListScreenState
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final state = ref.watch(inventoryProvider);
     final user = ref.watch(authProvider).user;
     final canManage = user != null && user.hasPermission('inventory:create');
@@ -74,7 +76,7 @@ class _InventoryListScreenState
       body: Column(
         children: [
           AppHeader(
-            title: 'View Inventory',
+            title: t.invActionView,
             isDetail: true,
             onBack: () => context.pop(),
           ),
@@ -88,7 +90,7 @@ class _InventoryListScreenState
                 TextField(
                   controller: _searchCtrl,
                   decoration: InputDecoration(
-                    hintText: 'Search products...',
+                    hintText: t.invSearchHint,
                     prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textMuted),
                     suffixIcon: _searchCtrl.text.isNotEmpty
                         ? GestureDetector(
@@ -114,20 +116,20 @@ class _InventoryListScreenState
                   child: Row(
                     children: [
                       _FilterChip(
-                        label: 'All',
+                        label: t.invFilterAll,
                         selected: _statusFilter == 'all',
                         onTap: () => _setFilter('all'),
                       ),
                       const SizedBox(width: 8),
                       _FilterChip(
-                        label: 'Low Stock',
+                        label: t.invFilterLowStock,
                         selected: _statusFilter == 'low',
                         onTap: () => _setFilter('low'),
                         selectedColor: AppColors.warning,
                       ),
                       const SizedBox(width: 8),
                       _FilterChip(
-                        label: 'Frequent Only',
+                        label: t.invFilterFrequent,
                         selected: _statusFilter == 'frequent',
                         onTap: () => _setFilter('frequent'),
                         selectedColor: const Color(0xFFE84393),
@@ -188,7 +190,7 @@ class _InventoryListScreenState
             const SizedBox(height: 14),
             ElevatedButton(
               onPressed: _loadInventory,
-              child: const Text('Retry'),
+              child: Text(AppL10n.of(context).actionRetry),
             ),
           ],
         ),
@@ -196,6 +198,7 @@ class _InventoryListScreenState
     }
 
     if (state.inventoryItems.isEmpty) {
+      final t = AppL10n.of(context);
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -205,8 +208,8 @@ class _InventoryListScreenState
             const SizedBox(height: 12),
             Text(
               _statusFilter == 'all'
-                  ? 'No products in inventory'
-                  : 'No matching products',
+                  ? t.invEmpty
+                  : t.invNoMatch,
               style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -279,10 +282,11 @@ class _InventoryListScreenState
           }
           if (!mounted) return;
           if (ok) {
-            final label = type == 'in' ? 'Stock in recorded' : 'Stock out recorded';
+            final t = AppL10n.of(context);
+            final label = type == 'in' ? t.invStockInRecorded : t.invStockOutRecorded;
             await AppModal.show(
               context,
-              title: 'Saved',
+              title: t.commonSavedTitle,
               message: label,
               type: ModalType.success,
             );
@@ -298,10 +302,11 @@ class _InventoryListScreenState
               if (updated != null) _showDetailSheet(updated, manage);
             }
           } else {
+            final t = AppL10n.of(context);
             await AppModal.show(
               context,
-              title: "Couldn't save",
-              message: 'Failed to record. Please try again.',
+              title: t.commonSaveFailedTitle,
+              message: t.invSaveFailed,
               type: ModalType.error,
             );
           }
@@ -325,11 +330,12 @@ class _InventoryListScreenState
                 reason,
               );
           if (!mounted) return;
+          final t = AppL10n.of(context);
           if (ok) {
             await AppModal.show(
               context,
-              title: 'Adjusted',
-              message: 'Quantity adjusted',
+              title: t.invAdjustedTitle,
+              message: t.invAdjustedMessage,
               type: ModalType.success,
             );
             if (!mounted) return;
@@ -346,8 +352,8 @@ class _InventoryListScreenState
           } else {
             await AppModal.show(
               context,
-              title: "Couldn't adjust",
-              message: 'Failed to adjust. Please try again.',
+              title: t.commonSaveFailedTitle,
+              message: t.invAdjustFailed,
               type: ModalType.error,
             );
           }
@@ -420,27 +426,28 @@ class _ProductCard extends StatelessWidget {
     }
   }
 
-  String get _statusLabel {
+  String _statusLabelOf(AppL10n t) {
     switch (item.status) {
       case kStatusLow:
-        return 'Low';
+        return t.invStatusLow;
       case kStatusOut:
-        return 'Out';
+        return t.invStatusOut;
       default:
-        return 'OK';
+        return t.invStatusOk;
     }
   }
 
-  String get _lastAuditedLabel {
-    if (item.lastAuditedAt == null) return 'Never audited';
+  String _lastAuditedLabelOf(AppL10n t) {
+    if (item.lastAuditedAt == null) return t.invNeverAudited;
     final diff = DateTime.now().difference(item.lastAuditedAt!);
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    return '${diff.inDays}d ago';
+    if (diff.inMinutes < 60) return t.timeMinAgo(diff.inMinutes);
+    if (diff.inHours < 24) return t.timeHourAgo(diff.inHours);
+    return t.timeDayAgo(diff.inDays);
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -504,7 +511,7 @@ class _ProductCard extends StatelessWidget {
                       ),
                       if (item.isFrequent) ...[
                         const SizedBox(width: 6),
-                        _Badge(label: 'Frequent', color: const Color(0xFFE84393)),
+                        _Badge(label: t.invFrequent, color: const Color(0xFFE84393)),
                       ],
                     ],
                   ),
@@ -532,12 +539,12 @@ class _ProductCard extends StatelessWidget {
                       ),
                       const Spacer(),
                       // Status badge
-                      _Badge(label: _statusLabel, color: _statusColor),
+                      _Badge(label: _statusLabelOf(t), color: _statusColor),
                     ],
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Last: $_lastAuditedLabel',
+                    t.invLastAudited(_lastAuditedLabelOf(t)),
                     style: const TextStyle(
                         fontSize: 11, color: AppColors.textMuted),
                   ),
@@ -595,6 +602,7 @@ class _ProductDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Container(
       decoration: const BoxDecoration(
         color: AppColors.white,
@@ -681,8 +689,8 @@ class _ProductDetailSheet extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Current Stock',
-                        style: TextStyle(
+                    Text(t.invCurrentStock,
+                        style: const TextStyle(
                             fontSize: 12, color: AppColors.textMuted)),
                     const SizedBox(height: 2),
                     Text(
@@ -701,14 +709,14 @@ class _ProductDetailSheet extends StatelessWidget {
                 ),
                 const Spacer(),
                 if (item.isFrequent)
-                  _Badge(label: 'Frequent', color: const Color(0xFFE84393)),
+                  _Badge(label: t.invFrequent, color: const Color(0xFFE84393)),
                 const SizedBox(width: 6),
                 _Badge(
                   label: item.status == kStatusOut
-                      ? 'Out of Stock'
+                      ? t.invStatusOutOfStock
                       : item.status == kStatusLow
-                          ? 'Low Stock'
-                          : 'In Stock',
+                          ? t.invLowStock
+                          : t.invStatusInStock,
                   color: item.status == kStatusOut
                       ? AppColors.danger
                       : item.status == kStatusLow
@@ -729,7 +737,7 @@ class _ProductDetailSheet extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _ActionButton(
-                      label: 'Stock In',
+                      label: t.invActionStockIn,
                       icon: Icons.add,
                       color: AppColors.success,
                       onTap: () {
@@ -740,7 +748,7 @@ class _ProductDetailSheet extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: _ActionButton(
-                      label: 'Stock Out',
+                      label: t.invActionStockOut,
                       icon: Icons.remove,
                       color: AppColors.warning,
                       onTap: () {
@@ -751,7 +759,7 @@ class _ProductDetailSheet extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: _ActionButton(
-                      label: 'Adjust',
+                      label: t.actionAdjust,
                       icon: Icons.tune,
                       color: AppColors.accent,
                       onTap: () {
@@ -766,7 +774,7 @@ class _ProductDetailSheet extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Text(
-                'Only SV and above can perform stock operations.',
+                t.invSvOnlyMessage,
                 style: const TextStyle(
                     fontSize: 13, color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
@@ -867,9 +875,10 @@ class _StockDialogState extends State<_StockDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final isStockIn = widget.type == 'in';
     final color = isStockIn ? AppColors.success : AppColors.warning;
-    final title = isStockIn ? 'Stock In' : 'Stock Out';
+    final title = isStockIn ? t.invStockInTitle : t.invStockOutTitle;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -996,7 +1005,7 @@ class _StockDialogState extends State<_StockDialog> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  'Will result in negative stock '
+                  '${t.invNegativeStockWarning} '
                   '(${widget.item.currentQuantity - _eaQuantity} ea)',
                   style: const TextStyle(
                       fontSize: 12, color: AppColors.warning),
@@ -1007,10 +1016,10 @@ class _StockDialogState extends State<_StockDialog> {
             // Reason field
             TextField(
               controller: _reasonCtrl,
-              decoration: const InputDecoration(
-                hintText: 'Reason (optional)',
+              decoration: InputDecoration(
+                hintText: t.invReasonOptional,
                 contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               ),
               maxLines: 2,
             ),
@@ -1029,7 +1038,7 @@ class _StockDialogState extends State<_StockDialog> {
                       padding:
                           const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text('Cancel'),
+                    child: Text(t.actionCancel),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1093,6 +1102,7 @@ class _AdjustDialogState extends State<_AdjustDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       insetPadding: const EdgeInsets.symmetric(horizontal: 28),
@@ -1102,8 +1112,8 @@ class _AdjustDialogState extends State<_AdjustDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Adjust Quantity',
-                style: TextStyle(
+            Text(t.invAdjustTitle,
+                style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
                     color: AppColors.text)),
@@ -1113,7 +1123,7 @@ class _AdjustDialogState extends State<_AdjustDialog> {
                     fontSize: 13, color: AppColors.textSecondary)),
             const SizedBox(height: 16),
             Text(
-              'Set new quantity (current: ${widget.item.currentQuantity} ea)',
+              t.invAdjustHint(widget.item.currentQuantity),
               style: const TextStyle(
                   fontSize: 12, color: AppColors.textSecondary),
             ),
@@ -1122,19 +1132,19 @@ class _AdjustDialogState extends State<_AdjustDialog> {
               controller: _qtyCtrl,
               keyboardType: TextInputType.number,
               inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(
-                labelText: 'New quantity (ea)',
+              decoration: InputDecoration(
+                labelText: t.invNewQuantityLabel,
                 contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _reasonCtrl,
-              decoration: const InputDecoration(
-                hintText: 'Reason (optional)',
+              decoration: InputDecoration(
+                hintText: t.invReasonOptional,
                 contentPadding:
-                    EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               ),
               maxLines: 2,
             ),
@@ -1152,7 +1162,7 @@ class _AdjustDialogState extends State<_AdjustDialog> {
                       padding:
                           const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text('Cancel'),
+                    child: Text(t.actionCancel),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1175,7 +1185,7 @@ class _AdjustDialogState extends State<_AdjustDialog> {
                       padding:
                           const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    child: const Text('Adjust'),
+                    child: Text(t.actionAdjust),
                   ),
                 ),
               ],

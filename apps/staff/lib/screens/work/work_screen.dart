@@ -20,6 +20,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/my_schedule.dart';
 import '../../models/checklist.dart';
 import '../../models/task.dart';
@@ -111,6 +112,7 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final user = ref.watch(authProvider).user;
     final scheduleState = ref.watch(myScheduleProvider);
     final tasks = ref.watch(taskProvider);
@@ -174,9 +176,9 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Text(
-                      'Checklist',
-                      style: TextStyle(
+                    Text(
+                      t.workChecklistTab,
+                      style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: AppColors.text,
@@ -233,9 +235,9 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Text(
-                      'Task',
-                      style: TextStyle(
+                    Text(
+                      t.workTaskTab,
+                      style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: AppColors.text,
@@ -264,6 +266,7 @@ class _TabToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Container(
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
@@ -272,8 +275,8 @@ class _TabToggle extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _buildTab('Today', 0),
-          _buildTab('Past', 1),
+          _buildTab(t.workTabToday, 0),
+          _buildTab(t.workTabPast, 1),
         ],
       ),
     );
@@ -327,6 +330,7 @@ class _TodayScheduleList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     if (scheduleState.isLoading) {
       return const SizedBox(
         height: 72,
@@ -335,12 +339,12 @@ class _TodayScheduleList extends StatelessWidget {
     }
 
     if (scheduleState.schedules.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Center(
           child: Text(
-            'No checklists assigned today',
-            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+            t.workEmptyChecklistsToday,
+            style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
           ),
         ),
       );
@@ -361,6 +365,24 @@ class _TodayScheduleList extends StatelessWidget {
 }
 
 // ─── Today schedule card (with work-time coloring) ──────────────────────────
+
+/// 체크리스트 카드 상태 라벨 → 로컬라이즈된 문자열 변환
+String _localizedCardStatusLabel(
+    BuildContext context, ChecklistCardStatus status) {
+  final t = AppL10n.of(context);
+  switch (status) {
+    case ChecklistCardStatus.notStarted:
+      return t.workCardStatusNotStarted;
+    case ChecklistCardStatus.inProgress:
+      return t.workCardStatusInProgress;
+    case ChecklistCardStatus.pending:
+      return t.workCardStatusPendingReview;
+    case ChecklistCardStatus.rejected:
+      return t.workStatusRejected;
+    case ChecklistCardStatus.done:
+      return t.workCardStatusDone;
+  }
+}
 
 /// 날짜 비교 헬퍼: workDate가 오늘/과거/미래 중 무엇인지 반환
 enum _ScheduleDateKind { today, past, future }
@@ -385,6 +407,7 @@ class _TodayScheduleCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final a = schedule;
     final total = a.checklistSnapshot?.totalItems ?? a.totalItems;
     final completed = a.checklistSnapshot?.completedItems ?? a.completedItems;
@@ -484,7 +507,7 @@ class _TodayScheduleCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              'Unresolved ${unresolvedList.length}',
+                              t.workUnresolvedCount(unresolvedList.length),
                               style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
@@ -503,9 +526,9 @@ class _TodayScheduleCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(4),
                               border: Border.all(color: AppColors.border),
                             ),
-                            child: const Text(
-                              'Upcoming',
-                              style: TextStyle(
+                            child: Text(
+                              t.workUpcoming,
+                              style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w500,
                                 color: AppColors.textMuted,
@@ -564,6 +587,7 @@ class _ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -581,7 +605,7 @@ class _ProfileCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      user?.fullName ?? 'Staff',
+                      user?.fullName ?? t.commonStaff,
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -710,19 +734,19 @@ class _TodayTaskContentState extends State<_TodayTaskContent> {
     // Search filter
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
-      list = list.where((t) {
-        return t.title.toLowerCase().contains(q) ||
-            (t.store?.name.toLowerCase().contains(q) ?? false);
+      list = list.where((task) {
+        return task.title.toLowerCase().contains(q) ||
+            (task.store?.name.toLowerCase().contains(q) ?? false);
       }).toList();
     }
 
     // Date filter
     if (_selectedDate != null) {
-      list = list.where((t) {
-        if (t.dueDate == null) return false;
-        return t.dueDate!.year == _selectedDate!.year &&
-            t.dueDate!.month == _selectedDate!.month &&
-            t.dueDate!.day == _selectedDate!.day;
+      list = list.where((task) {
+        if (task.dueDate == null) return false;
+        return task.dueDate!.year == _selectedDate!.year &&
+            task.dueDate!.month == _selectedDate!.month &&
+            task.dueDate!.day == _selectedDate!.day;
       }).toList();
     }
 
@@ -756,9 +780,10 @@ class _TodayTaskContentState extends State<_TodayTaskContent> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final totalTasks = widget.tasks.tasks.length;
     final doneTasks =
-        widget.tasks.tasks.where((t) => t.status == 'completed').length;
+        widget.tasks.tasks.where((task) => task.status == 'completed').length;
     final remainingTasks = totalTasks - doneTasks;
     final doneRatio = totalTasks > 0 ? doneTasks / totalTasks : 0.0;
     final filtered = _filteredAndSorted;
@@ -780,7 +805,7 @@ class _TodayTaskContentState extends State<_TodayTaskContent> {
                 ),
               ),
               Text(
-                '$doneTasks done',
+                t.workTasksDoneCount(doneTasks),
                 style: const TextStyle(
                   fontSize: 12,
                   color: AppColors.success,
@@ -790,16 +815,16 @@ class _TodayTaskContentState extends State<_TodayTaskContent> {
             ],
           ),
           const SizedBox(height: 8),
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'done',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                t.workTasksDoneLabel,
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
               Text(
-                'left',
-                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                t.workTasksLeftLabel,
+                style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
               ),
             ],
           ),
@@ -850,7 +875,7 @@ class _TodayTaskContentState extends State<_TodayTaskContent> {
                     style: const TextStyle(
                         fontSize: 13, color: AppColors.text),
                     decoration: InputDecoration(
-                      hintText: 'Search tasks or stores',
+                      hintText: t.workSearchTasksHint,
                       hintStyle: const TextStyle(
                           fontSize: 13, color: AppColors.textMuted),
                       prefixIcon: const Icon(Icons.search,
@@ -920,9 +945,9 @@ class _TodayTaskContentState extends State<_TodayTaskContent> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
-                    'Due',
-                    style: TextStyle(
+                  Text(
+                    t.workDueLabel,
+                    style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: AppColors.accent,
@@ -935,7 +960,8 @@ class _TodayTaskContentState extends State<_TodayTaskContent> {
                     color: AppColors.accent.withValues(alpha: 0.3),
                   ),
                   Text(
-                    DateFormat('yyyy.MM.dd').format(_selectedDate!),
+                    DateFormat.yMd(Localizations.localeOf(context).toString())
+                        .format(_selectedDate!),
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
@@ -965,12 +991,12 @@ class _TodayTaskContentState extends State<_TodayTaskContent> {
             ),
           )
         else if (widget.tasks.tasks.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Center(
               child: Text(
-                'No tasks assigned',
-                style: TextStyle(color: AppColors.textMuted),
+                t.workEmptyTasks,
+                style: const TextStyle(color: AppColors.textMuted),
               ),
             ),
           )
@@ -980,8 +1006,8 @@ class _TodayTaskContentState extends State<_TodayTaskContent> {
             child: Center(
               child: Text(
                 _searchQuery.isNotEmpty
-                    ? 'No results for "$_searchQuery"'
-                    : 'No tasks for selected date',
+                    ? t.workNoResultsFor(_searchQuery)
+                    : t.workNoTasksForDate,
                 style: const TextStyle(
                     fontSize: 13, color: AppColors.textMuted),
               ),
@@ -1035,6 +1061,7 @@ class _TodayTaskContentState extends State<_TodayTaskContent> {
   }
 
   void _showSortOptions(BuildContext context) {
+    final t = AppL10n.of(context);
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -1055,13 +1082,13 @@ class _TodayTaskContentState extends State<_TodayTaskContent> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Sort by',
-                    style: TextStyle(
+                    t.workSortBy,
+                    style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                       color: AppColors.text,
@@ -1070,10 +1097,10 @@ class _TodayTaskContentState extends State<_TodayTaskContent> {
                 ),
               ),
               const SizedBox(height: 4),
-              _sortTile('Due date', _TaskSortOption.dueDate),
-              _sortTile('Priority', _TaskSortOption.priority),
-              _sortTile('Recent', _TaskSortOption.recent),
-              _sortTile('Name', _TaskSortOption.name),
+              _sortTile(t.workSortDueDate, _TaskSortOption.dueDate),
+              _sortTile(t.workSortPriority, _TaskSortOption.priority),
+              _sortTile(t.workSortRecent, _TaskSortOption.recent),
+              _sortTile(t.workSortName, _TaskSortOption.name),
               const SizedBox(height: 8),
             ],
           ),
@@ -1134,10 +1161,27 @@ class _TaskCard extends StatelessWidget {
     }
   }
 
+  String _localizedPriorityLabel(BuildContext context) {
+    final t = AppL10n.of(context);
+    switch (task.priority) {
+      case 'urgent':
+        return t.workPriorityUrgent;
+      case 'high':
+        return t.workPriorityHigh;
+      case 'normal':
+        return t.workPriorityNormal;
+      case 'low':
+        return t.workPriorityLow;
+      default:
+        return task.priorityLabel;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final localeName = Localizations.localeOf(context).toString();
     final duePart = task.dueDate != null
-        ? '~ ${DateFormat('MM.dd').format(task.dueDate!)}'
+        ? '~ ${DateFormat.Md(localeName).format(task.dueDate!)}'
         : null;
     final storeName = task.store?.name ?? task.storeName;
     final subtitle = [
@@ -1189,7 +1233,7 @@ class _TaskCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                task.priorityLabel,
+                _localizedPriorityLabel(context),
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -1371,6 +1415,7 @@ class _PastContentState extends State<_PastContent> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     if (widget.scheduleState.isPastLoading) {
       return const SizedBox(
         height: 120,
@@ -1379,12 +1424,12 @@ class _PastContentState extends State<_PastContent> {
     }
 
     if (_allPast.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 20),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
         child: Center(
           child: Text(
-            'No past checklists',
-            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            t.workEmptyPastChecklists,
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
           ),
         ),
       );
@@ -1404,10 +1449,11 @@ class _PastContentState extends State<_PastContent> {
   }
 
   Widget _buildFilterRow() {
+    final t = AppL10n.of(context);
     return Row(
       children: [
         _FilterChip(
-          label: 'All',
+          label: t.workFilterAll,
           isActive: _showAll,
           onTap: _toggleShowAll,
         ),
@@ -1416,7 +1462,7 @@ class _PastContentState extends State<_PastContent> {
           Padding(
             padding: const EdgeInsets.only(right: 6),
             child: _FilterChip(
-              label: 'Unresolved ${_unresolvedSchedules.length}',
+              label: t.workUnresolvedCount(_unresolvedSchedules.length),
               isActive: _unresolvedOnly,
               color: AppColors.warning,
               onTap: _toggleUnresolvedFilter,
@@ -1424,14 +1470,15 @@ class _PastContentState extends State<_PastContent> {
           ),
         if (_selectedDate != null)
           _FilterChip(
-            label: DateFormat('MM/dd').format(_selectedDate!),
+            label: DateFormat.Md(Localizations.localeOf(context).toString())
+                .format(_selectedDate!),
             isActive: true,
             icon: Icons.close,
             onTap: _clearDate,
           )
         else
           _FilterChip(
-            label: 'Date',
+            label: t.workFilterDate,
             isActive: false,
             icon: Icons.calendar_today,
             onTap: _showDateSelector,
@@ -1440,9 +1487,9 @@ class _PastContentState extends State<_PastContent> {
         if (_hasActiveFilter)
           GestureDetector(
             onTap: _resetFilters,
-            child: const Text(
-              'Reset',
-              style: TextStyle(
+            child: Text(
+              t.actionReset,
+              style: const TextStyle(
                 fontSize: 12,
                 color: AppColors.accent,
                 fontWeight: FontWeight.w500,
@@ -1454,6 +1501,7 @@ class _PastContentState extends State<_PastContent> {
   }
 
   Widget _buildDefaultView() {
+    final t = AppL10n.of(context);
     final latestSchedules = _latestDateSchedules;
     final latestIds = latestSchedules.map((a) => a.id).toSet();
     final otherUnresolved =
@@ -1480,7 +1528,7 @@ class _PastContentState extends State<_PastContent> {
                     size: 14, color: AppColors.warning),
                 const SizedBox(width: 4),
                 Text(
-                  'Previous unresolved: ${otherUnresolved.length}',
+                  t.workPreviousUnresolvedCount(otherUnresolved.length),
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -1504,15 +1552,16 @@ class _PastContentState extends State<_PastContent> {
   }
 
   Widget _buildFilteredView() {
+    final t = AppL10n.of(context);
     final filtered = _filteredSchedules;
 
     if (filtered.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 20),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
         child: Center(
           child: Text(
-            'No matching records',
-            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            t.workNoMatchingRecords,
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
           ),
         ),
       );
@@ -1618,9 +1667,9 @@ class _PastScheduleCard extends StatelessWidget {
     final cardStatus = a.checklistStatus;
     final unresolvedList = a.checklistSnapshot?.unresolvedRejections ?? [];
     final hasUnresolved = cardStatus == ChecklistCardStatus.rejected;
-    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    final wd = weekdays[a.workDate.weekday - 1];
-    final dateStr = '${DateFormat('MM/dd').format(a.workDate)} ($wd)';
+    final localeName = Localizations.localeOf(context).toString();
+    final wd = DateFormat.E(localeName).format(a.workDate);
+    final dateStr = '${DateFormat.Md(localeName).format(a.workDate)} ($wd)';
 
     return GestureDetector(
       onTap: onTap,
@@ -1697,7 +1746,7 @@ class _PastScheduleCard extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                cardStatus.label,
+                                _localizedCardStatusLabel(context, cardStatus),
                                 style: TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.w600,
@@ -1913,12 +1962,19 @@ class _WorkDatePickerSheetState extends State<_WorkDatePickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
+    final localeName = Localizations.localeOf(context).toString();
     final year = _currentMonth.year;
     final month = _currentMonth.month;
     final daysInMonth = DateTime(year, month + 1, 0).day;
     final firstWeekday = DateTime(year, month, 1).weekday;
 
-    const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    // Locale-aware weekday short labels (Mon..Sun)
+    final weekdayLabels = List<String>.generate(7, (i) {
+      // weekday 1=Mon ... 7=Sun in Dart
+      final ref = DateTime(2024, 1, 1).add(Duration(days: i)); // 2024-01-01 was Mon
+      return DateFormat.E(localeName).format(ref);
+    });
 
     return Container(
       decoration: const BoxDecoration(
@@ -1938,9 +1994,9 @@ class _WorkDatePickerSheetState extends State<_WorkDatePickerSheet> {
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Select Work Date',
-            style: TextStyle(
+          Text(
+            t.workSelectWorkDate,
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
               color: AppColors.text,
@@ -1959,7 +2015,7 @@ class _WorkDatePickerSheetState extends State<_WorkDatePickerSheet> {
                 ),
               ),
               Text(
-                DateFormat('yyyy MMM').format(_currentMonth),
+                DateFormat.yMMM(localeName).format(_currentMonth),
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
@@ -2010,9 +2066,9 @@ class _WorkDatePickerSheetState extends State<_WorkDatePickerSheet> {
                 ),
               ),
               const SizedBox(width: 4),
-              const Text(
-                'Work day',
-                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+              Text(
+                t.workLegendWorkDay,
+                style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
               ),
               const SizedBox(width: 12),
               Container(
@@ -2025,9 +2081,9 @@ class _WorkDatePickerSheetState extends State<_WorkDatePickerSheet> {
                 ),
               ),
               const SizedBox(width: 4),
-              const Text(
-                'No work',
-                style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+              Text(
+                t.workLegendNoWork,
+                style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
               ),
             ],
           ),
@@ -2178,9 +2234,10 @@ class _ChecklistBottomSheetState
       if (photoUrl == null) return;
     }
 
+    final t = AppL10n.of(context);
     responseComment = await _showNoteDialog(
-      title: 'Response',
-      hint: 'Enter your response to the rejection...',
+      title: t.workResponseDialogTitle,
+      hint: t.workResponseDialogHint,
     );
     if (responseComment == null) return;
 
@@ -2217,10 +2274,11 @@ class _ChecklistBottomSheetState
       return urls['file_url'];
     } catch (e) {
       if (mounted) {
+        final t = AppL10n.of(context);
         await AppModal.show(
           context,
-          title: "Couldn't upload",
-          message: 'Photo upload failed',
+          title: t.workPhotoUploadFailedTitle,
+          message: t.workPhotoUploadFailedMessage,
           type: ModalType.error,
         );
       }
@@ -2231,6 +2289,7 @@ class _ChecklistBottomSheetState
   }
 
   Future<ImageSource?> _showPhotoSourceSheet() {
+    final t = AppL10n.of(context);
     return showModalBottomSheet<ImageSource>(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -2250,9 +2309,9 @@ class _ChecklistBottomSheetState
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Add Photo',
-              style: TextStyle(
+            Text(
+              t.workAddPhoto,
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: AppColors.text,
@@ -2261,13 +2320,13 @@ class _ChecklistBottomSheetState
             const SizedBox(height: 8),
             ListTile(
               leading: const Icon(Icons.camera_alt, color: AppColors.accent),
-              title: const Text('Take Photo'),
+              title: Text(t.workTakePhoto),
               onTap: () => Navigator.pop(ctx, ImageSource.camera),
             ),
             ListTile(
               leading:
                   const Icon(Icons.photo_library, color: AppColors.accent),
-              title: const Text('Choose from Gallery'),
+              title: Text(t.workChooseFromGallery),
               onTap: () => Navigator.pop(ctx, ImageSource.gallery),
             ),
             const SizedBox(height: 8),
@@ -2278,16 +2337,19 @@ class _ChecklistBottomSheetState
   }
 
   Future<String?> _showNoteDialog({
-    String title = 'Add Note',
-    String hint = 'Enter verification note...',
+    String? title,
+    String? hint,
   }) {
+    final t = AppL10n.of(context);
+    final dialogTitle = title ?? t.workAddNoteTitle;
+    final dialogHint = hint ?? t.workVerificationNoteHint;
     final controller = TextEditingController();
     return showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape:
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        title: Text(title,
+        title: Text(dialogTitle,
             style: const TextStyle(
                 fontSize: 16, fontWeight: FontWeight.w700)),
         content: TextField(
@@ -2295,14 +2357,14 @@ class _ChecklistBottomSheetState
           autofocus: true,
           maxLines: 3,
           decoration: InputDecoration(
-            hintText: hint,
+            hintText: dialogHint,
             hintStyle: const TextStyle(color: AppColors.textMuted),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(t.actionCancel),
           ),
           TextButton(
             onPressed: () {
@@ -2310,7 +2372,7 @@ class _ChecklistBottomSheetState
               if (text.isEmpty) return;
               Navigator.pop(ctx, text);
             },
-            child: const Text('Submit'),
+            child: Text(t.actionSubmit),
           ),
         ],
       ),
@@ -2334,6 +2396,7 @@ class _ChecklistBottomSheetState
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final state = ref.watch(myScheduleProvider);
     final schedule = state.selected;
 
@@ -2346,9 +2409,9 @@ class _ChecklistBottomSheetState
         if (mounted) {
           setState(() => _celebrationShown = true);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('All checklist items complete! Great job!'),
-              duration: Duration(seconds: 2),
+            SnackBar(
+              content: Text(t.workAllCompleteCelebration),
+              duration: const Duration(seconds: 2),
             ),
           );
           _startAutoCloseTimer();
@@ -2393,9 +2456,9 @@ class _ChecklistBottomSheetState
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Checklist',
-                      style: TextStyle(
+                    Text(
+                      t.workChecklistTab,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                         color: AppColors.text,
@@ -2441,10 +2504,10 @@ class _ChecklistBottomSheetState
                 child: state.isLoading && schedule == null
                     ? const Center(child: CircularProgressIndicator())
                     : snapshot == null || snapshot.items.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Text(
-                              'No checklist items',
-                              style: TextStyle(color: AppColors.textMuted),
+                              t.workEmptyChecklistItems,
+                              style: const TextStyle(color: AppColors.textMuted),
                             ),
                           )
                         : ListView.separated(
@@ -2485,9 +2548,9 @@ class _ChecklistBottomSheetState
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: const Text(
-                              'DONE',
-                              style: TextStyle(fontWeight: FontWeight.w600),
+                            child: Text(
+                              t.workDoneButton,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
                             ),
                           )
                         : OutlinedButton(
@@ -2499,9 +2562,9 @@ class _ChecklistBottomSheetState
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: const Text(
-                              'Close',
-                              style: TextStyle(color: AppColors.textSecondary),
+                            child: Text(
+                              t.actionClose,
+                              style: const TextStyle(color: AppColors.textSecondary),
                             ),
                           ),
                   ),
@@ -2530,6 +2593,7 @@ class _ChecklistItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return InkWell(
       onTap: onToggle,
       onLongPress: onTapDetail,
@@ -2608,9 +2672,9 @@ class _ChecklistItemTile extends StatelessWidget {
                             color: AppColors.successBg,
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: const Text(
-                            'Approved',
-                            style: TextStyle(
+                          child: Text(
+                            t.workStatusApproved,
+                            style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
                               color: AppColors.success,
@@ -2625,9 +2689,9 @@ class _ChecklistItemTile extends StatelessWidget {
                             color: AppColors.warningBg,
                             borderRadius: BorderRadius.circular(4),
                           ),
-                          child: const Text(
-                            'Action Required',
-                            style: TextStyle(
+                          child: Text(
+                            t.workStatusActionRequired,
+                            style: const TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
                               color: AppColors.warning,
@@ -2652,7 +2716,7 @@ class _ChecklistItemTile extends StatelessWidget {
                       item.completedAtDisplay != null) ...[
                     const SizedBox(height: 4),
                     Text(
-                      'Completed ${item.completedAtDisplay}',
+                      t.workCompletedAt(item.completedAtDisplay!),
                       style: const TextStyle(
                         fontSize: 11,
                         color: AppColors.success,
@@ -2946,6 +3010,7 @@ class _VerificationBottomSheetState
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
       maxChildSize: 0.92,
@@ -2972,13 +3037,13 @@ class _VerificationBottomSheetState
               ),
 
               // Header
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Verification',
-                    style: TextStyle(
+                    t.workVerificationHeader,
+                    style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: AppColors.text,
@@ -3030,18 +3095,18 @@ class _VerificationBottomSheetState
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
                               children: [
                                 Text(
-                                  'Photo',
-                                  style: TextStyle(
+                                  t.workPhotoSectionTitle,
+                                  style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.text,
                                   ),
                                 ),
-                                SizedBox(width: 8),
-                                Icon(
+                                const SizedBox(width: 8),
+                                const Icon(
                                   Icons.camera_alt_outlined,
                                   size: 16,
                                   color: AppColors.textMuted,
@@ -3049,9 +3114,9 @@ class _VerificationBottomSheetState
                               ],
                             ),
                             const SizedBox(height: 4),
-                            const Text(
-                              'Please upload verification photo.',
-                              style: TextStyle(
+                            Text(
+                              t.workPhotoSectionSubtitle,
+                              style: const TextStyle(
                                 fontSize: 12,
                                 color: AppColors.textMuted,
                               ),
@@ -3122,18 +3187,18 @@ class _VerificationBottomSheetState
                                       width: 1.5,
                                     ),
                                   ),
-                                  child: const Column(
+                                  child: Column(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(
+                                      const Icon(
                                         Icons.add_photo_alternate_outlined,
                                         size: 40,
                                         color: AppColors.textMuted,
                                       ),
-                                      SizedBox(height: 8),
+                                      const SizedBox(height: 8),
                                       Text(
-                                        'Add a photo',
-                                        style: TextStyle(
+                                        t.workAddAPhoto,
+                                        style: const TextStyle(
                                           fontSize: 13,
                                           color: AppColors.textMuted,
                                         ),
@@ -3153,7 +3218,7 @@ class _VerificationBottomSheetState
                                     child: OutlinedButton.icon(
                                       onPressed: _takePhoto,
                                       icon: const Icon(Icons.camera_alt, size: 16),
-                                      label: const Text('Camera'),
+                                      label: Text(t.workCameraButton),
                                       style: OutlinedButton.styleFrom(
                                         foregroundColor: AppColors.accent,
                                         side: const BorderSide(color: AppColors.accent),
@@ -3169,7 +3234,7 @@ class _VerificationBottomSheetState
                                     child: OutlinedButton.icon(
                                       onPressed: _pickImage,
                                       icon: const Icon(Icons.photo_library, size: 16),
-                                      label: const Text('Gallery'),
+                                      label: Text(t.workGalleryButton),
                                       style: OutlinedButton.styleFrom(
                                         foregroundColor: AppColors.textSecondary,
                                         side: const BorderSide(color: AppColors.border),
@@ -3200,18 +3265,18 @@ class _VerificationBottomSheetState
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Row(
+                            Row(
                               children: [
                                 Text(
-                                  'Note',
-                                  style: TextStyle(
+                                  t.workNoteSectionTitle,
+                                  style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.text,
                                   ),
                                 ),
-                                SizedBox(width: 8),
-                                Icon(
+                                const SizedBox(width: 8),
+                                const Icon(
                                   Icons.edit_note,
                                   size: 18,
                                   color: AppColors.textMuted,
@@ -3219,9 +3284,9 @@ class _VerificationBottomSheetState
                               ],
                             ),
                             const SizedBox(height: 4),
-                            const Text(
-                              'Please describe the work done.',
-                              style: TextStyle(
+                            Text(
+                              t.workNoteSectionSubtitle,
+                              style: const TextStyle(
                                 fontSize: 12,
                                 color: AppColors.textMuted,
                               ),
@@ -3236,7 +3301,7 @@ class _VerificationBottomSheetState
                                 color: AppColors.text,
                               ),
                               decoration: InputDecoration(
-                                hintText: 'Enter your note...',
+                                hintText: t.workEnterNoteHint,
                                 hintStyle: const TextStyle(
                                   fontSize: 14,
                                   color: AppColors.textMuted,
@@ -3294,9 +3359,9 @@ class _VerificationBottomSheetState
                                 color: Colors.white,
                               ),
                             )
-                          : const Text(
-                              'DONE',
-                              style: TextStyle(
+                          : Text(
+                              t.workDoneButton,
+                              style: const TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 15,
                               ),
@@ -3322,6 +3387,7 @@ class _ItemDetailSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final events = item.fullHistory;
     final hasPending = item.isRejected && !item.isResolved;
     final totalSteps = events.length + (hasPending ? 1 : 0);
@@ -3379,7 +3445,7 @@ class _ItemDetailSheet extends StatelessWidget {
                       ),
                     ],
                     const SizedBox(height: 12),
-                    _buildCurrentStatusBadge(),
+                    _buildCurrentStatusBadge(context),
                     const SizedBox(height: 10),
                     Row(
                       children: [
@@ -3420,9 +3486,9 @@ class _ItemDetailSheet extends StatelessWidget {
                   itemCount: totalSteps,
                   itemBuilder: (context, index) {
                     if (hasPending && index == events.length) {
-                      return const _TimelineStepCard(
+                      return _TimelineStepCard(
                         type: 'pending',
-                        comment: 'Awaiting resubmission',
+                        comment: t.workAwaitingResubmission,
                         isLast: true,
                       );
                     }
@@ -3454,9 +3520,9 @@ class _ItemDetailSheet extends StatelessWidget {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      child: const Text(
-                        'Close',
-                        style: TextStyle(
+                      child: Text(
+                        t.actionClose,
+                        style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textSecondary,
@@ -3473,34 +3539,35 @@ class _ItemDetailSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildCurrentStatusBadge() {
+  Widget _buildCurrentStatusBadge(BuildContext context) {
+    final t = AppL10n.of(context);
     final String label;
     final Color color;
     final Color bg;
     final IconData icon;
 
     if (item.isApproved) {
-      label = 'Approved';
+      label = t.workStatusApproved;
       color = const Color(0xFF10B981);
       bg = const Color(0xFFD1FAE5);
       icon = Icons.check_circle;
     } else if (item.isRejected && !item.isResolved) {
-      label = 'Revision Requested';
+      label = t.workStatusRevisionRequested;
       color = const Color(0xFFF59E0B);
       bg = const Color(0xFFFFFBEB);
       icon = Icons.edit_note;
     } else if (item.isResolved) {
-      label = 'Resubmitted';
+      label = t.workStatusResubmitted;
       color = const Color(0xFF6C5CE7);
       bg = const Color(0xFFF0EEFF);
       icon = Icons.replay;
     } else if (item.isCompleted) {
-      label = 'Submitted';
+      label = t.workStatusSubmitted;
       color = const Color(0xFF10B981);
       bg = const Color(0xFFD1FAE5);
       icon = Icons.check_circle;
     } else {
-      label = 'Not Submitted';
+      label = t.workStatusNotSubmitted;
       color = const Color(0xFF9CA3AF);
       bg = const Color(0xFFF9FAFB);
       icon = Icons.schedule;
@@ -3606,24 +3673,25 @@ class _TimelineStepCard extends StatelessWidget {
     }
   }
 
-  String get _label {
+  String _localizedLabel(BuildContext context) {
+    final t = AppL10n.of(context);
     switch (type) {
       case 'submitted':
-        return 'Submitted';
+        return t.workStatusSubmitted;
       case 'resubmitted':
-        return 'Resubmitted';
+        return t.workStatusResubmitted;
       case 'rejected':
-        return 'Revision Requested';
+        return t.workStatusRevisionRequested;
       case 'approved':
-        return 'Approved';
+        return t.workStatusApproved;
       case 'pending_re_review':
-        return 'Pending Re-review';
+        return t.workStatusPendingReview;
       case 'message':
-        return 'Message';
+        return t.workTimelineMessage;
       case 'message_photo':
-        return 'Photo';
+        return t.workTimelinePhoto;
       case 'pending':
-        return 'Pending';
+        return t.workStatusPending;
       default:
         return type;
     }
@@ -3712,7 +3780,7 @@ class _TimelineStepCard extends StatelessWidget {
                             Icon(_icon, size: 12, color: _dotColor),
                             const SizedBox(width: 4),
                             Text(
-                              _label,
+                              _localizedLabel(context),
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
@@ -3891,6 +3959,7 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
   }
 
   Widget _photoErrorWidget() {
+    final t = AppL10n.of(context);
     return Container(
       width: double.infinity,
       height: 160,
@@ -3898,14 +3967,14 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
         color: AppColors.bg,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Column(
+      child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.broken_image_outlined,
+          const Icon(Icons.broken_image_outlined,
               size: 28, color: AppColors.textMuted),
-          SizedBox(height: 4),
-          Text('Failed to load image',
-              style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+          const SizedBox(height: 4),
+          Text(t.workFailedToLoadImage,
+              style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
         ],
       ),
     );
@@ -3957,6 +4026,7 @@ class _FullScreenPhotoViewerState extends State<_FullScreenPhotoViewer> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final total = widget.photoUrls.length;
     return Scaffold(
       backgroundColor: Colors.black87,
@@ -3976,14 +4046,14 @@ class _FullScreenPhotoViewerState extends State<_FullScreenPhotoViewer> {
                     child: Image.network(
                       widget.photoUrls[index],
                       fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Column(
+                      errorBuilder: (_, __, ___) => Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.broken_image_outlined,
+                          const Icon(Icons.broken_image_outlined,
                               size: 48, color: Colors.white54),
-                          SizedBox(height: 8),
-                          Text('Failed to load image',
-                              style: TextStyle(
+                          const SizedBox(height: 8),
+                          Text(t.workFailedToLoadImage,
+                              style: const TextStyle(
                                   fontSize: 14, color: Colors.white54)),
                         ],
                       ),

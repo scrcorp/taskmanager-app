@@ -8,10 +8,12 @@
 ///
 /// Dio 에러를 사용자 친화적 메시지로 변환하는 _parseError() 포함.
 import 'package:dio/dio.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user.dart';
 import '../services/auth_service.dart';
 import '../utils/token_storage.dart';
+import 'locale_provider.dart';
 
 /// 인증 상태 열거형
 enum AuthStatus { initial, authenticated, unauthenticated, loading }
@@ -35,14 +37,27 @@ class AuthState {
 
 /// 인증 상태 Provider (앱 전역에서 접근)
 final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(ref.read(authServiceProvider));
+  return AuthNotifier(ref.read(authServiceProvider), ref);
 });
 
 /// 인증 상태 관리 Notifier
 class AuthNotifier extends StateNotifier<AuthState> {
   final AuthService _authService;
+  final Ref _ref;
 
-  AuthNotifier(this._authService) : super(const AuthState());
+  AuthNotifier(this._authService, this._ref) : super(const AuthState());
+
+  /// User의 preferred_language를 LocaleNotifier에 동기화한다.
+  /// 사용자가 직접 토글로 바꾼 적이 없을 때만(=현재 locale이 null) 적용.
+  void _syncLocaleFromUser(User user) {
+    final localeNotifier = _ref.read(localeProvider.notifier);
+    final currentLocale = _ref.read(localeProvider);
+    if (currentLocale != null) return; // 사용자가 직접 선택한 값이 있으면 덮어쓰지 않음
+    final code = user.preferredLanguage;
+    if (supportedLocales.any((l) => l.languageCode == code)) {
+      localeNotifier.setLocale(Locale(code));
+    }
+  }
 
   /// 앱 시작 시 저장된 토큰으로 인증 상태 확인
   ///
@@ -56,7 +71,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
     try {
       final data = await _authService.getMe();
-      state = AuthState(status: AuthStatus.authenticated, user: User.fromJson(data));
+      final user = User.fromJson(data);
+      state = AuthState(status: AuthStatus.authenticated, user: user);
+      _syncLocaleFromUser(user);
     } catch (_) {
       state = const AuthState(status: AuthStatus.unauthenticated);
     }
@@ -71,7 +88,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       await _authService.login(username, password);
       final data = await _authService.getMe();
-      state = AuthState(status: AuthStatus.authenticated, user: User.fromJson(data));
+      final user = User.fromJson(data);
+      state = AuthState(status: AuthStatus.authenticated, user: user);
+      _syncLocaleFromUser(user);
       return true;
     } catch (e) {
       state = AuthState(status: AuthStatus.unauthenticated, error: _parseError(e, 'Login failed'));
@@ -104,7 +123,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
         preferredLanguage: preferredLanguage,
       );
       final data = await _authService.getMe();
-      state = AuthState(status: AuthStatus.authenticated, user: User.fromJson(data));
+      final user = User.fromJson(data);
+      state = AuthState(status: AuthStatus.authenticated, user: user);
+      // 회원가입은 사용자가 명시적으로 언어를 선택했으므로 항상 동기화
+      if (supportedLocales.any((l) => l.languageCode == preferredLanguage)) {
+        _ref.read(localeProvider.notifier).setLocale(Locale(preferredLanguage));
+      }
       return true;
     } catch (e) {
       state = AuthState(status: AuthStatus.unauthenticated, error: _parseError(e, 'Registration failed'));
@@ -116,7 +140,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<void> refreshUser() async {
     try {
       final data = await _authService.getMe();
-      state = AuthState(status: AuthStatus.authenticated, user: User.fromJson(data));
+      final user = User.fromJson(data);
+      state = AuthState(status: AuthStatus.authenticated, user: user);
+      _syncLocaleFromUser(user);
     } catch (_) {}
   }
 

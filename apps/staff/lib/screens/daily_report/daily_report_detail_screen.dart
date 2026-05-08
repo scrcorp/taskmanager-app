@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/daily_report.dart';
 import '../../models/store.dart';
 import '../../providers/auth_provider.dart';
@@ -81,21 +82,20 @@ class _DailyReportDetailScreenState
   }
 
   Future<void> _showDuplicateDialog(String existingId) async {
+    final t = AppL10n.of(context);
     final go = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Report Exists'),
-        content: const Text(
-          'A report already exists for this store/date/period.\nWould you like to view the existing report?',
-        ),
+        title: Text(t.drExistsTitle),
+        content: Text(t.drExistsMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(t.actionCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Go to Report'),
+            child: Text(t.drExistsGo),
           ),
         ],
       ),
@@ -106,11 +106,12 @@ class _DailyReportDetailScreenState
   }
 
   Future<void> _createAndLoadTemplate() async {
+    final t = AppL10n.of(context);
     if (_selectedStore == null) {
       await AppModal.show(
         context,
-        title: 'Heads up',
-        message: 'Please select a store',
+        title: t.commonHeadsUp,
+        message: t.drSelectStorePrompt,
         type: ModalType.warning,
       );
       return;
@@ -126,8 +127,8 @@ class _DailyReportDetailScreenState
       if (mounted) {
         await AppModal.show(
           context,
-          title: "Couldn't load template",
-          message: 'Failed to load template',
+          title: t.drTemplateLoadFailedTitle,
+          message: t.drTemplateLoadFailedMessage,
           type: ModalType.error,
         );
       }
@@ -157,8 +158,8 @@ class _DailyReportDetailScreenState
       }
       await AppModal.show(
         context,
-        title: "Couldn't create report",
-        message: 'Failed to create report',
+        title: t.drCreateFailedTitle,
+        message: t.drCreateFailedMessage,
         type: ModalType.error,
       );
       setState(() => _isCreating = false);
@@ -167,8 +168,8 @@ class _DailyReportDetailScreenState
       if (mounted) {
         await AppModal.show(
           context,
-          title: "Couldn't create report",
-          message: 'Failed to create report',
+          title: t.drCreateFailedTitle,
+          message: t.drCreateFailedMessage,
           type: ModalType.error,
         );
       }
@@ -208,6 +209,7 @@ class _DailyReportDetailScreenState
       _isCreateMode ? _createdReport : ref.read(dailyReportProvider).selected;
 
   Future<void> _saveDraft() async {
+    final t = AppL10n.of(context);
     final report = _currentReport;
     if (report == null) return;
 
@@ -225,8 +227,8 @@ class _DailyReportDetailScreenState
       if (ok) {
         await AppModal.show(
           context,
-          title: 'Saved',
-          message: 'Draft saved',
+          title: t.commonSavedTitle,
+          message: t.drDraftSaved,
           type: ModalType.success,
         );
         if (!mounted) return;
@@ -235,8 +237,8 @@ class _DailyReportDetailScreenState
       } else {
         await AppModal.show(
           context,
-          title: "Couldn't save",
-          message: 'Failed to save',
+          title: t.commonSaveFailedTitle,
+          message: t.drSaveFailed,
           type: ModalType.error,
         );
       }
@@ -265,6 +267,7 @@ class _DailyReportDetailScreenState
     }
 
     // Save first if editing
+    final t = AppL10n.of(context);
     if (_isEditing) {
       final sections = report.sections.map((s) {
         return {
@@ -280,8 +283,8 @@ class _DailyReportDetailScreenState
         if (mounted) {
           await AppModal.show(
             context,
-            title: "Couldn't save",
-            message: 'Failed to save',
+            title: t.commonSaveFailedTitle,
+            message: t.drSaveFailed,
             type: ModalType.error,
           );
         }
@@ -300,8 +303,8 @@ class _DailyReportDetailScreenState
         });
         await AppModal.show(
           context,
-          title: 'Submitted',
-          message: 'Report submitted',
+          title: t.drSubmittedTitle,
+          message: t.drSubmittedMessage,
           type: ModalType.success,
         );
         if (!mounted) return;
@@ -310,8 +313,8 @@ class _DailyReportDetailScreenState
       } else {
         await AppModal.show(
           context,
-          title: "Couldn't submit",
-          message: 'Failed to submit',
+          title: t.drSubmitFailedTitle,
+          message: t.drSubmitFailedMessage,
           type: ModalType.error,
         );
       }
@@ -319,22 +322,23 @@ class _DailyReportDetailScreenState
   }
 
   Future<void> _deleteReport() async {
+    final t = AppL10n.of(context);
     final report = _currentReport;
     if (report == null) return;
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Delete Draft'),
-        content: const Text('Are you sure you want to delete this draft?'),
+        title: Text(t.drDeleteTitle),
+        content: Text(t.drDeleteMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(t.actionCancel),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Color(0xFFDC2626))),
+            child: Text(t.actionDelete, style: const TextStyle(color: Color(0xFFDC2626))),
           ),
         ],
       ),
@@ -346,8 +350,8 @@ class _DailyReportDetailScreenState
       if (ok) {
         await AppModal.show(
           context,
-          title: 'Deleted',
-          message: 'Draft deleted',
+          title: t.drDeletedTitle,
+          message: t.drDeletedMessage,
           type: ModalType.success,
         );
         if (!mounted) return;
@@ -356,8 +360,8 @@ class _DailyReportDetailScreenState
       } else {
         await AppModal.show(
           context,
-          title: "Couldn't delete",
-          message: 'Failed to delete',
+          title: t.drDeleteFailedTitle,
+          message: t.drDeleteFailedMessage,
           type: ModalType.error,
         );
       }
@@ -368,6 +372,7 @@ class _DailyReportDetailScreenState
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final state = ref.watch(dailyReportProvider);
 
     return Scaffold(
@@ -375,7 +380,7 @@ class _DailyReportDetailScreenState
       body: Column(
         children: [
           AppHeader(
-            title: _isCreateMode ? 'New Report' : 'Report Detail',
+            title: _isCreateMode ? t.drHeaderNew : t.drHeaderDetail,
             isDetail: true,
             onBack: () => context.pop(),
           ),
@@ -386,6 +391,7 @@ class _DailyReportDetailScreenState
   }
 
   Widget _buildBody(DailyReportState state) {
+    final t = AppL10n.of(context);
     // Create mode: show setup form first, then section form
     if (_isCreateMode) {
       if (_createdReport == null) {
@@ -401,7 +407,7 @@ class _DailyReportDetailScreenState
     }
     if (report == null) {
       return Center(
-        child: Text(state.error ?? 'Report not found',
+        child: Text(state.error ?? t.drNotFound,
             style: const TextStyle(color: AppColors.textMuted)),
       );
     }
@@ -410,6 +416,7 @@ class _DailyReportDetailScreenState
 
   /// Report view: header + sections + comments + action buttons
   Widget _buildReportView(DailyReport report, DailyReportState state) {
+    final t = AppL10n.of(context);
     final user = ref.watch(authProvider).user;
     final isOwner =
         user != null && report.authorId == user.id;
@@ -455,9 +462,9 @@ class _DailyReportDetailScreenState
                               shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12)),
                             ),
-                            child: const Text(
-                              'Save Draft',
-                              style: TextStyle(
+                            child: Text(
+                              t.drSaveDraftButton,
+                              style: const TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.textSecondary,
@@ -477,7 +484,7 @@ class _DailyReportDetailScreenState
                                         strokeWidth: 2,
                                         color: Colors.white),
                                   )
-                                : const Text('Submit'),
+                                : Text(t.actionSubmit),
                           ),
                         ),
                       ],
@@ -500,7 +507,7 @@ class _DailyReportDetailScreenState
                           child: OutlinedButton.icon(
                             onPressed: () => _enterEditMode(report),
                             icon: const Icon(Icons.edit, size: 18),
-                            label: const Text('Edit'),
+                            label: Text(t.actionEdit),
                             style: OutlinedButton.styleFrom(
                               side:
                                   const BorderSide(color: AppColors.border),
@@ -523,7 +530,7 @@ class _DailyReportDetailScreenState
                                         strokeWidth: 2,
                                         color: Colors.white),
                                   )
-                                : const Text('Submit'),
+                                : Text(t.actionSubmit),
                           ),
                         ),
                       ],
@@ -537,14 +544,16 @@ class _DailyReportDetailScreenState
   // ─── Setup form (create mode step 1) ───
 
   Widget _buildSetupForm() {
+    final t = AppL10n.of(context);
+    final localeStr = Localizations.localeOf(context).toString();
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Store selector
-          const Text('Store',
-              style: TextStyle(
+          Text(t.drStoreLabel,
+              style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.text)),
@@ -561,8 +570,8 @@ class _DailyReportDetailScreenState
               child: DropdownButton<Store>(
                 value: _selectedStore,
                 isExpanded: true,
-                hint: const Text('Select store',
-                    style: TextStyle(color: AppColors.textMuted)),
+                hint: Text(t.drSelectStoreHint,
+                    style: const TextStyle(color: AppColors.textMuted)),
                 items: _stores.map((s) {
                   return DropdownMenuItem(value: s, child: Text(s.name));
                 }).toList(),
@@ -583,15 +592,15 @@ class _DailyReportDetailScreenState
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                'No stores assigned',
-                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                t.inventoryNoStoresTitle,
+                style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
               ),
             ),
           const SizedBox(height: 20),
 
           // Date picker
-          const Text('Date',
-              style: TextStyle(
+          Text(t.drDateLabel,
+              style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.text)),
@@ -620,8 +629,7 @@ class _DailyReportDetailScreenState
                 children: [
                   Expanded(
                     child: Text(
-                      DateFormat('yyyy-MM-dd (EEE)')
-                          .format(_selectedDate),
+                      DateFormat.yMMMEd(localeStr).format(_selectedDate),
                       style: const TextStyle(
                           fontSize: 14, color: AppColors.text),
                     ),
@@ -635,8 +643,8 @@ class _DailyReportDetailScreenState
           const SizedBox(height: 20),
 
           // Period selector
-          const Text('Period',
-              style: TextStyle(
+          Text(t.drPeriodLabel,
+              style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.text)),
@@ -644,13 +652,13 @@ class _DailyReportDetailScreenState
           Row(
             children: [
               _PeriodChip(
-                label: 'Lunch',
+                label: t.drPeriodLunch,
                 isSelected: _selectedPeriod == 'lunch',
                 onTap: () => setState(() => _selectedPeriod = 'lunch'),
               ),
               const SizedBox(width: 12),
               _PeriodChip(
-                label: 'Dinner',
+                label: t.drPeriodDinner,
                 isSelected: _selectedPeriod == 'dinner',
                 onTap: () => setState(() => _selectedPeriod = 'dinner'),
               ),
@@ -670,7 +678,7 @@ class _DailyReportDetailScreenState
                       child: CircularProgressIndicator(
                           strokeWidth: 2, color: Colors.white),
                     )
-                  : const Text('Start Writing'),
+                  : Text(t.drStartWriting),
             ),
           ),
         ],
@@ -764,7 +772,7 @@ class _DailyReportDetailScreenState
                   size: 16, color: AppColors.textMuted),
               const SizedBox(width: 4),
               Text(
-                report.authorName ?? 'Unknown',
+                report.authorName ?? AppL10n.of(context).commonUnknown,
                 style: const TextStyle(
                     fontSize: 13, color: AppColors.textSecondary),
               ),
@@ -794,7 +802,7 @@ class _DailyReportDetailScreenState
                       size: 16, color: AppColors.success),
                   const SizedBox(width: 6),
                   Text(
-                    'Submitted ${formatActionTime(report.submittedAt!)}',
+                    AppL10n.of(context).drSubmittedAt(formatActionTime(report.submittedAt!)),
                     style: const TextStyle(
                       fontSize: 13,
                       color: AppColors.success,
@@ -813,6 +821,7 @@ class _DailyReportDetailScreenState
   // ─── Sections (read or edit) ───
 
   Widget _buildSections(DailyReport report) {
+    final t = AppL10n.of(context);
     final sections = report.sections.toList()
       ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
 
@@ -823,9 +832,9 @@ class _DailyReportDetailScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Report Content',
-            style: TextStyle(
+          Text(
+            t.drContentHeader,
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppColors.text,
@@ -835,7 +844,7 @@ class _DailyReportDetailScreenState
           ...sections.map((section) {
             final hasError = _emptySectionIds.contains(section.key);
             // Use snapshotted description from section
-            final hintText = section.description ?? 'Enter content...';
+            final hintText = section.description ?? t.drEnterContent;
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 20),
@@ -862,9 +871,9 @@ class _DailyReportDetailScreenState
                           ),
                         )
                       else
-                        const Text(
-                          '  (Optional)',
-                          style: TextStyle(
+                        Text(
+                          t.drOptional,
+                          style: const TextStyle(
                             fontSize: 12,
                             color: AppColors.textMuted,
                           ),
@@ -922,7 +931,7 @@ class _DailyReportDetailScreenState
                       child: Text(
                         section.content?.isNotEmpty == true
                             ? section.content!
-                            : '(No content)',
+                            : t.drNoContent,
                         style: TextStyle(
                           fontSize: 14,
                           height: 1.6,
@@ -933,11 +942,11 @@ class _DailyReportDetailScreenState
                       ),
                     ),
                   if (hasError)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        'This field is required',
-                        style: TextStyle(
+                        t.drFieldRequired,
+                        style: const TextStyle(
                             fontSize: 12, color: Color(0xFFDC2626)),
                       ),
                     ),
@@ -953,6 +962,7 @@ class _DailyReportDetailScreenState
   // ─── Comments (read-only) ───
 
   Widget _buildComments(DailyReport report) {
+    final t = AppL10n.of(context);
     return Container(
       width: double.infinity,
       color: AppColors.white,
@@ -961,7 +971,7 @@ class _DailyReportDetailScreenState
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Comments (${report.comments.length})',
+            t.noticeCommentsCount(report.comments.length),
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -995,7 +1005,7 @@ class _DailyReportDetailScreenState
                         Row(
                           children: [
                             Text(
-                              comment.userName ?? 'Unknown',
+                              comment.userName ?? t.commonUnknown,
                               style: const TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,

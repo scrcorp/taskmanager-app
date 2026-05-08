@@ -10,7 +10,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/language_switcher.dart';
 
 class FindUsernameScreen extends ConsumerStatefulWidget {
   const FindUsernameScreen({super.key});
@@ -58,12 +60,13 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
   }
 
   Future<void> _searchUsername() async {
+    final t = AppL10n.of(context);
     final email = _emailCtrl.text.trim();
     if (email.isEmpty) {
       await AppModal.show(
         context,
-        title: 'Heads up',
-        message: 'Please enter your email.',
+        title: t.commonHeadsUp,
+        message: t.emailVerifyMissingEmail,
         type: ModalType.warning,
       );
       return;
@@ -84,8 +87,8 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
         setState(() => _isLoading = false);
         await AppModal.show(
           context,
-          title: 'Account not found',
-          message: _parseApiError(e, 'No account found with this email.'),
+          title: t.findUsernameNotFoundTitle,
+          message: _parseApiError(e, t.findUsernameNotFoundDefault),
           type: ModalType.error,
         );
       }
@@ -93,6 +96,7 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
   }
 
   Future<void> _sendCode() async {
+    final t = AppL10n.of(context);
     final email = _emailCtrl.text.trim();
     setState(() => _isLoading = true);
     try {
@@ -107,8 +111,8 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
         _startTimer(expiresIn);
         await AppModal.show(
           context,
-          title: 'Code Sent',
-          message: 'Verification code sent.',
+          title: t.emailVerifyCodeSentTitle,
+          message: t.emailVerifyCodeSentMessage,
           type: ModalType.success,
         );
       }
@@ -117,8 +121,8 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
         setState(() => _isLoading = false);
         await AppModal.show(
           context,
-          title: "Couldn't send code",
-          message: _parseApiError(e, 'Failed to send code.'),
+          title: t.emailVerifyCodeSendErrorTitle,
+          message: _parseApiError(e, t.emailVerifyCodeSendErrorDefault),
           type: ModalType.error,
         );
       }
@@ -126,12 +130,13 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
   }
 
   Future<void> _verifyCode() async {
+    final t = AppL10n.of(context);
     final code = _codeCtrl.text.trim();
     if (code.isEmpty || code.length != 6) {
       await AppModal.show(
         context,
-        title: 'Heads up',
-        message: 'Please enter the 6-digit code.',
+        title: t.commonHeadsUp,
+        message: t.emailVerifyMissing6Digit,
         type: ModalType.warning,
       );
       return;
@@ -153,8 +158,8 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
         setState(() => _isLoading = false);
         await AppModal.show(
           context,
-          title: 'Verification Failed',
-          message: _parseApiError(e, 'Verification failed.'),
+          title: t.emailVerifyFailedTitle,
+          message: _parseApiError(e, t.emailVerifyFailedDefault),
           type: ModalType.error,
         );
       }
@@ -162,6 +167,7 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
   }
 
   String _parseApiError(Object e, String fallback) {
+    final t = AppL10n.of(context);
     if (e is DioException && e.response?.data != null) {
       final data = e.response!.data;
       if (data is Map<String, dynamic>) {
@@ -172,10 +178,10 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
     if (e is DioException) {
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
-        return 'Server not responding. Please try again.';
+        return t.errorServerNotResponding;
       }
       if (e.type == DioExceptionType.connectionError) {
-        return 'No internet connection.';
+        return t.errorNoInternet;
       }
     }
     return fallback;
@@ -183,6 +189,7 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Scaffold(
       backgroundColor: AppColors.white,
       appBar: AppBar(
@@ -205,9 +212,15 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
                   }
                 },
               ),
-        title: const Text('Find Username'),
+        title: Text(t.findUsernameHeader),
         centerTitle: true,
         elevation: 0,
+        actions: const [
+          Padding(
+            padding: EdgeInsets.only(right: 12),
+            child: Center(child: LanguageSwitcher()),
+          ),
+        ],
       ),
       body: SafeArea(
         child: _step == 1
@@ -222,30 +235,31 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
   // ── Step 1: 이메일 입력 ──────────────────────────────────────────────────
 
   Widget _buildStep1() {
+    final t = AppL10n.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Find Your Username', style: Theme.of(context).textTheme.headlineLarge),
+          Text(t.findUsernameHeading, style: Theme.of(context).textTheme.headlineLarge),
           const SizedBox(height: 8),
           Text(
-            'Enter the email address associated with your account.',
+            t.findUsernameSubheading,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 32),
-          const Text('Email', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
+          Text(t.fieldEmail, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
           const SizedBox(height: 8),
           TextField(
             controller: _emailCtrl,
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _searchUsername(),
-            decoration: const InputDecoration(hintText: 'example@email.com'),
+            decoration: InputDecoration(hintText: t.hintEmailExample),
           ),
           const SizedBox(height: 16),
           Text(
-            "We'll look up your account and show a masked version of your username for verification.",
+            t.findUsernameHelp,
             style: TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.5),
           ),
           const Spacer(),
@@ -256,7 +270,7 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
               onPressed: _isLoading ? null : _searchUsername,
               child: _isLoading
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Search'),
+                  : Text(t.actionSearch),
             ),
           ),
         ],
@@ -267,15 +281,16 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
   // ── Step 2: 마스킹 결과 + 코드 입력 ─────────────────────────────────────
 
   Widget _buildStep2() {
+    final t = AppL10n.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Is this your account?', style: Theme.of(context).textTheme.headlineLarge),
+          Text(t.findUsernameStep2Title, style: Theme.of(context).textTheme.headlineLarge),
           const SizedBox(height: 8),
           Text(
-            'We found an account with the email you provided.',
+            t.findUsernameStep2Subtitle,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 32),
@@ -290,7 +305,7 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
             ),
             child: Column(
               children: [
-                Text('Username', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                Text(t.findUsernameLabel, style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                 const SizedBox(height: 8),
                 Text(
                   _maskedUsername,
@@ -301,13 +316,13 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
           ),
           const SizedBox(height: 20),
           Text(
-            'To see your full username, verify your email.',
+            t.findUsernameStep2Hint,
             style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
           // 인증코드 입력 영역
-          const Text('Verification Code', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
+          Text(t.fieldVerificationCode, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -316,7 +331,7 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
                   controller: _codeCtrl,
                   enabled: _codeSent,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(hintText: '6-digit code'),
+                  decoration: InputDecoration(hintText: t.hint6DigitCode),
                 ),
               ),
               const SizedBox(width: 8),
@@ -332,7 +347,7 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                   ),
-                  child: const Text('Verify'),
+                  child: Text(t.actionVerify),
                 ),
               ),
             ],
@@ -341,7 +356,7 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(
-                '\u23F1 $_timerText remaining',
+                t.emailVerifyTimerRemaining(_timerText),
                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.danger),
               ),
             ),
@@ -350,11 +365,11 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
               padding: const EdgeInsets.only(top: 12),
               child: Row(
                 children: [
-                  Text("Didn't receive the code?", style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                  Text(t.codeNotReceivedPrompt, style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
                   const SizedBox(width: 8),
                   GestureDetector(
                     onTap: _isLoading ? null : _sendCode,
-                    child: Text('Resend Code', style: TextStyle(fontSize: 13, color: AppColors.accent, fontWeight: FontWeight.w600, decoration: TextDecoration.underline)),
+                    child: Text(t.actionResendCode, style: TextStyle(fontSize: 13, color: AppColors.accent, fontWeight: FontWeight.w600, decoration: TextDecoration.underline)),
                   ),
                 ],
               ),
@@ -378,7 +393,7 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
                       foregroundColor: AppColors.textSecondary,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                    child: const Text('Try Different Email', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                    child: Text(t.findUsernameTryDifferent, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                   ),
                 ),
               ),
@@ -390,7 +405,7 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
                     onPressed: _isLoading ? null : _sendCode,
                     child: _isLoading && !_codeSent
                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : Text(_codeSent ? 'Resend Code' : 'Send Code'),
+                        : Text(_codeSent ? t.actionResendCode : t.actionSendCode),
                   ),
                 ),
               ),
@@ -404,6 +419,7 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
   // ── Step 3: Full Username 표시 ───────────────────────────────────────────
 
   Widget _buildStep3() {
+    final t = AppL10n.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
@@ -415,10 +431,10 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
             child: const Icon(Icons.check_circle_outline_rounded, size: 44, color: AppColors.success),
           ),
           const SizedBox(height: 20),
-          Text('Username Found', style: Theme.of(context).textTheme.headlineLarge, textAlign: TextAlign.center),
+          Text(t.findUsernameSuccessTitle, style: Theme.of(context).textTheme.headlineLarge, textAlign: TextAlign.center),
           const SizedBox(height: 8),
           Text(
-            'Your username has been verified.',
+            t.findUsernameSuccessMessage,
             style: Theme.of(context).textTheme.bodyMedium,
             textAlign: TextAlign.center,
           ),
@@ -434,7 +450,7 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
             ),
             child: Column(
               children: [
-                Text('Your Username', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                Text(t.findUsernameYourUsername, style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                 const SizedBox(height: 8),
                 Text(
                   _fullUsername,
@@ -445,7 +461,7 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Use this username to log in to your account.',
+            t.findUsernameUsernameHint,
             style: TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.5),
             textAlign: TextAlign.center,
           ),
@@ -457,7 +473,7 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
                 height: 52,
                 child: ElevatedButton(
                   onPressed: () => context.go('/login'),
-                  child: const Text('Go to Login'),
+                  child: Text(t.actionGoToLogin),
                 ),
               ),
               const SizedBox(height: 8),
@@ -471,7 +487,7 @@ class _FindUsernameScreenState extends ConsumerState<FindUsernameScreen> {
                     foregroundColor: AppColors.accent,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
-                  child: const Text('Reset Password', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                  child: Text(t.actionResetPassword, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                 ),
               ),
             ],

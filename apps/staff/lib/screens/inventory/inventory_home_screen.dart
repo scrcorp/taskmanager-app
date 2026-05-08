@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/inventory.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -37,6 +38,7 @@ class _InventoryHomeScreenState
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final state = ref.watch(inventoryProvider);
     final user = ref.watch(authProvider).user;
     final canManage = user != null && user.hasPermission('inventory:create');
@@ -49,7 +51,7 @@ class _InventoryHomeScreenState
       body: Column(
         children: [
           AppHeader(
-            title: store?.name ?? 'Inventory',
+            title: store?.name ?? t.inventoryHeader,
             isDetail: true,
             onBack: () => context.pop(),
           ),
@@ -87,6 +89,7 @@ class _InventoryHomeScreenState
   }
 
   Widget _buildChangeStoreRow(BuildContext context, InventoryStore? store) {
+    final t = AppL10n.of(context);
     if (store == null) return const SizedBox.shrink();
     return Row(
       children: [
@@ -116,7 +119,7 @@ class _InventoryHomeScreenState
         TextButton.icon(
           onPressed: () => context.pop(),
           icon: const Icon(Icons.swap_horiz, size: 16),
-          label: const Text('Change Store'),
+          label: Text(t.invChangeStore),
           style: TextButton.styleFrom(
             foregroundColor: AppColors.accent,
             textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
@@ -127,11 +130,12 @@ class _InventoryHomeScreenState
   }
 
   Widget _buildSummaryCards(InventorySummary summary) {
+    final t = AppL10n.of(context);
     return Row(
       children: [
         Expanded(
           child: _SummaryCard(
-            label: 'In Stock',
+            label: t.invInStock,
             count: summary.inStockCount,
             color: AppColors.success,
             bgColor: AppColors.successBg,
@@ -141,7 +145,7 @@ class _InventoryHomeScreenState
         const SizedBox(width: 10),
         Expanded(
           child: _SummaryCard(
-            label: 'Low Stock',
+            label: t.invLowStock,
             count: summary.lowStockCount,
             color: AppColors.warning,
             bgColor: AppColors.warningBg,
@@ -151,7 +155,7 @@ class _InventoryHomeScreenState
         const SizedBox(width: 10),
         Expanded(
           child: _SummaryCard(
-            label: 'Out',
+            label: t.invOutOfStock,
             count: summary.outOfStockCount,
             color: AppColors.danger,
             bgColor: AppColors.dangerBg,
@@ -163,6 +167,7 @@ class _InventoryHomeScreenState
   }
 
   Widget _buildActionGrid(BuildContext context, bool canManage) {
+    final t = AppL10n.of(context);
     return Column(
       children: [
         Row(
@@ -170,7 +175,7 @@ class _InventoryHomeScreenState
             Expanded(
               child: _ActionCard(
                 icon: Icons.inventory_2_outlined,
-                label: 'View Inventory',
+                label: t.invActionView,
                 color: AppColors.accent,
                 bgColor: AppColors.accentBg,
                 onTap: () => context.push('/inventory/${widget.storeId}/list'),
@@ -181,7 +186,7 @@ class _InventoryHomeScreenState
               child: canManage
                   ? _ActionCard(
                       icon: Icons.fact_check_outlined,
-                      label: 'Audit',
+                      label: t.invActionAudit,
                       color: const Color(0xFF6C5CE7),
                       bgColor: const Color(0xFFF0EDFE),
                       onTap: () =>
@@ -189,7 +194,7 @@ class _InventoryHomeScreenState
                     )
                   : _ActionCard(
                       icon: Icons.fact_check_outlined,
-                      label: 'Audit',
+                      label: t.invActionAudit,
                       color: AppColors.textMuted,
                       bgColor: AppColors.bg,
                       onTap: null,
@@ -204,7 +209,7 @@ class _InventoryHomeScreenState
               child: canManage
                   ? _ActionCard(
                       icon: Icons.add_box_outlined,
-                      label: 'Stock In',
+                      label: t.invActionStockIn,
                       color: AppColors.success,
                       bgColor: AppColors.successBg,
                       onTap: () => context
@@ -212,7 +217,7 @@ class _InventoryHomeScreenState
                     )
                   : _ActionCard(
                       icon: Icons.add_box_outlined,
-                      label: 'Stock In',
+                      label: t.invActionStockIn,
                       color: AppColors.textMuted,
                       bgColor: AppColors.bg,
                       onTap: null,
@@ -223,7 +228,7 @@ class _InventoryHomeScreenState
               child: canManage
                   ? _ActionCard(
                       icon: Icons.output_outlined,
-                      label: 'Stock Out',
+                      label: t.invActionStockOut,
                       color: AppColors.warning,
                       bgColor: AppColors.warningBg,
                       onTap: () => context
@@ -231,7 +236,7 @@ class _InventoryHomeScreenState
                     )
                   : _ActionCard(
                       icon: Icons.output_outlined,
-                      label: 'Stock Out',
+                      label: t.invActionStockOut,
                       color: AppColors.textMuted,
                       bgColor: AppColors.bg,
                       onTap: null,
@@ -244,6 +249,7 @@ class _InventoryHomeScreenState
   }
 
   Widget _buildLowStockBanner(InventorySummary summary) {
+    final t = AppL10n.of(context);
     final total = summary.lowStockCount + summary.outOfStockCount;
     return GestureDetector(
       onTap: () => context.push(
@@ -262,7 +268,7 @@ class _InventoryHomeScreenState
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                '$total item${total > 1 ? 's' : ''} need attention',
+                t.invItemsNeedAttention(total),
                 style: const TextStyle(
                     fontSize: 14,
                     color: AppColors.text,
@@ -270,7 +276,7 @@ class _InventoryHomeScreenState
               ),
             ),
             Text(
-              'View',
+              t.actionView,
               style: const TextStyle(
                   fontSize: 13,
                   color: AppColors.warning,

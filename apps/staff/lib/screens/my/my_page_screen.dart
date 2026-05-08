@@ -9,31 +9,57 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/alert_provider.dart';
 import '../../services/clockin_pin_service.dart';
 
-/// 서류 유형 정의 (key, 제목, 설명, 아이콘)
+/// 서류 유형 정의 — title/subtitle은 ARB에서 동적으로 가져옴
 class _DocumentType {
   final String key;
-  final String title;
-  final String subtitle;
   final IconData icon;
+  final String Function(AppL10n t) title;
+  final String Function(AppL10n t) subtitle;
 
   const _DocumentType({
     required this.key,
+    required this.icon,
     required this.title,
     required this.subtitle,
-    required this.icon,
   });
 }
 
-const _documentTypes = [
-  _DocumentType(key: 'food_handler', title: 'Food Handler Card', subtitle: 'Required food safety certification', icon: Icons.restaurant_menu),
-  _DocumentType(key: 'ssn_work_auth', title: 'SSN / Work Authorization', subtitle: 'Social Security Number or Work Permit', icon: Icons.badge_outlined),
-  _DocumentType(key: 'id_card', title: 'Government ID', subtitle: 'Driver License / State ID / Passport', icon: Icons.credit_card),
-  _DocumentType(key: 'i9_form', title: 'I-9 Form', subtitle: 'Employment Eligibility Verification', icon: Icons.description_outlined),
-  _DocumentType(key: 'w4_form', title: 'W-4 Form', subtitle: "Employee's Withholding Certificate", icon: Icons.receipt_long_outlined),
+final _documentTypes = <_DocumentType>[
+  _DocumentType(
+    key: 'food_handler',
+    icon: Icons.restaurant_menu,
+    title: (t) => t.myDocFoodHandlerTitle,
+    subtitle: (t) => t.myDocFoodHandlerSubtitle,
+  ),
+  _DocumentType(
+    key: 'ssn_work_auth',
+    icon: Icons.badge_outlined,
+    title: (t) => t.myDocSsnTitle,
+    subtitle: (t) => t.myDocSsnSubtitle,
+  ),
+  _DocumentType(
+    key: 'id_card',
+    icon: Icons.credit_card,
+    title: (t) => t.myDocIdTitle,
+    subtitle: (t) => t.myDocIdSubtitle,
+  ),
+  _DocumentType(
+    key: 'i9_form',
+    icon: Icons.description_outlined,
+    title: (t) => t.myDocI9Title,
+    subtitle: (t) => t.myDocI9Subtitle,
+  ),
+  _DocumentType(
+    key: 'w4_form',
+    icon: Icons.receipt_long_outlined,
+    title: (t) => t.myDocW4Title,
+    subtitle: (t) => t.myDocW4Subtitle,
+  ),
 ];
 
 /// 마이 페이지 화면 위젯
@@ -51,102 +77,8 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
   final Map<String, Uint8List> _documents = {};
   final Map<String, DateTime> _uploadedAt = {};
 
-  String _languageLabel(String? code) {
-    switch (code) {
-      case 'es':
-        return 'Español';
-      case 'ko':
-        return '한국어';
-      default:
-        return 'English';
-    }
-  }
-
-  Future<void> _showLanguagePicker() async {
-    final user = ref.read(authProvider).user;
-    if (user == null) return;
-    final selected = await showModalBottomSheet<String>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40, height: 4,
-              margin: const EdgeInsets.only(top: 12, bottom: 16),
-              decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
-            ),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 8),
-              child: Text('Preferred Language', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
-            ),
-            for (final entry in const [
-              MapEntry('en', 'English'),
-              MapEntry('es', 'Español'),
-              MapEntry('ko', '한국어'),
-            ])
-              ListTile(
-                title: Text(entry.value),
-                trailing: user.preferredLanguage == entry.key
-                    ? const Icon(Icons.check, color: AppColors.accent)
-                    : null,
-                onTap: () => Navigator.pop(ctx, entry.key),
-              ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-    if (selected == null || selected == user.preferredLanguage) return;
-    final success = await ref.read(authProvider.notifier).updateProfile({
-      'preferred_language': selected,
-    });
-    if (!mounted) return;
-    if (success) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Language preference saved'), backgroundColor: AppColors.success),
-      );
-    } else {
-      final error = ref.read(authProvider).error ?? 'Failed to update language';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error), backgroundColor: AppColors.danger),
-      );
-    }
-  }
-
-  Future<void> _showEditUsernameDialog() async {
-    final user = ref.read(authProvider).user;
-    if (user == null) return;
-
-    final controller = TextEditingController(text: user.username);
-    final result = await showDialog<String>(
-      context: context,
-      builder: (ctx) => _EditUsernameDialog(controller: controller),
-    );
-
-    if (result != null && result.trim().isNotEmpty && result.trim() != user.username) {
-      final success = await ref.read(authProvider.notifier).updateProfile({
-        'username': result.trim(),
-      });
-      if (mounted) {
-        if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Username updated successfully'), backgroundColor: AppColors.success),
-          );
-        } else {
-          final error = ref.read(authProvider).error ?? 'Failed to update username';
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(error), backgroundColor: AppColors.danger),
-          );
-        }
-      }
-    }
-  }
-
   Future<void> _pickProfileImage() async {
+    final t = AppL10n.of(context);
     await showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -163,7 +95,7 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
               ),
-              const Text('Change Profile Photo', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
+              Text(t.myChangePhoto, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
               const SizedBox(height: 16),
               ListTile(
                 leading: Container(
@@ -171,7 +103,7 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                   decoration: BoxDecoration(color: AppColors.accentBg, borderRadius: BorderRadius.circular(10)),
                   child: const Icon(Icons.camera_alt, color: AppColors.accent, size: 20),
                 ),
-                title: const Text('Take Photo', style: TextStyle(fontSize: 15)),
+                title: Text(t.myTakePhoto, style: const TextStyle(fontSize: 15)),
                 onTap: () { Navigator.pop(ctx); _getImage(ImageSource.camera); },
               ),
               ListTile(
@@ -180,7 +112,7 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                   decoration: BoxDecoration(color: AppColors.accentBg, borderRadius: BorderRadius.circular(10)),
                   child: const Icon(Icons.photo_library, color: AppColors.accent, size: 20),
                 ),
-                title: const Text('Choose from Gallery', style: TextStyle(fontSize: 15)),
+                title: Text(t.myChooseGallery, style: const TextStyle(fontSize: 15)),
                 onTap: () { Navigator.pop(ctx); _getImage(ImageSource.gallery); },
               ),
               if (_profileImage != null)
@@ -190,7 +122,7 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                     decoration: BoxDecoration(color: AppColors.dangerBg, borderRadius: BorderRadius.circular(10)),
                     child: const Icon(Icons.delete_outline, color: AppColors.danger, size: 20),
                   ),
-                  title: const Text('Remove Photo', style: TextStyle(fontSize: 15, color: AppColors.danger)),
+                  title: Text(t.myRemovePhoto, style: const TextStyle(fontSize: 15, color: AppColors.danger)),
                   onTap: () { Navigator.pop(ctx); setState(() => _profileImage = null); },
                 ),
               const SizedBox(height: 8),
@@ -212,6 +144,7 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
   }
 
   Future<void> _pickDocument(String key) async {
+    final t = AppL10n.of(context);
     final hasDoc = _documents.containsKey(key);
     await showModalBottomSheet(
       context: context,
@@ -227,7 +160,7 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
               ),
-              Text(hasDoc ? 'Replace Document' : 'Upload Document', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
+              Text(hasDoc ? t.myReplaceDocument : t.myUploadDocument, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
               const SizedBox(height: 16),
               ListTile(
                 leading: Container(
@@ -235,7 +168,7 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                   decoration: BoxDecoration(color: AppColors.accentBg, borderRadius: BorderRadius.circular(10)),
                   child: const Icon(Icons.camera_alt, color: AppColors.accent, size: 20),
                 ),
-                title: const Text('Take Photo', style: TextStyle(fontSize: 15)),
+                title: Text(t.myTakePhoto, style: const TextStyle(fontSize: 15)),
                 onTap: () { Navigator.pop(ctx); _getDocumentImage(key, ImageSource.camera); },
               ),
               ListTile(
@@ -244,7 +177,7 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                   decoration: BoxDecoration(color: AppColors.accentBg, borderRadius: BorderRadius.circular(10)),
                   child: const Icon(Icons.photo_library, color: AppColors.accent, size: 20),
                 ),
-                title: const Text('Choose from Gallery', style: TextStyle(fontSize: 15)),
+                title: Text(t.myChooseGallery, style: const TextStyle(fontSize: 15)),
                 onTap: () { Navigator.pop(ctx); _getDocumentImage(key, ImageSource.gallery); },
               ),
               if (hasDoc)
@@ -254,7 +187,7 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                     decoration: BoxDecoration(color: AppColors.dangerBg, borderRadius: BorderRadius.circular(10)),
                     child: const Icon(Icons.delete_outline, color: AppColors.danger, size: 20),
                   ),
-                  title: const Text('Remove', style: TextStyle(fontSize: 15, color: AppColors.danger)),
+                  title: Text(t.actionRemove, style: const TextStyle(fontSize: 15, color: AppColors.danger)),
                   onTap: () { Navigator.pop(ctx); setState(() { _documents.remove(key); _uploadedAt.remove(key); }); },
                 ),
               const SizedBox(height: 8),
@@ -307,6 +240,7 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final user = ref.watch(authProvider).user;
     final unread = ref.watch(alertProvider).unreadCount;
     return Scaffold(
@@ -326,7 +260,7 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
             }
           },
         ),
-        title: const Text('My Page'),
+        title: Text(t.myPageHeader),
         centerTitle: true,
         elevation: 0,
       ),
@@ -367,7 +301,7 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(user?.fullName ?? 'Staff', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.text)),
+                      Text(user?.fullName ?? t.commonStaff, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.text)),
                       const SizedBox(height: 2),
                       Text('@${user?.username ?? ''}', style: const TextStyle(fontSize: 13, color: AppColors.accent, fontWeight: FontWeight.w500)),
                       const SizedBox(height: 2),
@@ -395,7 +329,7 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                   children: [
                     Row(
                       children: [
-                        const Text('Documents', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
+                        Text(t.myDocumentsHeader, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -405,7 +339,7 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    const Text('Upload required documents for employment verification', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                    Text(t.myDocumentsSubtitle, style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
                     const SizedBox(height: 12),
                     ...List.generate(_documentTypes.length, (i) {
                       final doc = _documentTypes[i];
@@ -439,9 +373,9 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                             child: const Icon(Icons.construction_rounded, size: 26, color: AppColors.accent),
                           ),
                           const SizedBox(height: 10),
-                          const Text('Coming Soon', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
+                          Text(t.commonComingSoonTitle, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
                           const SizedBox(height: 4),
-                          const Text('This feature is under development', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                          Text(t.myDocumentsUnderDev, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
                         ],
                       ),
                     ),
@@ -458,7 +392,7 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
             child: Column(
               children: [
                 _MenuItem(
-                  label: 'Alerts',
+                  label: t.alertsHeader,
                   trailing: unread > 0
                       ? Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -470,15 +404,15 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                 ),
                 const Divider(height: 1),
                 _MenuItem(
-                  label: 'Settings',
+                  label: t.settingsHeader,
                   onTap: () => context.push('/my/settings'),
                 ),
                 const Divider(height: 1),
                 _MenuItem(
-                  label: 'Logout',
+                  label: t.actionLogoutConfirm,
                   isDestructive: true,
                   onTap: () async {
-                    final confirmed = await AppModal.show(context, title: 'Logout', message: 'Are you sure you want to log out?', type: ModalType.confirm, confirmText: 'Logout');
+                    final confirmed = await AppModal.show(context, title: t.myLogoutConfirmTitle, message: t.myLogoutConfirmMessage, type: ModalType.confirm, confirmText: t.actionLogoutConfirm);
                     if (confirmed == true) {
                       await ref.read(authProvider.notifier).logout();
                       if (context.mounted) context.go('/login');
@@ -531,12 +465,13 @@ class _ProfilePinRowState extends ConsumerState<_ProfilePinRow> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final display = _loading ? '…' : (_pin ?? '—');
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Text('PIN: ',
-            style: TextStyle(
+        Text(t.myPinPrefix,
+            style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: AppColors.text)),
@@ -575,6 +510,7 @@ class _DocumentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Container(
       decoration: BoxDecoration(
         color: AppColors.white, borderRadius: BorderRadius.circular(14),
@@ -596,12 +532,12 @@ class _DocumentCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(docType.title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.text)),
+                      Text(docType.title(t), style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.text)),
                       const SizedBox(height: 2),
                       if (isUploaded && uploadedAt != null)
-                        Text('Uploaded ${_formatDate(uploadedAt!)}', style: const TextStyle(fontSize: 12, color: AppColors.success))
+                        Text(t.myUploadedAt(_formatDate(uploadedAt!)), style: const TextStyle(fontSize: 12, color: AppColors.success))
                       else
-                        Text(docType.subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                        Text(docType.subtitle(t), style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
                     ],
                   ),
                 ),
@@ -624,10 +560,10 @@ class _DocumentCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(10)),
-                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.upload_file, size: 16, color: Colors.white),
-                        SizedBox(width: 4),
-                        Text('Upload', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.upload_file, size: 16, color: Colors.white),
+                        const SizedBox(width: 4),
+                        Text(t.actionUpload, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
                       ]),
                     ),
                   ),
@@ -670,86 +606,6 @@ class _MenuItem extends StatelessWidget {
             Expanded(child: Text(label, style: TextStyle(fontSize: 15, color: isDestructive ? AppColors.danger : AppColors.text))),
             if (trailing != null) ...[trailing!, const SizedBox(width: 8)],
             if (!isDestructive) const Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EditUsernameDialog extends StatefulWidget {
-  final TextEditingController controller;
-  const _EditUsernameDialog({required this.controller});
-
-  @override
-  State<_EditUsernameDialog> createState() => _EditUsernameDialogState();
-}
-
-class _EditUsernameDialogState extends State<_EditUsernameDialog> {
-  late String _initial;
-
-  @override
-  void initState() {
-    super.initState();
-    _initial = widget.controller.text;
-    widget.controller.addListener(_onChanged);
-  }
-
-  void _onChanged() => setState(() {});
-
-  @override
-  void dispose() {
-    widget.controller.removeListener(_onChanged);
-    super.dispose();
-  }
-
-  bool get _canSave {
-    final val = widget.controller.text.trim();
-    return val.isNotEmpty && val != _initial;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Edit Username', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.text)),
-            const SizedBox(height: 16),
-            TextField(
-              controller: widget.controller,
-              autofocus: true,
-              decoration: InputDecoration(
-                labelText: 'Username',
-                hintText: 'Enter new username',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.accent)),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
-                ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: _canSave ? () => Navigator.pop(context, widget.controller.text) : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.accent,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: const Text('Save'),
-                ),
-              ],
-            ),
           ],
         ),
       ),

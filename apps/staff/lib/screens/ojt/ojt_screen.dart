@@ -4,6 +4,7 @@
 /// 현재는 "Coming soon" 메시지만 표시.
 import 'package:flutter/material.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 
 /// OJT 훈련 화면 — 미구현 상태
 class OjtScreen extends StatelessWidget {
@@ -11,8 +12,9 @@ class OjtScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('OJT Training')),
+      appBar: AppBar(title: Text(t.ojtTitle)),
       body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -27,19 +29,19 @@ class OjtScreen extends StatelessWidget {
               child: const Icon(Icons.school_rounded, size: 32, color: AppColors.accent),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'OJT Training',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.text),
+            Text(
+              t.ojtTitle,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.text),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Coming soon',
-              style: TextStyle(fontSize: 14, color: AppColors.textMuted),
+            Text(
+              t.commonComingSoon,
+              style: const TextStyle(fontSize: 14, color: AppColors.textMuted),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'On-the-job training modules will be available here.',
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            Text(
+              t.ojtSubtitle,
+              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
               textAlign: TextAlign.center,
             ),
           ],

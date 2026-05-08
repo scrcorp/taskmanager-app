@@ -6,7 +6,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../utils/token_storage.dart';
+import '../../widgets/language_switcher.dart';
 
 /// 회사 코드 입력 화면 위젯
 class CompanyCodeScreen extends StatefulWidget {
@@ -35,6 +37,7 @@ class _CompanyCodeScreenState extends State<CompanyCodeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -43,13 +46,18 @@ class _CompanyCodeScreenState extends State<CompanyCodeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 80),
+              const SizedBox(height: 12),
+              const Align(
+                alignment: Alignment.centerRight,
+                child: LanguageSwitcher(),
+              ),
+              const SizedBox(height: 40),
               Icon(Icons.business, size: 48, color: AppColors.accent),
               const SizedBox(height: 16),
-              Text('Enter Company Code', textAlign: TextAlign.center,
+              Text(t.companyCodeTitle, textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.text)),
               const SizedBox(height: 8),
-              Text('Ask your manager for the company code', textAlign: TextAlign.center,
+              Text(t.companyCodeSubtitle, textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
               const SizedBox(height: 40),
               TextField(
@@ -57,9 +65,9 @@ class _CompanyCodeScreenState extends State<CompanyCodeScreen> {
                 textCapitalization: TextCapitalization.characters,
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _next(),
-                decoration: const InputDecoration(
-                  hintText: 'Company Code',
-                  prefixIcon: Icon(Icons.vpn_key_outlined, size: 20),
+                decoration: InputDecoration(
+                  hintText: t.companyCodeHint,
+                  prefixIcon: const Icon(Icons.vpn_key_outlined, size: 20),
                 ),
               ),
               const SizedBox(height: 28),
@@ -67,17 +75,17 @@ class _CompanyCodeScreenState extends State<CompanyCodeScreen> {
                 height: 52,
                 child: ElevatedButton(
                   onPressed: _next,
-                  child: const Text('Continue'),
+                  child: Text(t.actionContinue),
                 ),
               ),
               const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('Already have an account? ', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                  Text(t.loginAlreadyHaveAccountPrompt, style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
                   GestureDetector(
                     onTap: () => context.go('/login'),
-                    child: Text('Login', style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w700, fontSize: 14)),
+                    child: Text(t.actionLogin, style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w700, fontSize: 14)),
                   ),
                 ],
               ),

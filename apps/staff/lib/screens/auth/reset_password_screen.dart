@@ -11,7 +11,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/language_switcher.dart';
 
 class ResetPasswordScreen extends ConsumerStatefulWidget {
   const ResetPasswordScreen({super.key});
@@ -65,13 +67,14 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   }
 
   Future<void> _sendCode() async {
+    final t = AppL10n.of(context);
     final username = _usernameCtrl.text.trim();
     final email = _emailCtrl.text.trim();
     if (username.isEmpty || email.isEmpty) {
       await AppModal.show(
         context,
-        title: 'Heads up',
-        message: 'Please enter your username and email.',
+        title: t.commonHeadsUp,
+        message: t.resetMissingUsernameEmail,
         type: ModalType.warning,
       );
       return;
@@ -89,8 +92,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         _startTimer(expiresIn);
         await AppModal.show(
           context,
-          title: 'Code Sent',
-          message: 'Verification code sent.',
+          title: t.emailVerifyCodeSentTitle,
+          message: t.emailVerifyCodeSentMessage,
           type: ModalType.success,
         );
       }
@@ -99,8 +102,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         setState(() => _isLoading = false);
         await AppModal.show(
           context,
-          title: 'Account not found',
-          message: _parseApiError(e, 'No account found.'),
+          title: t.findUsernameNotFoundTitle,
+          message: _parseApiError(e, t.resetNoAccountDefault),
           type: ModalType.error,
         );
       }
@@ -108,6 +111,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   }
 
   Future<void> _resendCode() async {
+    final t = AppL10n.of(context);
     final username = _usernameCtrl.text.trim();
     final email = _emailCtrl.text.trim();
     setState(() => _isLoading = true);
@@ -120,8 +124,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         _startTimer(expiresIn);
         await AppModal.show(
           context,
-          title: 'Code Resent',
-          message: 'Verification code resent.',
+          title: t.resetCodeResentTitle,
+          message: t.resetCodeResentMessage,
           type: ModalType.success,
         );
       }
@@ -130,8 +134,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         setState(() => _isLoading = false);
         await AppModal.show(
           context,
-          title: "Couldn't resend code",
-          message: _parseApiError(e, 'Failed to resend code.'),
+          title: t.resetCodeResendErrorTitle,
+          message: _parseApiError(e, t.resetCodeResendErrorDefault),
           type: ModalType.error,
         );
       }
@@ -139,12 +143,13 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   }
 
   Future<void> _verifyCode() async {
+    final t = AppL10n.of(context);
     final code = _codeCtrl.text.trim();
     if (code.isEmpty || code.length != 6) {
       await AppModal.show(
         context,
-        title: 'Heads up',
-        message: 'Please enter the 6-digit code.',
+        title: t.commonHeadsUp,
+        message: t.emailVerifyMissing6Digit,
         type: ModalType.warning,
       );
       return;
@@ -166,8 +171,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         setState(() => _isLoading = false);
         await AppModal.show(
           context,
-          title: 'Verification Failed',
-          message: _parseApiError(e, 'Verification failed.'),
+          title: t.emailVerifyFailedTitle,
+          message: _parseApiError(e, t.emailVerifyFailedDefault),
           type: ModalType.error,
         );
       }
@@ -175,13 +180,14 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   }
 
   Future<void> _confirmReset() async {
+    final t = AppL10n.of(context);
     final newPassword = _newPasswordCtrl.text;
     final confirmPassword = _confirmPasswordCtrl.text;
     if (newPassword.isEmpty || confirmPassword.isEmpty) {
       await AppModal.show(
         context,
-        title: 'Heads up',
-        message: 'Please fill in all fields.',
+        title: t.commonHeadsUp,
+        message: t.resetMissingFields,
         type: ModalType.warning,
       );
       return;
@@ -189,8 +195,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     if (newPassword != confirmPassword) {
       await AppModal.show(
         context,
-        title: 'Passwords do not match',
-        message: 'Passwords do not match.',
+        title: t.resetPasswordsMismatchTitle,
+        message: t.resetPasswordsMismatchMessage,
         type: ModalType.error,
       );
       return;
@@ -210,8 +216,8 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
         setState(() => _isLoading = false);
         await AppModal.show(
           context,
-          title: "Couldn't reset password",
-          message: _parseApiError(e, 'Failed to reset password.'),
+          title: t.resetFailedTitle,
+          message: _parseApiError(e, t.resetFailedDefault),
           type: ModalType.error,
         );
       }
@@ -219,6 +225,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   }
 
   String _parseApiError(Object e, String fallback) {
+    final t = AppL10n.of(context);
     if (e is DioException && e.response?.data != null) {
       final data = e.response!.data;
       if (data is Map<String, dynamic>) {
@@ -229,10 +236,10 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     if (e is DioException) {
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
-        return 'Server not responding. Please try again.';
+        return t.errorServerNotResponding;
       }
       if (e.type == DioExceptionType.connectionError) {
-        return 'No internet connection.';
+        return t.errorNoInternet;
       }
     }
     return fallback;
@@ -240,15 +247,22 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Scaffold(
       backgroundColor: AppColors.white,
       appBar: _step == 4
           ? AppBar(
               backgroundColor: AppColors.white,
               automaticallyImplyLeading: false,
-              title: const Text('Reset Password'),
+              title: Text(t.resetHeader),
               centerTitle: true,
               elevation: 0,
+              actions: const [
+                Padding(
+                  padding: EdgeInsets.only(right: 12),
+                  child: Center(child: LanguageSwitcher()),
+                ),
+              ],
             )
           : AppBar(
               backgroundColor: AppColors.white,
@@ -273,9 +287,15 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                   }
                 },
               ),
-              title: const Text('Reset Password'),
+              title: Text(t.resetHeader),
               centerTitle: true,
               elevation: 0,
+              actions: const [
+                Padding(
+                  padding: EdgeInsets.only(right: 12),
+                  child: Center(child: LanguageSwitcher()),
+                ),
+              ],
             ),
       body: SafeArea(
         child: _step == 1
@@ -292,38 +312,39 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   // ── Step 1: Username + Email ──────────────────────────────────────────────
 
   Widget _buildStep1() {
+    final t = AppL10n.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Reset Your Password', style: Theme.of(context).textTheme.headlineLarge),
+          Text(t.resetHeading, style: Theme.of(context).textTheme.headlineLarge),
           const SizedBox(height: 8),
           Text(
-            'Enter your username and email to verify your identity.',
+            t.resetSubheading,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 32),
-          const Text('Username', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
+          Text(t.fieldUsername, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
           const SizedBox(height: 8),
           TextField(
             controller: _usernameCtrl,
             textInputAction: TextInputAction.next,
-            decoration: const InputDecoration(hintText: 'Enter your username'),
+            decoration: InputDecoration(hintText: t.hintEnterUsername),
           ),
           const SizedBox(height: 20),
-          const Text('Email', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
+          Text(t.fieldEmail, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
           const SizedBox(height: 8),
           TextField(
             controller: _emailCtrl,
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _sendCode(),
-            decoration: const InputDecoration(hintText: 'example@email.com'),
+            decoration: InputDecoration(hintText: t.hintEmailExample),
           ),
           const SizedBox(height: 16),
           Text(
-            'A verification code will be sent to your email address.',
+            t.resetCodeSentInfo,
             style: TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.5),
           ),
           const Spacer(),
@@ -334,7 +355,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
               onPressed: _isLoading ? null : _sendCode,
               child: _isLoading
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Send Verification Code'),
+                  : Text(t.actionSendVerificationCode),
             ),
           ),
         ],
@@ -345,15 +366,16 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   // ── Step 2: 인증코드 입력 ─────────────────────────────────────────────────
 
   Widget _buildStep2() {
+    final t = AppL10n.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Enter Verification Code', style: Theme.of(context).textTheme.headlineLarge),
+          Text(t.resetEnterCodeHeading, style: Theme.of(context).textTheme.headlineLarge),
           const SizedBox(height: 8),
           Text(
-            'We sent a 6-digit code to ${_emailCtrl.text.trim()}',
+            t.resetCodeSentTo(_emailCtrl.text.trim()),
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 6),
@@ -367,7 +389,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
               });
             },
             child: Text(
-              'Wrong email? Go back',
+              t.resetWrongEmail,
               style: TextStyle(
                 fontSize: 13,
                 color: AppColors.accent,
@@ -376,7 +398,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             ),
           ),
           const SizedBox(height: 26),
-          const Text('Verification Code', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
+          Text(t.fieldVerificationCode, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -384,7 +406,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                 child: TextField(
                   controller: _codeCtrl,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(hintText: '6-digit code'),
+                  decoration: InputDecoration(hintText: t.hint6DigitCode),
                 ),
               ),
               const SizedBox(width: 8),
@@ -400,7 +422,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 14),
                     textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                   ),
-                  child: const Text('Verify'),
+                  child: Text(t.actionVerify),
                 ),
               ),
             ],
@@ -409,7 +431,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(
-                '\u23F1 $_timerText remaining',
+                t.emailVerifyTimerRemaining(_timerText),
                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.danger),
               ),
             ),
@@ -417,11 +439,11 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             padding: const EdgeInsets.only(top: 12),
             child: Row(
               children: [
-                Text("Didn't receive the code?", style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                Text(t.codeNotReceivedPrompt, style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
                 const SizedBox(width: 8),
                 GestureDetector(
                   onTap: _isLoading ? null : _resendCode,
-                  child: Text('Resend Code', style: TextStyle(fontSize: 13, color: AppColors.accent, fontWeight: FontWeight.w600, decoration: TextDecoration.underline)),
+                  child: Text(t.actionResendCode, style: TextStyle(fontSize: 13, color: AppColors.accent, fontWeight: FontWeight.w600, decoration: TextDecoration.underline)),
                 ),
               ],
             ),
@@ -434,7 +456,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
               onPressed: (_codeCtrl.text.isNotEmpty && !_isLoading) ? _verifyCode : null,
               child: _isLoading
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Continue'),
+                  : Text(t.actionContinue),
             ),
           ),
         ],
@@ -445,26 +467,27 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   // ── Step 3: 새 비밀번호 입력 ──────────────────────────────────────────────
 
   Widget _buildStep3() {
+    final t = AppL10n.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Set New Password', style: Theme.of(context).textTheme.headlineLarge),
+          Text(t.resetSetNewHeading, style: Theme.of(context).textTheme.headlineLarge),
           const SizedBox(height: 8),
           Text(
-            'Create a new password for your account.',
+            t.resetSetNewSubheading,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 32),
-          const Text('New Password', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
+          Text(t.fieldNewPassword, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
           const SizedBox(height: 8),
           TextField(
             controller: _newPasswordCtrl,
             obscureText: _obscureNew,
             textInputAction: TextInputAction.next,
             decoration: InputDecoration(
-              hintText: 'Enter new password',
+              hintText: t.hintEnterNewPassword,
               suffixIcon: IconButton(
                 icon: Icon(_obscureNew ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
                 onPressed: () => setState(() => _obscureNew = !_obscureNew),
@@ -472,7 +495,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text('Confirm Password', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
+          Text(t.fieldConfirmPassword, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
           const SizedBox(height: 8),
           TextField(
             controller: _confirmPasswordCtrl,
@@ -480,7 +503,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _confirmReset(),
             decoration: InputDecoration(
-              hintText: 'Re-enter new password',
+              hintText: t.hintReenterNewPassword,
               suffixIcon: IconButton(
                 icon: Icon(_obscureConfirm ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
                 onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
@@ -495,7 +518,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
               onPressed: _isLoading ? null : _confirmReset,
               child: _isLoading
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('Reset Password'),
+                  : Text(t.actionResetPassword),
             ),
           ),
         ],
@@ -506,6 +529,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   // ── Step 4: 성공 ─────────────────────────────────────────────────────────
 
   Widget _buildStep4() {
+    final t = AppL10n.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
@@ -518,16 +542,16 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             child: const Icon(Icons.check_circle_outline_rounded, size: 44, color: AppColors.success),
           ),
           const SizedBox(height: 20),
-          Text('Password Changed', style: Theme.of(context).textTheme.headlineLarge, textAlign: TextAlign.center),
+          Text(t.resetSuccessTitle, style: Theme.of(context).textTheme.headlineLarge, textAlign: TextAlign.center),
           const SizedBox(height: 8),
           Text(
-            'Your password has been successfully reset.\nYou can now log in with your new password.',
+            t.resetSuccessMessage,
             style: Theme.of(context).textTheme.bodyMedium,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
           Text(
-            'All other devices have been logged out for security.',
+            t.resetSuccessDevicesNote,
             style: TextStyle(fontSize: 12, color: AppColors.textMuted, height: 1.5),
             textAlign: TextAlign.center,
           ),
@@ -537,7 +561,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
             height: 52,
             child: ElevatedButton(
               onPressed: () => context.go('/login'),
-              child: const Text('Go to Login'),
+              child: Text(t.actionGoToLogin),
             ),
           ),
         ],

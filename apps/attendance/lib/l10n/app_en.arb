@@ -1,0 +1,281 @@
+{
+  "@@locale": "en",
+  "appTitle": "HTM Attendance",
+
+  "actionCancel": "Cancel",
+  "actionConfirm": "Confirm",
+  "actionSave": "Save",
+  "actionRetry": "Retry",
+  "actionClose": "Close",
+  "actionContinue": "Continue",
+  "actionDone": "Done",
+
+  "commonHeadsUp": "Heads up",
+  "commonSavedTitle": "Saved",
+  "commonSaveFailedTitle": "Couldn't save",
+  "commonComingSoon": "Coming soon",
+  "commonUnknown": "Unknown",
+  "commonStore": "Store",
+  "commonDevice": "Device",
+  "commonDismiss": "Dismiss",
+  "commonRefresh": "Refresh",
+  "commonSettings": "Settings",
+  "commonUntitled": "Untitled",
+
+  "attAccessCodeRegisterTitle": "Register This Device",
+  "attAccessCodeRegisterDescription": "Enter the 6-character access code provided by your manager.",
+  "attAccessCodeRegisterButton": "Register Device",
+  "attAccessCodeChangeStoreTitle": "Change Store",
+  "attAccessCodeChangeStoreDescription": "Enter a new 6-character access code to switch this device to a different store.",
+  "attAccessCodeInvalid": "Invalid access code",
+  "attAccessCodeRegisterFailedTitle": "Couldn't register device",
+
+  "attStoreSelectTitle": "Select Store",
+  "attStoreSelectDeviceNeedsAssignment": "This device ({deviceName}) needs to be assigned to a store.",
+  "@attStoreSelectDeviceNeedsAssignment": {
+    "placeholders": {
+      "deviceName": { "type": "String" }
+    }
+  },
+  "attStoreSelectGenericNeedsAssignment": "This device needs to be assigned to a store.",
+  "attStoreSelectLoadFailed": "Failed to load stores from server. Showing preset/manual fallback.",
+  "attStoreSelectEmpty": "No stores available. Contact an administrator.",
+  "attStoreSelectManualLabel": "Manual Store ID",
+  "attStoreSelectManualHint": "Paste store UUID (fallback)",
+  "attStoreSelectAssignButton": "Assign Store",
+  "attStoreSelectAssignFailed": "Failed to assign store",
+  "attStoreSelectAssignFailedTitle": "Couldn't assign store",
+
+  "attSettingsTitle": "Device Settings",
+  "attSettingsDeviceLabel": "Device",
+  "attSettingsStoreLabel": "Store",
+  "attSettingsStoreNotAssigned": "Not assigned",
+  "attSettingsDeviceIdLabel": "Device ID",
+  "attSettingsLanguageLabel": "Language",
+  "attSettingsLanguageEnglish": "English",
+  "attSettingsLanguageSpanish": "Español",
+  "attSettingsChangeStore": "Change Store",
+  "attSettingsChangeStoreConfirm": "To switch this device to a different store, you will need a new access code. The current device registration will be revoked.",
+  "attSettingsKioskLockTitle": "Kiosk Lock",
+  "attSettingsKioskLockOn": "App is locked. Disable to use device freely.",
+  "attSettingsKioskLockOff": "App is unlocked. Enable to restrict device.",
+  "attSettingsKioskEnableTitle": "Enable Kiosk Lock",
+  "attSettingsKioskEnableMessage": "Android will show a system dialog asking to pin this app. You MUST tap \"Got it\" / \"OK\" to enable kiosk mode. Tapping \"No thanks\" will leave the device unlocked.",
+  "attSettingsKioskNotActiveTitle": "Lock Not Active",
+  "attSettingsKioskNotActiveMessage": "You declined the pinning prompt. Kiosk mode is required for this device. Tap Retry and confirm the system dialog.",
+  "attSettingsKioskDisableTitle": "Disable Kiosk Lock",
+  "attSettingsKioskDisableConfirm": "Unlock",
+  "attSettingsKioskDisabledTitle": "Kiosk Disabled",
+  "attSettingsKioskDisabledMessage": "Kiosk lock will re-enable automatically in 5 minutes. Toggle it back on at any time to re-lock immediately.",
+  "attSettingsUnregister": "Unregister This Device",
+  "attSettingsUnregisterConfirmTitle": "Unregister Device",
+  "attSettingsUnregisterConfirmMessage": "This device will be removed from the organization. You will need a new access code to register again.",
+  "attSettingsUnregisterVerifyTitle": "Confirm Unregister",
+  "attSettingsUnregisterVerifyConfirm": "Unregister",
+  "attSettingsAccessCodePromptTitle": "Cannot Continue",
+  "attSettingsAccessCodePromptMessage": "No access code on file. Re-register this device to enable this action.",
+  "attSettingsAccessCodeEnter": "Enter the device access code.",
+  "attSettingsAccessCodeIncorrectTitle": "Incorrect Code",
+  "attSettingsAccessCodeIncorrectMessage": "The access code did not match.",
+  "attSettingsAccessCodeHint": "ABC123",
+  "attSettingsKioskUnlockedTitle": "Kiosk Unlocked",
+  "attSettingsKioskUnlockedMessage": "You may now navigate away from the app. Re-register or reinstall to re-enable kiosk mode.",
+
+  "attPinHi": "Hi, {name}",
+  "@attPinHi": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "attPinTitle": "Enter Your PIN",
+  "attPinSubtitle": "Please use your {length}-digit number to proceed",
+  "@attPinSubtitle": {
+    "placeholders": {
+      "length": { "type": "int" }
+    }
+  },
+  "attPinCancelReturn": "Cancel & Return",
+  "attPinVerify": "Verify Identity",
+  "attPinPadClear": "CLEAR",
+  "attPinSecureAccessTitle": "Secure Access",
+  "attPinSecureAccessDescription": "Verification ensures the safety and accountability of all staff members.",
+  "attPinShiftRecognitionTitle": "Shift Recognition",
+  "attPinShiftRecognitionDescription": "Clocking in registers your presence for the current cycle.",
+  "attPinVerificationFailedTitle": "Verification Failed",
+  "attPinVerificationFailedMessage": "Invalid PIN. Please try again.",
+
+  "attSuccessClockIn": "Clock In Successful",
+  "attSuccessClockOut": "Clock Out Successful",
+  "attSuccessShortBreak": "Short Break Started",
+  "attSuccessLongBreak": "Long Break Started",
+  "attSuccessBreakEnded": "Break Ended",
+  "attSuccessWelcomeBack": "Welcome back",
+  "attSuccessWelcomeBackName": ", {name}!",
+  "@attSuccessWelcomeBackName": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "attSuccessGoToDashboard": "Go to Dashboard",
+  "attSuccessRedirecting": "REDIRECTING IN {seconds} SECONDS",
+  "@attSuccessRedirecting": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
+
+  "attMainWorkDateLabel": "WORK DATE",
+  "attMainKioskUnlockedTitle": "Kiosk Unlocked",
+  "attMainKioskUnlockedMessage": "Kiosk lock temporarily disabled. It will re-lock automatically in 5 minutes.",
+  "attMainAttendanceLabel": "ATTENDANCE",
+  "attMainSelectNameFirst": "Select your name first",
+  "attMainShiftCompleted": "Shift already completed",
+  "attMainTapToChooseAction": "Tap to choose action",
+  "attMainSelected": "SELECTED",
+  "attMainClearSelection": "Clear selection",
+  "attMainChooseAction": "CHOOSE ACTION",
+  "attMainActionClockIn": "CLOCK IN",
+  "attMainActionClockInSubtitle": "Start Workday",
+  "attMainActionClockOut": "CLOCK OUT",
+  "attMainActionClockOutSubtitle": "End Schedule",
+  "attMainActionShortBreak": "SHORT BREAK",
+  "attMainActionShortBreakSubtitle": "Paid · 10 min",
+  "attMainActionLongBreak": "LONG BREAK",
+  "attMainActionLongBreakSubtitle": "Unpaid · 30 min",
+  "attMainActionEndBreak": "END BREAK",
+  "attMainActionEndBreakSubtitle": "Resume Work",
+
+  "attMainClockedIn": "Clocked In",
+  "attMainActiveBadge": "{count} ACTIVE",
+  "@attMainActiveBadge": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attMainNoOneOnShift": "No one is currently on shift",
+  "attMainNotClockedIn": "Not Clocked In",
+  "attMainNoUpcoming": "No upcoming shifts",
+  "attMainBadgeUpcoming": "{count} UPCOMING",
+  "@attMainBadgeUpcoming": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attMainBadgeSoon": "{count} SOON",
+  "@attMainBadgeSoon": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attMainBadgeLate": "{count} LATE",
+  "@attMainBadgeLate": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attMainBadgeNoShow": "{count} NO SHOW",
+  "@attMainBadgeNoShow": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attMainBadgeSoonShort": "SOON",
+  "attMainBadgeLateShort": "LATE",
+  "attMainBadgeNoShowShort": "NO SHOW",
+  "attMainClockedOut": "Clocked Out",
+  "attMainDoneBadge": "{count} DONE",
+  "@attMainDoneBadge": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attMainNoCompletedShifts": "No completed shifts yet",
+  "attMainCurrentTimeLabel": "CURRENT TIME",
+  "attMainNoticeBoard": "Notice Board",
+  "attMainNoNotices": "No notices",
+  "attMainNoSchedule": "No schedule",
+  "attMainClockedInAt": "Clocked in at {time}",
+  "@attMainClockedInAt": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "attMainBreakLong": "Long Unpaid",
+  "attMainBreakShort": "Short Paid",
+  "attMainBreakOnBreak": "On Break",
+  "attMainOnBreakWith": "On Break · {label}",
+  "@attMainOnBreakWith": {
+    "placeholders": {
+      "label": { "type": "String" }
+    }
+  },
+  "attMainLateBadge": "Late",
+  "attMainEarlyClockOutTitle": "Clocking out early",
+  "attMainEarlyClockOutMessage": "Your shift still has {remaining} remaining. Are you sure you want to clock out now?",
+  "@attMainEarlyClockOutMessage": {
+    "placeholders": {
+      "remaining": { "type": "String" }
+    }
+  },
+  "attMainEarlyClockOutReasonLabel": "Please enter a reason — required for early clock-out.",
+  "attMainEarlyClockOutReasonHint": "e.g. Family emergency, feeling unwell",
+  "attMainTimeAgoJustNow": "Just now",
+  "attMainTimeAgoMinutes": "{count} min ago",
+  "@attMainTimeAgoMinutes": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attMainTimeAgoHours": "{count}h ago",
+  "@attMainTimeAgoHours": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attMainTimeAgoDays": "{count}d ago",
+  "@attMainTimeAgoDays": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attMainDurationHM": "{hours}h {minutes}m",
+  "@attMainDurationHM": {
+    "placeholders": {
+      "hours": { "type": "int" },
+      "minutes": { "type": "int" }
+    }
+  },
+  "attMainDurationM": "{minutes}m",
+  "@attMainDurationM": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+
+  "attUpdateRequiredTitle": "App Update Required",
+  "attUpdateRequiredMessage": "This device is running {current} but {required} or higher is required to continue.",
+  "@attUpdateRequiredMessage": {
+    "placeholders": {
+      "current": { "type": "String" },
+      "required": { "type": "String" }
+    }
+  },
+  "attUpdateDownloadButton": "Download Update (v{version})",
+  "@attUpdateDownloadButton": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "attUpdateUnavailableTitle": "Update Unavailable",
+  "attUpdateUnavailableMessage": "No download URL configured. Contact your administrator.",
+  "attUpdateCannotOpenTitle": "Cannot Open Download",
+  "attUpdateCannotOpenMessage": "Failed to launch the download URL.",
+  "attUpdateAvailableBanner": "Update available: v{latest} (current v{current})",
+  "@attUpdateAvailableBanner": {
+    "placeholders": {
+      "latest": { "type": "String" },
+      "current": { "type": "String" }
+    }
+  },
+  "attUpdateButton": "Update"
+}

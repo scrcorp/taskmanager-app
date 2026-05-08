@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/inventory.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -63,6 +64,8 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
+    final localeStr = Localizations.localeOf(context).toString();
     final user = ref.watch(authProvider).user;
     final userName = user?.fullName ?? '-';
 
@@ -71,7 +74,7 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
       body: Column(
         children: [
           AppHeader(
-            title: 'Stock In',
+            title: t.invStockInTitle,
             isDetail: true,
             onBack: () => context.pop(),
           ),
@@ -80,7 +83,7 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
               padding: const EdgeInsets.all(20),
               children: [
                 // Header info card
-                _buildHeaderCard(userName),
+                _buildHeaderCard(userName, localeStr),
                 const SizedBox(height: 16),
                 // Items section
                 _buildItemsSection(),
@@ -98,7 +101,7 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
     );
   }
 
-  Widget _buildHeaderCard(String userName) {
+  Widget _buildHeaderCard(String userName, String localeStr) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -124,7 +127,7 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    DateFormat('EEEE, MMMM d, yyyy').format(_date),
+                    DateFormat.yMMMMEEEEd(localeStr).format(_date),
                     style: const TextStyle(
                         fontSize: 14, color: AppColors.text),
                   ),
@@ -170,6 +173,7 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
   }
 
   Widget _buildItemsSection() {
+    final t = AppL10n.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -188,9 +192,9 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
         children: [
           Row(
             children: [
-              const Text(
-                'Items',
-                style: TextStyle(
+              Text(
+                t.stockItemsLabel,
+                style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: AppColors.text),
@@ -214,13 +218,13 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
             const SizedBox(height: 24),
             Center(
               child: Column(
-                children: const [
-                  Icon(Icons.add_shopping_cart_outlined,
+                children: [
+                  const Icon(Icons.add_shopping_cart_outlined,
                       size: 40, color: AppColors.textMuted),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
-                    'Tap + to add items',
-                    style: TextStyle(
+                    t.stockTapToAddItems,
+                    style: const TextStyle(
                         fontSize: 14, color: AppColors.textSecondary),
                   ),
                 ],
@@ -248,6 +252,7 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
   }
 
   Widget _buildReasonField() {
+    final t = AppL10n.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -264,16 +269,17 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
       child: TextField(
         controller: _reasonCtrl,
         maxLines: 3,
-        decoration: const InputDecoration(
-          labelText: 'Reason (optional)',
+        decoration: InputDecoration(
+          labelText: t.stockReasonOptional,
           hintText: 'e.g. Weekly delivery from supplier',
-          border: OutlineInputBorder(),
+          border: const OutlineInputBorder(),
         ),
       ),
     );
   }
 
   Widget _buildSaveButton() {
+    final t = AppL10n.of(context);
     final enabled = _items.isNotEmpty && !_isSaving;
     return SizedBox(
       width: double.infinity,
@@ -294,8 +300,8 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
                 height: 20,
                 child: CircularProgressIndicator(
                     color: Colors.white, strokeWidth: 2))
-            : const Text('Save',
-                style: TextStyle(
+            : Text(t.actionSave,
+                style: const TextStyle(
                     fontSize: 16, fontWeight: FontWeight.w700)),
       ),
     );
@@ -350,8 +356,8 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
     if (ok) {
       await AppModal.show(
         context,
-        title: 'Saved',
-        message: 'Stock in recorded successfully',
+        title: AppL10n.of(context).stockSavedTitle,
+        message: AppL10n.of(context).stockInSavedMessage,
         type: ModalType.success,
       );
       if (!mounted) return;
@@ -360,7 +366,7 @@ class _StockInScreenState extends ConsumerState<StockInScreen> {
       await AppModal.show(
         context,
         title: "Couldn't save",
-        message: 'Failed to save. Please try again.',
+        message: AppL10n.of(context).stockSaveFailed,
         type: ModalType.error,
       );
     }
@@ -657,9 +663,9 @@ class _ProductSearchSheetState
             child: TextField(
               controller: _searchCtrl,
               autofocus: true,
-              decoration: const InputDecoration(
-                hintText: 'Search inventory...',
-                prefixIcon: Icon(Icons.search, size: 20, color: AppColors.textMuted),
+              decoration: InputDecoration(
+                hintText: AppL10n.of(context).stockSearchHint,
+                prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textMuted),
               ),
               onChanged: (v) => _search(v),
             ),
@@ -672,7 +678,7 @@ class _ProductSearchSheetState
                 : _results == null || _results!.isEmpty
                     ? Center(
                         child: Text(
-                          'No products found',
+                          AppL10n.of(context).stockNoProductsFound,
                           style: const TextStyle(
                               fontSize: 14, color: AppColors.textSecondary),
                         ),
@@ -725,9 +731,9 @@ class _ProductSearchSheetState
                                       ),
                                     ),
                                     if (alreadyAdded)
-                                      const Text(
-                                        'Added',
-                                        style: TextStyle(
+                                      Text(
+                                        AppL10n.of(context).stockAddedBadge,
+                                        style: const TextStyle(
                                             fontSize: 11,
                                             color: AppColors.textMuted),
                                       ),

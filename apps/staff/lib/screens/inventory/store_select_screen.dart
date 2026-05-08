@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/inventory.dart';
 import '../../providers/inventory_provider.dart';
 import '../../widgets/app_header.dart';
@@ -29,6 +30,7 @@ class _StoreSelectScreenState extends ConsumerState<StoreSelectScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final state = ref.watch(inventoryProvider);
 
     return Scaffold(
@@ -36,7 +38,7 @@ class _StoreSelectScreenState extends ConsumerState<StoreSelectScreen> {
       body: Column(
         children: [
           AppHeader(
-            title: 'Inventory',
+            title: t.inventoryHeader,
             isDetail: true,
             onBack: () => context.pop(),
           ),
@@ -49,6 +51,7 @@ class _StoreSelectScreenState extends ConsumerState<StoreSelectScreen> {
   }
 
   Widget _buildBody(InventoryState state) {
+    final t = AppL10n.of(context);
     if (state.isLoading) {
       return const Center(child: CircularProgressIndicator(color: AppColors.accent));
     }
@@ -63,14 +66,14 @@ class _StoreSelectScreenState extends ConsumerState<StoreSelectScreen> {
               Icon(Icons.error_outline, size: 48, color: AppColors.textMuted),
               const SizedBox(height: 12),
               Text(
-                'Failed to load stores',
+                t.inventoryStoresLoadFailed,
                 style: const TextStyle(fontSize: 15, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 16),
               ElevatedButton(
                 onPressed: () =>
                     ref.read(inventoryProvider.notifier).loadStores(),
-                child: const Text('Retry'),
+                child: Text(t.actionRetry),
               ),
             ],
           ),
@@ -88,12 +91,12 @@ class _StoreSelectScreenState extends ConsumerState<StoreSelectScreen> {
               Icon(Icons.store_outlined, size: 48, color: AppColors.textMuted),
               const SizedBox(height: 12),
               Text(
-                'No stores assigned',
+                t.inventoryNoStoresTitle,
                 style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.text),
               ),
               const SizedBox(height: 6),
               Text(
-                'You are not assigned to any stores yet.',
+                t.inventoryNoStoresMessage,
                 style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
@@ -187,31 +190,31 @@ class _StoreCard extends StatelessWidget {
                   // Quick stock stats (if available)
                   if (store.totalProducts != null) ...[
                     const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        _StockBadge(
-                          count: store.totalProducts!,
-                          label: 'items',
-                          color: AppColors.textMuted,
-                        ),
-                        if (store.lowStockCount != null && store.lowStockCount! > 0) ...[
-                          const SizedBox(width: 8),
+                    Builder(builder: (ctx) {
+                      final t = AppL10n.of(ctx);
+                      return Row(
+                        children: [
                           _StockBadge(
-                            count: store.lowStockCount!,
-                            label: 'low',
-                            color: AppColors.warning,
+                            text: t.inventoryStockItems(store.totalProducts!),
+                            color: AppColors.textMuted,
                           ),
+                          if (store.lowStockCount != null && store.lowStockCount! > 0) ...[
+                            const SizedBox(width: 8),
+                            _StockBadge(
+                              text: t.inventoryStockLow(store.lowStockCount!),
+                              color: AppColors.warning,
+                            ),
+                          ],
+                          if (store.outOfStockCount != null && store.outOfStockCount! > 0) ...[
+                            const SizedBox(width: 8),
+                            _StockBadge(
+                              text: t.inventoryStockOut(store.outOfStockCount!),
+                              color: AppColors.danger,
+                            ),
+                          ],
                         ],
-                        if (store.outOfStockCount != null && store.outOfStockCount! > 0) ...[
-                          const SizedBox(width: 8),
-                          _StockBadge(
-                            count: store.outOfStockCount!,
-                            label: 'out',
-                            color: AppColors.danger,
-                          ),
-                        ],
-                      ],
-                    ),
+                      );
+                    }),
                   ],
                 ],
               ),
@@ -226,11 +229,10 @@ class _StoreCard extends StatelessWidget {
 }
 
 class _StockBadge extends StatelessWidget {
-  final int count;
-  final String label;
+  final String text;
   final Color color;
 
-  const _StockBadge({required this.count, required this.label, required this.color});
+  const _StockBadge({required this.text, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -241,7 +243,7 @@ class _StockBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
-        '$count $label',
+        text,
         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
       ),
     );

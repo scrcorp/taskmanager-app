@@ -9,6 +9,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/attendance_dashboard_provider.dart';
 import '../../providers/attendance_device_provider.dart';
 import 'attendance_main_screen.dart';
@@ -95,13 +96,14 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
         ),
       );
     } else {
+      final t = AppL10n.of(context);
       setState(() => _pin = '');
       AppModal.show(
         context,
-        title: 'Verification Failed',
+        title: t.attPinVerificationFailedTitle,
         message: result.message.isNotEmpty
             ? result.message
-            : 'Invalid PIN. Please try again.',
+            : t.attPinVerificationFailedMessage,
         type: ModalType.error,
       );
     }
@@ -117,6 +119,7 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
 
   /// 태블릿 3-column 레이아웃 — 좌 사이드바 + 중앙 PIN + 우 정보 패널
   Widget _buildTabletLayout() {
+    final t = AppL10n.of(context);
     final device = ref.watch(attendanceDeviceProvider).device;
     return Row(
       children: [
@@ -149,7 +152,7 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          device?.storeName ?? 'Store',
+                          device?.storeName ?? t.commonStore,
                           style: const TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
@@ -158,7 +161,7 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          device?.deviceName ?? 'Device',
+                          device?.deviceName ?? t.commonDevice,
                           style: const TextStyle(
                               fontSize: 11, color: AppColors.textMuted),
                           overflow: TextOverflow.ellipsis,
@@ -171,7 +174,7 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
               const SizedBox(height: 32),
               _SidebarItem(
                 icon: Icons.access_time_rounded,
-                label: widget.action.label,
+                label: widget.action.localizedLabel(t),
                 isActive: true,
               ),
             ],
@@ -188,17 +191,15 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
             children: [
               _InfoCard(
                 icon: Icons.verified_user_outlined,
-                title: 'Secure Access',
-                description:
-                    'Verification ensures the safety and accountability of all staff members.',
+                title: t.attPinSecureAccessTitle,
+                description: t.attPinSecureAccessDescription,
                 color: AppColors.accent,
               ),
               const SizedBox(height: 16),
               _InfoCard(
                 icon: Icons.schedule_rounded,
-                title: 'Shift Recognition',
-                description:
-                    'Clocking in registers your presence for the current cycle.',
+                title: t.attPinShiftRecognitionTitle,
+                description: t.attPinShiftRecognitionDescription,
                 color: AppColors.success,
               ),
             ],
@@ -209,6 +210,7 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
   }
 
   Widget _buildPinContent() {
+    final t = AppL10n.of(context);
     return LayoutBuilder(
       builder: (context, constraints) {
         // 가용 가로/세로 기준으로 크기 산정. 폰 landscape에서도 overflow 안 나게
@@ -230,7 +232,7 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
             children: [
               if (widget.userName.isNotEmpty) ...[
                 Text(
-                  'Hi, ${widget.userName}',
+                  t.attPinHi(widget.userName),
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w700,
@@ -239,9 +241,9 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
                 ),
                 const SizedBox(height: 6),
               ],
-              const Text(
-                'Enter Your PIN',
-                style: TextStyle(
+              Text(
+                t.attPinTitle,
+                style: const TextStyle(
                   fontSize: 30,
                   fontWeight: FontWeight.w800,
                   color: AppColors.text,
@@ -249,7 +251,7 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Please use your $_pinLength-digit number to proceed',
+                t.attPinSubtitle(_pinLength),
                 style: const TextStyle(
                   fontSize: 15,
                   color: AppColors.textSecondary,
@@ -265,17 +267,17 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
                 children: [
                   GestureDetector(
                     onTap: _loading ? null : () => Navigator.of(context).pop(),
-                    child: const Padding(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                       child: Row(
                         children: [
-                          Icon(Icons.arrow_back,
+                          const Icon(Icons.arrow_back,
                               size: 18, color: AppColors.textSecondary),
-                          SizedBox(width: 6),
+                          const SizedBox(width: 6),
                           Text(
-                            'Cancel & Return',
-                            style: TextStyle(
+                            t.attPinCancelReturn,
+                            style: const TextStyle(
                               fontSize: 15,
                               color: AppColors.textSecondary,
                             ),
@@ -307,9 +309,9 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
                               child: CircularProgressIndicator(
                                   strokeWidth: 2, color: Colors.white),
                             )
-                          : const Text(
-                              'Verify Identity',
-                              style: TextStyle(
+                          : Text(
+                              t.attPinVerify,
+                              style: const TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w700,
                                 color: Colors.white,
@@ -377,6 +379,7 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
   }
 
   Widget _padRow(List<String> keys, double keyHeight, double keyFont) {
+    final t = AppL10n.of(context);
     return Row(
       children: keys.map((key) {
         if (key == 'CLEAR') {
@@ -385,7 +388,7 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
               height: keyHeight,
               onTap: _onClear,
               child: Text(
-                'CLEAR',
+                t.attPinPadClear,
                 style: TextStyle(
                   fontSize: (keyFont * 0.55).clamp(15.0, 24.0),
                   fontWeight: FontWeight.w700,

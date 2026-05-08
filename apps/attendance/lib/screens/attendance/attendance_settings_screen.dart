@@ -8,7 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/attendance_device_provider.dart';
+import '../../providers/locale_provider.dart';
 import '../../utils/attendance_device_storage.dart';
 import 'attendance_access_code_screen.dart';
 
@@ -58,16 +60,16 @@ class _AttendanceSettingsScreenState
   }
 
   Future<void> _onToggleKiosk(bool next) async {
+    final t = AppL10n.of(context);
     if (next) {
       // OFF -> ON : 시스템이 "App is pinned" 다이얼로그를 띄우는데
       // 사용자가 "No thanks" 누르면 lock 이 안 걸려 desync 발생 → 사전 안내 + 검증 + 재시도
       final proceed = await AppModal.show(
         context,
-        title: 'Enable Kiosk Lock',
-        message:
-            'Android will show a system dialog asking to pin this app. You MUST tap "Got it" / "OK" to enable kiosk mode. Tapping "No thanks" will leave the device unlocked.',
+        title: t.attSettingsKioskEnableTitle,
+        message: t.attSettingsKioskEnableMessage,
         type: ModalType.confirm,
-        confirmText: 'Continue',
+        confirmText: t.actionContinue,
       );
       if (proceed != true) return;
       while (true) {
@@ -85,11 +87,10 @@ class _AttendanceSettingsScreenState
         if (!mounted) return;
         final retry = await AppModal.show(
           context,
-          title: 'Lock Not Active',
-          message:
-              'You declined the pinning prompt. Kiosk mode is required for this device. Tap Retry and confirm the system dialog.',
+          title: t.attSettingsKioskNotActiveTitle,
+          message: t.attSettingsKioskNotActiveMessage,
           type: ModalType.confirm,
-          confirmText: 'Retry',
+          confirmText: t.actionRetry,
         );
         if (retry != true) {
           // intent 만 ON 으로 남으면 자동 재잠금 의도가 살아있어 부적절 → OFF 처리
@@ -103,8 +104,8 @@ class _AttendanceSettingsScreenState
       // ON -> OFF : access code 검증 + 5분 후 자동 재잠금
       final ok = await _verifyAccessCode(
         context,
-        dialogTitle: 'Disable Kiosk Lock',
-        confirmLabel: 'Unlock',
+        dialogTitle: t.attSettingsKioskDisableTitle,
+        confirmLabel: t.attSettingsKioskDisableConfirm,
       );
       if (!ok) return;
       await KioskIntent.disableTemporarily();
@@ -114,9 +115,8 @@ class _AttendanceSettingsScreenState
       setState(() => _kioskOn = false);
       await AppModal.show(
         context,
-        title: 'Kiosk Disabled',
-        message:
-            'Kiosk lock will re-enable automatically in 5 minutes. Toggle it back on at any time to re-lock immediately.',
+        title: t.attSettingsKioskDisabledTitle,
+        message: t.attSettingsKioskDisabledMessage,
         type: ModalType.info,
       );
     }
@@ -124,12 +124,16 @@ class _AttendanceSettingsScreenState
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final device = ref.watch(attendanceDeviceProvider).device;
+    final currentLocale = ref.watch(localeProvider);
+    final effectiveLanguage =
+        currentLocale?.languageCode ?? Localizations.localeOf(context).languageCode;
 
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
-        title: const Text('Device Settings'),
+        title: Text(t.attSettingsTitle),
         leading: IconButton(
           icon: const Icon(Icons.chevron_left, size: 28),
           onPressed: () => Navigator.of(context).pop(),
@@ -139,6 +143,7 @@ class _AttendanceSettingsScreenState
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            // 언어 변경은 메인 화면 헤더 우상단에서 빠르게 가능 (직원 셀프서비스).
             // ── Device info card ──
             Container(
               padding: const EdgeInsets.all(20),
@@ -152,20 +157,20 @@ class _AttendanceSettingsScreenState
                 children: [
                   _InfoRow(
                     icon: Icons.tablet_mac_rounded,
-                    label: 'Device',
+                    label: t.attSettingsDeviceLabel,
                     value: device?.deviceName ?? '—',
                   ),
                   const SizedBox(height: 12),
                   _InfoRow(
                     icon: Icons.store_outlined,
-                    label: 'Store',
-                    value: device?.storeName ?? 'Not assigned',
+                    label: t.attSettingsStoreLabel,
+                    value: device?.storeName ?? t.attSettingsStoreNotAssigned,
                   ),
                   if (device?.deviceId != null) ...[
                     const SizedBox(height: 12),
                     _InfoRow(
                       icon: Icons.fingerprint,
-                      label: 'Device ID',
+                      label: t.attSettingsDeviceIdLabel,
                       value: device!.deviceId,
                       monospace: true,
                     ),
@@ -185,17 +190,16 @@ class _AttendanceSettingsScreenState
               child: Column(
                 children: [
                   _MenuItem(
-                    label: 'Change Store',
+                    label: t.attSettingsChangeStore,
                     icon: Icons.swap_horiz,
                     onTap: () async {
                       // 재등록 flow — 기존 token 해제 후 새 access code 입력
                       final confirmed = await AppModal.show(
                         context,
-                        title: 'Change Store',
-                        message:
-                            'To switch this device to a different store, you will need a new access code. The current device registration will be revoked.',
+                        title: t.attSettingsChangeStore,
+                        message: t.attSettingsChangeStoreConfirm,
                         type: ModalType.confirm,
-                        confirmText: 'Continue',
+                        confirmText: t.actionContinue,
                       );
                       if (confirmed != true) return;
                       if (!context.mounted) return;
@@ -204,7 +208,7 @@ class _AttendanceSettingsScreenState
                           builder: (_) => Scaffold(
                             backgroundColor: AppColors.bg,
                             appBar: AppBar(
-                              title: const Text('Change Store'),
+                              title: Text(t.attSettingsChangeStore),
                               leading: IconButton(
                                 icon:
                                     const Icon(Icons.chevron_left, size: 28),
@@ -233,25 +237,24 @@ class _AttendanceSettingsScreenState
                   ),
                   const Divider(height: 1),
                   _MenuItem(
-                    label: 'Unregister This Device',
+                    label: t.attSettingsUnregister,
                     icon: Icons.logout,
                     isDestructive: true,
                     onTap: () async {
                       final confirmed = await AppModal.show(
                         context,
-                        title: 'Unregister Device',
-                        message:
-                            'This device will be removed from the organization. You will need a new access code to register again.',
+                        title: t.attSettingsUnregisterConfirmTitle,
+                        message: t.attSettingsUnregisterConfirmMessage,
                         type: ModalType.confirm,
-                        confirmText: 'Continue',
+                        confirmText: t.actionContinue,
                       );
                       if (confirmed != true) return;
                       if (!context.mounted) return;
                       // 매니저 access code 재확인 — 직원 임의 unregister 방지
                       final ok = await _verifyAccessCode(
                         context,
-                        dialogTitle: 'Confirm Unregister',
-                        confirmLabel: 'Unregister',
+                        dialogTitle: t.attSettingsUnregisterVerifyTitle,
+                        confirmLabel: t.attSettingsUnregisterVerifyConfirm,
                       );
                       if (!ok) return;
                       if (!context.mounted) return;
@@ -271,6 +274,133 @@ class _AttendanceSettingsScreenState
   }
 }
 
+/// Language selector widget — Spanish-speaking employees rely on this kiosk.
+/// Inline 패턴: 현재 국기+이름 표시, row tap → bottom sheet picker.
+class _LanguageSelector extends StatelessWidget {
+  final String currentLanguage;
+  final ValueChanged<String> onChanged;
+  const _LanguageSelector({
+    required this.currentLanguage,
+    required this.onChanged,
+  });
+
+  String get _currentDisplay {
+    switch (currentLanguage) {
+      case 'es':
+        return '🇪🇸 Español';
+      default:
+        return '🇺🇸 English';
+    }
+  }
+
+  Future<void> _showPicker(BuildContext context) async {
+    final selected = await showModalBottomSheet<String>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        final t = AppL10n.of(ctx);
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 16),
+                decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  t.attSettingsLanguageLabel,
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.text),
+                ),
+              ),
+              for (final entry in const [
+                MapEntry('en', ('🇺🇸', 'English')),
+                MapEntry('es', ('🇪🇸', 'Español')),
+              ])
+                ListTile(
+                  leading: Text(entry.value.$1,
+                      style: const TextStyle(fontSize: 22)),
+                  title: Text(entry.value.$2),
+                  trailing: currentLanguage == entry.key
+                      ? const Icon(Icons.check, color: AppColors.accent)
+                      : null,
+                  onTap: () => Navigator.pop(ctx, entry.key),
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+    if (selected != null && selected != currentLanguage) {
+      onChanged(selected);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
+    return InkWell(
+      onTap: () => _showPicker(context),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: AppColors.accentBg,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.language,
+                  color: AppColors.accent, size: 18),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                t.attSettingsLanguageLabel,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.text,
+                ),
+              ),
+            ),
+            Text(
+              _currentDisplay,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right,
+                size: 20, color: AppColors.textMuted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// 저장된 access code 와 일치하는지 dialog 로 확인.
 /// 일치하면 true, 그 외 (취소/불일치/저장값 없음) false.
 Future<bool> _verifyAccessCode(
@@ -280,12 +410,12 @@ Future<bool> _verifyAccessCode(
 }) async {
   final saved = (await AttendanceDeviceStorage.getAccessCode())?.trim().toUpperCase();
   if (!context.mounted) return false;
+  final t = AppL10n.of(context);
   if (saved == null || saved.isEmpty) {
     await AppModal.show(
       context,
-      title: 'Cannot Continue',
-      message:
-          'No access code on file. Re-register this device to enable this action.',
+      title: t.attSettingsAccessCodePromptTitle,
+      message: t.attSettingsAccessCodePromptMessage,
       type: ModalType.info,
     );
     return false;
@@ -300,7 +430,7 @@ Future<bool> _verifyAccessCode(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Enter the device access code.'),
+          Text(t.attSettingsAccessCodeEnter),
           const SizedBox(height: 12),
           TextField(
             controller: controller,
@@ -310,9 +440,9 @@ Future<bool> _verifyAccessCode(
               LengthLimitingTextInputFormatter(6),
               FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
             ],
-            decoration: const InputDecoration(
-              hintText: 'ABC123',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              hintText: t.attSettingsAccessCodeHint,
+              border: const OutlineInputBorder(),
             ),
             onSubmitted: (v) => Navigator.of(ctx).pop(v.trim().toUpperCase()),
           ),
@@ -321,7 +451,7 @@ Future<bool> _verifyAccessCode(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(ctx).pop(null),
-          child: const Text('Cancel'),
+          child: Text(t.actionCancel),
         ),
         FilledButton(
           onPressed: () =>
@@ -336,50 +466,13 @@ Future<bool> _verifyAccessCode(
   if (entered != saved) {
     await AppModal.show(
       context,
-      title: 'Incorrect Code',
-      message: 'The access code did not match.',
+      title: t.attSettingsAccessCodeIncorrectTitle,
+      message: t.attSettingsAccessCodeIncorrectMessage,
       type: ModalType.info,
     );
     return false;
   }
   return true;
-}
-
-/// 키오스크 의도(intent)는 유지한 채 lock task 만 잠시 풀고 홈으로 보낸다.
-/// 사용자가 앱으로 돌아오면 lifecycle observer 가 자동으로 재잠금.
-Future<void> _minimizeToHome(BuildContext context) async {
-  final ok = await _verifyAccessCode(
-    context,
-    dialogTitle: 'Minimize to Home',
-    confirmLabel: 'Go Home',
-  );
-  if (!ok) return;
-  // Lock Task 가 켜진 상태에선 moveTaskToBack 이 차단되므로 먼저 stop.
-  // intent 는 그대로 true 라서 resume 시 다시 잠긴다.
-  await KioskLock.stop();
-  await KioskLock.moveToBack();
-}
-
-/// 키오스크 잠금을 의도적으로 해제 (관리자 점검/설치 작업용).
-/// intent flag 를 false 로 내려 부팅/resume 자동잠금도 멈춘다.
-Future<void> _exitKiosk(BuildContext context) async {
-  final ok = await _verifyAccessCode(
-    context,
-    dialogTitle: 'Exit Kiosk Mode',
-    confirmLabel: 'Unlock',
-  );
-  if (!ok) return;
-  await KioskIntent.setEnabled(false);
-  await KioskLock.stop();
-  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  if (!context.mounted) return;
-  await AppModal.show(
-    context,
-    title: 'Kiosk Unlocked',
-    message:
-        'You may now navigate away from the app. Re-register or reinstall to re-enable kiosk mode.',
-    type: ModalType.info,
-  );
 }
 
 class _InfoRow extends StatelessWidget {
@@ -450,6 +543,7 @@ class _KioskToggleTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
@@ -464,15 +558,15 @@ class _KioskToggleTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Kiosk Lock',
-                  style: TextStyle(fontSize: 15, color: AppColors.text),
+                Text(
+                  t.attSettingsKioskLockTitle,
+                  style: const TextStyle(fontSize: 15, color: AppColors.text),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   enabled
-                      ? 'App is locked. Disable to use device freely.'
-                      : 'App is unlocked. Enable to restrict device.',
+                      ? t.attSettingsKioskLockOn
+                      : t.attSettingsKioskLockOff,
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppColors.textMuted,

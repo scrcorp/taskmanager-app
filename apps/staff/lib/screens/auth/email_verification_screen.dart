@@ -8,8 +8,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/language_switcher.dart';
 
 class EmailVerificationScreen extends ConsumerStatefulWidget {
   const EmailVerificationScreen({super.key});
@@ -63,12 +65,13 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
   }
 
   Future<void> _sendCode() async {
+    final t = AppL10n.of(context);
     final email = _emailCtrl.text.trim();
     if (email.isEmpty) {
       await AppModal.show(
         context,
-        title: 'Heads up',
-        message: 'Please enter your email.',
+        title: t.commonHeadsUp,
+        message: t.emailVerifyMissingEmail,
         type: ModalType.warning,
       );
       return;
@@ -82,8 +85,8 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
         _startTimer();
         await AppModal.show(
           context,
-          title: 'Code Sent',
-          message: 'Verification code sent.',
+          title: t.emailVerifyCodeSentTitle,
+          message: t.emailVerifyCodeSentMessage,
           type: ModalType.success,
         );
       }
@@ -92,8 +95,8 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
         setState(() => _isLoading = false);
         await AppModal.show(
           context,
-          title: "Couldn't send code",
-          message: _parseApiError(e, 'Failed to send code.'),
+          title: t.emailVerifyCodeSendErrorTitle,
+          message: _parseApiError(e, t.emailVerifyCodeSendErrorDefault),
           type: ModalType.error,
         );
       }
@@ -101,12 +104,13 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
   }
 
   Future<void> _verifyCode() async {
+    final t = AppL10n.of(context);
     final code = _codeCtrl.text.trim();
     if (code.isEmpty || code.length != 6) {
       await AppModal.show(
         context,
-        title: 'Heads up',
-        message: 'Please enter the 6-digit code.',
+        title: t.commonHeadsUp,
+        message: t.emailVerifyMissing6Digit,
         type: ModalType.warning,
       );
       return;
@@ -126,8 +130,8 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
         setState(() => _isLoading = false);
         await AppModal.show(
           context,
-          title: 'Verification Failed',
-          message: _parseApiError(e, 'Verification failed.'),
+          title: t.emailVerifyFailedTitle,
+          message: _parseApiError(e, t.emailVerifyFailedDefault),
           type: ModalType.error,
         );
       }
@@ -136,6 +140,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
 
   /// 서버 에러 응답에서 사용자 친화적 메시지 추출
   String _parseApiError(Object e, String fallback) {
+    final t = AppL10n.of(context);
     if (e is DioException && e.response?.data != null) {
       final data = e.response!.data;
       if (data is Map<String, dynamic>) {
@@ -149,14 +154,14 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
     if (e is DioException) {
       final statusCode = e.response?.statusCode;
       if (statusCode != null && statusCode >= 500) {
-        return 'Server error. Please try again later.';
+        return t.errorServerLater;
       }
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
-        return 'Server not responding. Please try again.';
+        return t.errorServerNotResponding;
       }
       if (e.type == DioExceptionType.connectionError) {
-        return 'No internet connection.';
+        return t.errorNoInternet;
       }
     }
     return fallback;
@@ -164,6 +169,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     // 성공 화면
     if (_verified) {
       return Scaffold(
@@ -184,12 +190,12 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                 ),
                 const SizedBox(height: 28),
                 Text(
-                  'Email Verified!',
+                  t.emailVerifySuccessTitle,
                   style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontSize: 26, fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Your email has been verified successfully.\nYou can now use all features.',
+                  t.emailVerifySuccessMessage,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary, height: 1.6),
                   textAlign: TextAlign.center,
                 ),
@@ -205,7 +211,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                     style: ElevatedButton.styleFrom(
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                    child: const Text('Go to Home'),
+                    child: Text(t.emailVerifyGoHome),
                   ),
                 ),
               ],
@@ -227,9 +233,12 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                 children: [
                   const SizedBox(width: 48),
                   const Spacer(),
-                  Text('Email Verification', style: Theme.of(context).textTheme.headlineMedium),
+                  Text(t.emailVerifyHeader, style: Theme.of(context).textTheme.headlineMedium),
                   const Spacer(),
-                  const SizedBox(width: 48),
+                  const Padding(
+                    padding: EdgeInsets.only(right: 8),
+                    child: LanguageSwitcher(),
+                  ),
                 ],
               ),
             ),
@@ -250,10 +259,10 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                       child: const Icon(Icons.mail_outline_rounded, size: 36, color: AppColors.accent),
                     ),
                     const SizedBox(height: 24),
-                    Text('Verify Your Email', style: Theme.of(context).textTheme.headlineLarge),
+                    Text(t.emailVerifyHeading, style: Theme.of(context).textTheme.headlineLarge),
                     const SizedBox(height: 8),
                     Text(
-                      'To continue using HTM,\nplease verify your email address.',
+                      t.emailVerifySubheading,
                       style: Theme.of(context).textTheme.bodyMedium,
                       textAlign: TextAlign.center,
                     ),
@@ -262,7 +271,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                     // Email field
                     Align(
                       alignment: Alignment.centerLeft,
-                      child: Text('Email', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
+                      child: Text(t.fieldEmail, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -272,7 +281,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                             controller: _emailCtrl,
                             enabled: !_codeSent,
                             keyboardType: TextInputType.emailAddress,
-                            decoration: const InputDecoration(hintText: 'example@email.com'),
+                            decoration: InputDecoration(hintText: t.hintEmailExample),
                           ),
                         ),
                         const SizedBox(width: 8),
@@ -288,7 +297,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                               padding: const EdgeInsets.symmetric(horizontal: 14),
                               textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                             ),
-                            child: Text(_codeSent ? 'Resend' : 'Send Code'),
+                            child: Text(_codeSent ? t.actionResend : t.actionSendCode),
                           ),
                         ),
                       ],
@@ -307,7 +316,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                                 });
                               },
                               child: Text(
-                                'Change Email',
+                                t.emailVerifyChangeEmail,
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: AppColors.accent,
@@ -316,7 +325,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                               ),
                             )
                           : Text(
-                              'You can change your email address if needed.',
+                              t.emailVerifyChangeEmailHint,
                               style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                             ),
                     ),
@@ -325,7 +334,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                       const SizedBox(height: 20),
                       Align(
                         alignment: Alignment.centerLeft,
-                        child: Text('Verification Code', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
+                        child: Text(t.fieldVerificationCode, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text)),
                       ),
                       const SizedBox(height: 8),
                       Row(
@@ -334,7 +343,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                             child: TextField(
                               controller: _codeCtrl,
                               keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(hintText: '6-digit code'),
+                              decoration: InputDecoration(hintText: t.hint6DigitCode),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -350,7 +359,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                                 padding: const EdgeInsets.symmetric(horizontal: 14),
                                 textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
                               ),
-                              child: const Text('Verify'),
+                              child: Text(t.actionVerify),
                             ),
                           ),
                         ],
@@ -361,7 +370,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                           child: Align(
                             alignment: Alignment.centerLeft,
                             child: Text(
-                              '⏱ $_timerText remaining',
+                              t.emailVerifyTimerRemaining(_timerText),
                               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.danger),
                             ),
                           ),
@@ -377,7 +386,7 @@ class _EmailVerificationScreenState extends ConsumerState<EmailVerificationScree
                         if (mounted) context.go('/login');
                       },
                       child: Text(
-                        'Log out',
+                        t.actionLogout,
                         style: TextStyle(fontSize: 13, color: AppColors.textMuted, decoration: TextDecoration.underline),
                       ),
                     ),

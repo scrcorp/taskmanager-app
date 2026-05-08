@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/task.dart';
 import '../../providers/task_provider.dart';
 import '../../utils/date_utils.dart';
@@ -61,6 +62,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final state = ref.watch(taskProvider);
     final task = state.selected;
 
@@ -68,13 +70,13 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       backgroundColor: AppColors.bg,
       body: Column(
         children: [
-          AppHeader(title: 'Task Detail', isDetail: true, onBack: () => context.pop()),
+          AppHeader(title: t.taskDetailHeader, isDetail: true, onBack: () => context.pop()),
           if (state.isLoading && task == null)
             const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (task == null)
             Expanded(
               child: Center(
-                child: Text(state.error ?? 'Task not found',
+                child: Text(state.error ?? t.taskNotFound,
                     style: const TextStyle(color: AppColors.textMuted)),
               ),
             )
@@ -119,8 +121,8 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                               if (mounted) {
                                 await AppModal.show(
                                   context,
-                                  title: 'Completed',
-                                  message: 'Task marked as complete',
+                                  title: t.taskCompletedTitle,
+                                  message: t.taskCompletedMessage,
                                   type: ModalType.success,
                                 );
                               }
@@ -132,7 +134,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                               child: CircularProgressIndicator(
                                   strokeWidth: 2, color: Colors.white),
                             )
-                          : const Text('Mark Complete'),
+                          : Text(t.taskMarkComplete),
                     ),
                   ),
                 ),
@@ -255,7 +257,10 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Completed by ${task.completedByName ?? 'Unknown'} · ${formatActionTime(task.completedAt!)}',
+                      AppL10n.of(context).taskCompletedByLine(
+                        task.completedByName ?? AppL10n.of(context).commonUnknown,
+                        formatActionTime(task.completedAt!),
+                      ),
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.success,
@@ -274,6 +279,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
 
   // ── Info Section: dates, creator ──
   Widget _buildInfoSection(AdditionalTask task) {
+    final t = AppL10n.of(context);
     return Container(
       width: double.infinity,
       color: AppColors.white,
@@ -283,7 +289,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           if (task.startDate != null)
             _DetailRow(
               icon: Icons.play_circle_outline,
-              label: 'Start time',
+              label: t.taskStartTimeLabel,
               value: formatDateTime(task.startDate!),
             ),
           if (task.startDate != null && task.dueDate != null)
@@ -291,7 +297,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           if (task.dueDate != null)
             _DetailRow(
               icon: Icons.schedule,
-              label: 'Due date',
+              label: t.taskDueDateLabel,
               value: formatDateTime(task.dueDate!),
               valueColor: task.dueDate!.isBefore(DateTime.now()) && task.status != 'completed'
                   ? AppColors.danger
@@ -302,13 +308,13 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           if (task.assignees.isNotEmpty)
             _DetailRow(
               icon: Icons.people_outline,
-              label: 'Assigned to',
-              value: task.assignees.map((a) => a.fullName ?? 'Unknown').join(', '),
+              label: t.taskAssignedToLabel,
+              value: task.assignees.map((a) => a.fullName ?? t.commonUnknown).join(', '),
             )
           else if (task.assigneeNames.isNotEmpty)
             _DetailRow(
               icon: Icons.people_outline,
-              label: 'Assigned to',
+              label: t.taskAssignedToLabel,
               value: task.assigneeNames.join(', '),
             ),
           if (task.assignees.isNotEmpty || task.assigneeNames.isNotEmpty)
@@ -316,14 +322,14 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
           if (task.createdByName != null)
             _DetailRow(
               icon: Icons.person_outline,
-              label: 'Created by',
-              value: task.createdByName ?? 'Unknown',
+              label: t.taskCreatedByLabel,
+              value: task.createdByName ?? t.commonUnknown,
             ),
           if (task.createdAt != null) ...[
             const SizedBox(height: 14),
             _DetailRow(
               icon: Icons.access_time,
-              label: 'Created at',
+              label: t.taskCreatedAtLabel,
               value: formatDateTime(task.createdAt!),
             ),
           ],
@@ -334,6 +340,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
 
   // ── Description Section ──
   Widget _buildDescriptionSection(AdditionalTask task) {
+    final t = AppL10n.of(context);
     return Container(
       width: double.infinity,
       color: AppColors.white,
@@ -341,9 +348,9 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Description',
-            style: TextStyle(
+          Text(
+            t.fieldDescription,
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppColors.text,
@@ -365,6 +372,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
 
   // ── Assignees Section ──
   Widget _buildAssigneesSection(AdditionalTask task) {
+    final t = AppL10n.of(context);
     final count = task.assignees.isNotEmpty
         ? task.assignees.length
         : task.assigneeNames.length;
@@ -377,7 +385,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Assignees ($count)',
+            t.taskAssigneesCount(count),
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -410,7 +418,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            assignee.fullName ?? 'Unknown',
+                            assignee.fullName ?? t.commonUnknown,
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
@@ -419,7 +427,7 @@ class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
                           ),
                           if (assignee.isCompleted && assignee.completedAt != null)
                             Text(
-                              'Done ${formatActionTime(assignee.completedAt!)}',
+                              t.taskDoneAt(formatActionTime(assignee.completedAt!)),
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: AppColors.success,
