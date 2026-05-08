@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/task.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/my_schedule_provider.dart';
@@ -21,21 +22,21 @@ import '../../providers/voice_provider.dart';
 import '../../models/notice.dart';
 import 'widgets/schedule_summary_card.dart';
 
-/// 의견 제출 카테고리 맵 (키: API 값, 값: 표시 라벨)
-const _voiceCategories = <String, String>{
-  'idea': '\u{1F4A1} Idea',
-  'facility': '\u{1F527} Facility',
-  'safety': '\u{26A0}\u{FE0F} Safety',
-  'hr': '\u{1F464} HR',
-  'other': '\u{1F4CB} Other',
-};
+/// 의견 제출 카테고리 라벨 (locale에 따라 동적 생성)
+Map<String, String> _voiceCategoriesFor(AppL10n t) => {
+      'idea': t.homeVoiceCategoryIdea,
+      'facility': t.homeVoiceCategoryFacility,
+      'safety': t.homeVoiceCategorySafety,
+      'hr': t.homeVoiceCategoryHr,
+      'other': t.homeVoiceCategoryOther,
+    };
 
 /// 현재 시간대에 맞는 인사말 반환
-String _getGreeting() {
+String _getGreeting(AppL10n t) {
   final hour = DateTime.now().hour;
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (hour < 12) return t.homeGreetingMorning;
+  if (hour < 17) return t.homeGreetingAfternoon;
+  return t.homeGreetingEvening;
 }
 
 /// 오늘 마감인 미완료 태스크 수 계산
@@ -82,6 +83,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Future<void> _submitVoice() async {
+    final t = AppL10n.of(context);
     final text = _ideaCtrl.text.trim();
     if (text.isEmpty) return;
     FocusScope.of(context).unfocus();
@@ -94,15 +96,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _ideaCtrl.clear();
       await AppModal.show(
         context,
-        title: 'Submitted',
-        message: 'Thanks for sharing!',
+        title: t.homeVoiceSubmittedTitle,
+        message: t.homeVoiceSubmittedMessage,
         type: ModalType.success,
       );
     } else {
       await AppModal.show(
         context,
-        title: "Couldn't submit",
-        message: 'Failed to submit. Please try again.',
+        title: t.homeVoiceFailedTitle,
+        message: t.homeVoiceFailedMessage,
         type: ModalType.error,
       );
     }
@@ -110,14 +112,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
+    final localeStr = Localizations.localeOf(context).toString();
     final user = ref.watch(authProvider).user;
     final scheduleState = ref.watch(myScheduleProvider);
     final tasks = ref.watch(taskProvider);
     final notices = ref.watch(noticeProvider);
     final today = DateTime.now();
 
-    final firstName = user?.firstName ?? 'Staff';
-    final fullName = user?.fullName ?? 'Staff';
+    final firstName = user?.firstName ?? t.commonStaff;
+    final fullName = user?.fullName ?? t.commonStaff;
     final dueTodayCount = _countDueToday(tasks.tasks);
     final checklistSchedules =
         scheduleState.schedules.where((s) => s.totalItems > 0).toList();
@@ -160,14 +164,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Your password was recently reset. We recommend changing it to a new password.',
-                        style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                        t.homePasswordBannerMessage,
+                        style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
                       ),
                     ),
                     const SizedBox(width: 8),
                     GestureDetector(
                       onTap: () => context.push('/my/change-password'),
-                      child: Text('Change', style: TextStyle(fontSize: 13, color: AppColors.accent, fontWeight: FontWeight.w600)),
+                      child: Text(t.actionChange, style: const TextStyle(fontSize: 13, color: AppColors.accent, fontWeight: FontWeight.w600)),
                     ),
                     const SizedBox(width: 8),
                     GestureDetector(
@@ -200,7 +204,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${_getGreeting()},',
+                  '${_getGreeting(t)},',
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w400,
@@ -209,7 +213,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '$firstName.',
+                  '$firstName${t.homeFirstNameSuffix}',
                   style: const TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w800,
@@ -219,7 +223,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  DateFormat('yyyy. MM. dd (E)').format(today),
+                  DateFormat.yMMMEd(localeStr).format(today),
                   style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textMuted,
@@ -249,9 +253,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    "Today's Overview",
-                    style: TextStyle(
+                  Text(
+                    t.homeTodayOverview,
+                    style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textMuted,
@@ -262,7 +266,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Row(
                     children: [
                       _StatItem(
-                        label: 'Checklist',
+                        label: t.homeStatChecklist,
                         value: scheduleState.isLoading
                             ? '-'
                             : '$completedSchedules/$totalSchedules',
@@ -273,7 +277,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                       _statDivider(),
                       _StatItem(
-                        label: 'Tasks',
+                        label: t.homeStatTasks,
                         value: tasks.isLoading
                             ? '-'
                             : '$completedTasks/$totalTasks',
@@ -283,7 +287,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ),
                       _statDivider(),
                       _StatItem(
-                        label: 'Due Today',
+                        label: t.homeStatDueToday,
                         value: tasks.isLoading ? '-' : '$dueTodayCount',
                         color: dueTodayCount > 0 ? AppColors.danger : AppColors.success,
                       ),
@@ -313,7 +317,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 Expanded(
                   child: _QuickActionCard(
                     icon: Icons.campaign_rounded,
-                    label: 'Notices',
+                    label: t.homeQuickNotices,
                     badge: noticeCount > 0 ? noticeCount : null,
                     onTap: () => context.push('/notices'),
                   ),
@@ -322,7 +326,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 Expanded(
                   child: _QuickActionCard(
                     icon: Icons.school_rounded,
-                    label: 'OJT',
+                    label: t.homeQuickOjt,
                     onTap: () => context.push('/ojt'),
                   ),
                 ),
@@ -335,7 +339,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: _QuickActionCard(
                 icon: Icons.summarize_rounded,
-                label: 'Daily Reports',
+                label: t.homeQuickDailyReports,
                 onTap: () => context.push('/daily-reports'),
               ),
             ),
@@ -347,7 +351,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: _QuickActionCard(
                 icon: Icons.inventory_2_rounded,
-                label: 'Inventory',
+                label: t.homeQuickInventory,
                 onTap: () => context.push('/inventory'),
               ),
             ),
@@ -410,7 +414,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             isDense: true,
                             style: const TextStyle(fontSize: 13, color: AppColors.text),
                             icon: const Icon(Icons.expand_more, size: 16, color: AppColors.textMuted),
-                            items: _voiceCategories.entries.map((e) {
+                            items: _voiceCategoriesFor(t).entries.map((e) {
                               return DropdownMenuItem(value: e.key, child: Text(e.value));
                             }).toList(),
                             onChanged: (v) {
@@ -433,9 +437,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           child: TextField(
                             controller: _ideaCtrl,
                             style: const TextStyle(fontSize: 14, color: AppColors.text),
-                            decoration: const InputDecoration(
-                              hintText: 'Share your voice!',
-                              hintStyle: TextStyle(
+                            decoration: InputDecoration(
+                              hintText: t.homeVoiceHint,
+                              hintStyle: const TextStyle(
                                 fontSize: 14,
                                 color: AppColors.textMuted,
                               ),
@@ -443,7 +447,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               enabledBorder: InputBorder.none,
                               focusedBorder: InputBorder.none,
                               filled: false,
-                              contentPadding: EdgeInsets.symmetric(
+                              contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 20,
                                 vertical: 12,
                               ),
@@ -642,6 +646,8 @@ class _ImportantNoticeBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
+    final localeStr = Localizations.localeOf(context).toString();
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -670,14 +676,14 @@ class _ImportantNoticeBanner extends StatelessWidget {
                     color: const Color(0xFFFF6B6B).withValues(alpha: 0.25),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.campaign_rounded, size: 13, color: Color(0xFFFF9B9B)),
-                      SizedBox(width: 4),
+                      const Icon(Icons.campaign_rounded, size: 13, color: Color(0xFFFF9B9B)),
+                      const SizedBox(width: 4),
                       Text(
-                        'IMPORTANT NOTICE',
-                        style: TextStyle(
+                        t.homeImportantNotice,
+                        style: const TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: Color(0xFFFF9B9B),
@@ -690,7 +696,7 @@ class _ImportantNoticeBanner extends StatelessWidget {
                 const Spacer(),
                 if (notice.createdAt != null)
                   Text(
-                    DateFormat('MM/dd').format(notice.createdAt!),
+                    DateFormat.Md(localeStr).format(notice.createdAt!),
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.white.withValues(alpha: 0.5),
@@ -729,19 +735,19 @@ class _ImportantNoticeBanner extends StatelessWidget {
                 color: Colors.white.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'View details',
-                    style: TextStyle(
+                    t.homeViewDetails,
+                    style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: Colors.white,
                     ),
                   ),
-                  SizedBox(width: 6),
-                  Icon(Icons.arrow_forward_rounded, size: 15, color: Colors.white),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.arrow_forward_rounded, size: 15, color: Colors.white),
                 ],
               ),
             ),

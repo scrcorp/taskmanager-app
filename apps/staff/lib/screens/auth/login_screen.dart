@@ -7,7 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
+import '../../widgets/language_switcher.dart';
 
 /// 로그인 화면 위젯 (Riverpod ConsumerStateful)
 class LoginScreen extends ConsumerStatefulWidget {
@@ -37,6 +39,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final password = _passwordCtrl.text.trim();
     if (email.isEmpty || password.isEmpty) return;
 
+    final t = AppL10n.of(context);
     setState(() => _loading = true);
     final success = await ref.read(authProvider.notifier).login(email, password);
     if (mounted) setState(() => _loading = false);
@@ -44,10 +47,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     if (success && mounted) {
       context.go('/home');
     } else if (mounted) {
-      final error = ref.read(authProvider).error ?? 'Login failed';
+      final error = ref.read(authProvider).error ?? t.loginFailedDefault;
       AppModal.show(
         context,
-        title: 'Login Failed',
+        title: t.loginFailedTitle,
         message: error,
         type: ModalType.error,
       );
@@ -56,6 +59,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -64,7 +68,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 80),
+              const SizedBox(height: 12),
+              const Align(
+                alignment: Alignment.centerRight,
+                child: LanguageSwitcher(),
+              ),
+              const SizedBox(height: 40),
               // 앱 로고 + 타이틀
               Text.rich(
                 TextSpan(children: [
@@ -74,7 +83,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 4),
-              Text('Staff App', textAlign: TextAlign.center,
+              Text(t.appTitle, textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
               const SizedBox(height: 48),
               // 이메일/사용자명 입력
@@ -82,9 +91,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 controller: _emailCtrl,
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  hintText: 'Email or Username',
-                  prefixIcon: Icon(Icons.person_outline, size: 20),
+                decoration: InputDecoration(
+                  hintText: t.loginEmailOrUsernameHint,
+                  prefixIcon: const Icon(Icons.person_outline, size: 20),
                 ),
               ),
               const SizedBox(height: 16),
@@ -95,7 +104,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 textInputAction: TextInputAction.done,
                 onSubmitted: (_) => _login(),
                 decoration: InputDecoration(
-                  hintText: 'Password',
+                  hintText: t.loginPasswordHint,
                   prefixIcon: const Icon(Icons.lock_outline, size: 20),
                   suffixIcon: IconButton(
                     icon: Icon(_obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
@@ -111,7 +120,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: _loading ? null : _login,
                   child: _loading
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Log In'),
+                      : Text(t.actionLogin),
                 ),
               ),
               const SizedBox(height: 20),
@@ -121,7 +130,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 children: [
                   GestureDetector(
                     onTap: () => context.go('/find-username'),
-                    child: Text('Find Username', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                    child: Text(t.loginFindUsername, style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                   ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -129,7 +138,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   GestureDetector(
                     onTap: () => context.go('/reset-password'),
-                    child: Text('Forgot Password?', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                    child: Text(t.loginForgotPassword, style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                   ),
                 ],
               ),
@@ -138,10 +147,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text("Don't have an account? ", style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                  Text(t.loginNoAccountPrompt, style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
                   GestureDetector(
                     onTap: () => context.go('/register'),
-                    child: Text('Register', style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w700, fontSize: 14)),
+                    child: Text(t.loginRegisterAction, style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w700, fontSize: 14)),
                   ),
                 ],
               ),

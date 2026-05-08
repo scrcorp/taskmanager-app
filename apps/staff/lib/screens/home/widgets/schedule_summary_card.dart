@@ -4,7 +4,9 @@
 /// and rejected alert. Uses schedule provider data.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../../l10n/app_localizations.dart';
 import '../../../models/schedule.dart';
 import '../../../providers/schedule_provider.dart';
 
@@ -40,6 +42,8 @@ class _ScheduleSummaryCardState extends ConsumerState<ScheduleSummaryCard> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
+    final localeStr = Localizations.localeOf(context).toString();
     final state = ref.watch(scheduleProvider);
 
     if (state.isLoading && state.entries.isEmpty && state.requests.isEmpty) {
@@ -114,10 +118,10 @@ class _ScheduleSummaryCardState extends ConsumerState<ScheduleSummaryCard> {
       final isTomorrow = eDate ==
           _fmt(DateTime(now.year, now.month, now.day + 1));
       final dayLabel = isToday
-          ? 'Today'
+          ? t.scheduleToday
           : isTomorrow
-              ? 'Tomorrow'
-              : '${_weekdayShort(e.workDate)} ${e.workDate.month}/${e.workDate.day}';
+              ? t.homeTomorrow
+              : '${DateFormat.E(localeStr).format(e.workDate)} ${e.workDate.month}/${e.workDate.day}';
       nextShift = _NextShift(
         dayLabel: dayLabel,
         startTime: e.startTime,
@@ -149,10 +153,10 @@ class _ScheduleSummaryCardState extends ConsumerState<ScheduleSummaryCard> {
         final isTomorrow = rDate ==
             _fmt(DateTime(now.year, now.month, now.day + 1));
         final dayLabel = isToday
-            ? 'Today'
+            ? t.scheduleToday
             : isTomorrow
-                ? 'Tomorrow'
-                : '${_weekdayShort(r.workDate)} ${r.workDate.month}/${r.workDate.day}';
+                ? t.homeTomorrow
+                : '${DateFormat.E(localeStr).format(r.workDate)} ${r.workDate.month}/${r.workDate.day}';
         nextShift = _NextShift(
           dayLabel: dayLabel,
           startTime: r.preferredStartTime!,
@@ -173,16 +177,16 @@ class _ScheduleSummaryCardState extends ConsumerState<ScheduleSummaryCard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                "This Week's Schedule",
-                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              Text(
+                t.homeScheduleHeader,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
               ),
               if (widget.onViewAll != null)
                 GestureDetector(
                   onTap: widget.onViewAll,
-                  child: const Text(
-                    'View all →',
-                    style: TextStyle(
+                  child: Text(
+                    t.homeViewAll,
+                    style: const TextStyle(
                       fontSize: 13,
                       color: AppColors.accent,
                       fontWeight: FontWeight.w600,
@@ -195,11 +199,11 @@ class _ScheduleSummaryCardState extends ConsumerState<ScheduleSummaryCard> {
           // Stats grid
           Row(
             children: [
-              _statBox('$confirmed', 'Confirmed', AppColors.success),
+              _statBox('$confirmed', t.scheduleStatusConfirmed, AppColors.success),
               const SizedBox(width: 10),
-              _statBox('$modified', 'Changed', AppColors.warning),
+              _statBox('$modified', t.homeStatChanged, AppColors.warning),
               const SizedBox(width: 10),
-              _statBox('$submitted', 'Pending', AppColors.accent),
+              _statBox('$submitted', t.scheduleStatusPending, AppColors.accent),
             ],
           ),
           // Next shift
@@ -229,8 +233,8 @@ class _ScheduleSummaryCardState extends ConsumerState<ScheduleSummaryCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'NEXT SHIFT',
-                          style: TextStyle(
+                          t.homeNextShift,
+                          style: const TextStyle(
                             fontSize: 11,
                             color: AppColors.accent,
                             fontWeight: FontWeight.w600,
@@ -279,7 +283,7 @@ class _ScheduleSummaryCardState extends ConsumerState<ScheduleSummaryCard> {
                           size: 16, color: AppColors.danger),
                       const SizedBox(width: 4),
                       Text(
-                        '$rejected rejected request${rejected > 1 ? 's' : ''}',
+                        t.homeRejectedRequests(rejected),
                         style: const TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
@@ -290,7 +294,7 @@ class _ScheduleSummaryCardState extends ConsumerState<ScheduleSummaryCard> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${_weekdayShort(firstRejected.workDate)} ${firstRejected.workDate.month}/${firstRejected.workDate.day} '
+                    '${DateFormat.E(localeStr).format(firstRejected.workDate)} ${firstRejected.workDate.month}/${firstRejected.workDate.day} '
                     '${firstRejected.storeName ?? ''} ${firstRejected.workRoleName ?? ''}'
                     '${firstRejected.rejectedReason != null ? ' — ${firstRejected.rejectedReason}' : ''}',
                     style: const TextStyle(fontSize: 12),
@@ -299,9 +303,9 @@ class _ScheduleSummaryCardState extends ConsumerState<ScheduleSummaryCard> {
                     const SizedBox(height: 6),
                     GestureDetector(
                       onTap: widget.onResubmit,
-                      child: const Text(
-                        'Resubmit →',
-                        style: TextStyle(
+                      child: Text(
+                        t.homeResubmit,
+                        style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.accent,
                           fontWeight: FontWeight.w600,
@@ -401,7 +405,3 @@ double _parseHour(String time) {
   return (int.tryParse(parts[0]) ?? 0) + (int.tryParse(parts[1]) ?? 0) / 60.0;
 }
 
-String _weekdayShort(DateTime d) {
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  return days[d.weekday - 1];
-}

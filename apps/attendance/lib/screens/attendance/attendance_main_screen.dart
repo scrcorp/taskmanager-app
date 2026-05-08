@@ -22,8 +22,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/attendance_dashboard_provider.dart';
 import '../../providers/attendance_device_provider.dart';
+import '../../widgets/language_switcher.dart';
 import 'attendance_pin_screen.dart';
 import 'attendance_settings_screen.dart';
 
@@ -67,7 +69,7 @@ extension AttendanceActionX on AttendanceAction {
     }
   }
 
-  /// UI 표기용 라벨
+  /// UI 표기용 라벨 (영어 fallback). 가능하면 [localizedLabel] 사용.
   String get label {
     switch (this) {
       case AttendanceAction.clockIn:
@@ -80,6 +82,22 @@ extension AttendanceActionX on AttendanceAction {
         return 'Long Break';
       case AttendanceAction.breakEnd:
         return 'End Break';
+    }
+  }
+
+  /// UI 표기용 라벨 (i18n).
+  String localizedLabel(AppL10n t) {
+    switch (this) {
+      case AttendanceAction.clockIn:
+        return t.attMainActionClockIn;
+      case AttendanceAction.clockOut:
+        return t.attMainActionClockOut;
+      case AttendanceAction.breakShortPaid:
+        return t.attMainActionShortBreak;
+      case AttendanceAction.breakLongUnpaid:
+        return t.attMainActionLongBreak;
+      case AttendanceAction.breakEnd:
+        return t.attMainActionEndBreak;
     }
   }
 }
@@ -146,11 +164,11 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     await KioskIntent.disableTemporarily();
     await KioskLock.stop();
     if (!mounted) return;
+    final t = AppL10n.of(context);
     await AppModal.show(
       context,
-      title: 'Kiosk Unlocked',
-      message:
-          'Kiosk lock temporarily disabled. It will re-lock automatically in 5 minutes.',
+      title: t.attMainKioskUnlockedTitle,
+      message: t.attMainKioskUnlockedMessage,
       type: ModalType.info,
     );
   }
@@ -257,11 +275,14 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
   /// Early clock-out 시 사용자에게 confirm + 사유 입력. 사용자가 취소하면 null,
   /// 사유 입력 후 Continue 면 trim 된 사유 문자열 반환.
   Future<String?> _promptEarlyClockOutReason(DateTime scheduledEnd) async {
+    final t = AppL10n.of(context);
     final controller = TextEditingController();
     final remaining = scheduledEnd.difference(DateTime.now());
     final h = remaining.inHours;
     final m = remaining.inMinutes % 60;
-    final remainText = h > 0 ? '${h}h ${m}m' : '${remaining.inMinutes}m';
+    final remainText = h > 0
+        ? t.attMainDurationHM(h, m)
+        : t.attMainDurationM(remaining.inMinutes);
 
     return showDialog<String>(
       context: context,
@@ -272,11 +293,12 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
             final hasReason = controller.text.trim().isNotEmpty;
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Row(
+              title: Row(
                 children: [
-                  Icon(Icons.warning_amber_rounded, color: AppColors.warning),
-                  SizedBox(width: 10),
-                  Text('Clocking out early'),
+                  const Icon(Icons.warning_amber_rounded,
+                      color: AppColors.warning),
+                  const SizedBox(width: 10),
+                  Text(t.attMainEarlyClockOutTitle),
                 ],
               ),
               content: Column(
@@ -284,14 +306,14 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Your shift still has $remainText remaining. Are you sure '
-                    'you want to clock out now?',
+                    t.attMainEarlyClockOutMessage(remainText),
                     style: const TextStyle(fontSize: 14, color: AppColors.text),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Please enter a reason — required for early clock-out.',
-                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                  Text(
+                    t.attMainEarlyClockOutReasonLabel,
+                    style: const TextStyle(
+                        fontSize: 12, color: AppColors.textMuted),
                   ),
                   const SizedBox(height: 8),
                   TextField(
@@ -301,9 +323,9 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                     minLines: 2,
                     maxLines: 4,
                     maxLength: 300,
-                    decoration: const InputDecoration(
-                      hintText: 'e.g. Family emergency, feeling unwell',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      hintText: t.attMainEarlyClockOutReasonHint,
+                      border: const OutlineInputBorder(),
                     ),
                   ),
                 ],
@@ -311,7 +333,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(ctx).pop(null),
-                  child: const Text('Cancel'),
+                  child: Text(t.actionCancel),
                 ),
                 ElevatedButton(
                   onPressed: hasReason
@@ -321,7 +343,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                     backgroundColor: AppColors.warning,
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text('Continue'),
+                  child: Text(t.actionContinue),
                 ),
               ],
             );
@@ -341,6 +363,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final device = ref.watch(attendanceDeviceProvider).device;
     return SafeArea(
       child: Padding(
@@ -349,8 +372,8 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildHeader(
-              storeName: device?.storeName ?? 'Store',
-              deviceName: device?.deviceName ?? 'Device',
+              storeName: device?.storeName ?? t.commonStore,
+              deviceName: device?.deviceName ?? t.commonDevice,
               workDate: device?.workDate,
             ),
             const SizedBox(height: 20),
@@ -363,7 +386,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                     width: 240,
                     child: SingleChildScrollView(
                       child: _buildShiftActions(
-                        storeName: device?.storeName ?? 'Store',
+                        storeName: device?.storeName ?? t.commonStore,
                       ),
                     ),
                   ),
@@ -411,13 +434,15 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     required String deviceName,
     String? workDate,
   }) {
+    final t = AppL10n.of(context);
+    final localeTag = Localizations.localeOf(context).toString();
     final dashboard = ref.watch(attendanceDashboardProvider);
     // work_date 를 "Wed, Apr 22 2026" 형태로 포매팅 (store tz 기준 서버가 계산한 날짜)
     String? workDateDisplay;
     if (workDate != null && workDate.isNotEmpty) {
       try {
         final d = DateTime.parse(workDate);
-        workDateDisplay = DateFormat('EEE, MMM d, y').format(d);
+        workDateDisplay = DateFormat('EEE, MMM d, y', localeTag).format(d);
       } catch (_) {
         workDateDisplay = workDate;
       }
@@ -462,9 +487,9 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
               crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'WORK DATE',
-                  style: TextStyle(
+                Text(
+                  t.attMainWorkDateLabel,
+                  style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1,
@@ -484,8 +509,10 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
             ),
           ),
         const Spacer(),
+        const LanguageSwitcher(),
+        const SizedBox(width: 4),
         IconButton(
-          tooltip: 'Refresh',
+          tooltip: t.commonRefresh,
           onPressed: dashboard.loading
               ? null
               : () =>
@@ -503,7 +530,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                   color: AppColors.textSecondary),
         ),
         IconButton(
-          tooltip: 'Settings',
+          tooltip: t.commonSettings,
           onPressed: _openSettings,
           icon: const Icon(Icons.settings_outlined,
               color: AppColors.textSecondary),
@@ -515,6 +542,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
   // ─── 좌: Shift Actions ────────────────────────────────────────────
 
   Widget _buildShiftActions({required String storeName}) {
+    final t = AppL10n.of(context);
     final selected = _selectedRow;
     final hasSelection = selected != null;
     final status = selected?.status ?? '';
@@ -523,12 +551,12 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     final IconData triggerIcon = hasSelection
         ? Icons.fact_check_rounded
         : Icons.touch_app_rounded;
-    final String triggerLabel = 'ATTENDANCE';
+    final String triggerLabel = t.attMainAttendanceLabel;
     final String triggerSubtitle = !hasSelection
-        ? 'Select your name first'
+        ? t.attMainSelectNameFirst
         : status == 'clocked_out' || status == 'cancelled'
-            ? 'Shift already completed'
-            : 'Tap to choose action';
+            ? t.attMainShiftCompleted
+            : t.attMainTapToChooseAction;
     final Color triggerColor =
         (!hasSelection || status == 'clocked_out' || status == 'cancelled')
             ? AppColors.textMuted
@@ -581,9 +609,9 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'SELECTED',
-                  style: TextStyle(
+                Text(
+                  t.attMainSelected,
+                  style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
                     color: AppColors.accent,
@@ -592,7 +620,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  selected.userName.isEmpty ? 'Unknown' : selected.userName,
+                  selected.userName.isEmpty ? t.commonUnknown : selected.userName,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
@@ -604,13 +632,14 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                 const SizedBox(height: 6),
                 GestureDetector(
                   onTap: () => setState(() => _selectedKey = null),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.close, size: 12, color: AppColors.textMuted),
-                      SizedBox(width: 4),
+                      const Icon(Icons.close,
+                          size: 12, color: AppColors.textMuted),
+                      const SizedBox(width: 4),
                       Text(
-                        'Clear selection',
-                        style: TextStyle(
+                        t.attMainClearSelection,
+                        style: const TextStyle(
                           fontSize: 11,
                           color: AppColors.textMuted,
                         ),
@@ -639,16 +668,67 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
 
   /// 액션 펼침 모달 — 선택된 직원의 status 에 맞는 버튼만 활성.
   Future<void> _openActionsSheet() async {
+    final t = AppL10n.of(context);
     final selected = _selectedRow;
     if (selected == null) return;
     final status = selected.status;
     final clockedIn = selected.clockIn != null;
     bool allowed(AttendanceAction a) => _isActionAllowed(a, status, clockedIn: clockedIn);
 
+    final actionEntries = <(
+      AttendanceAction,
+      IconData,
+      String,
+      String,
+      Color,
+      bool,
+    )>[
+      (
+        AttendanceAction.clockIn,
+        Icons.login_rounded,
+        t.attMainActionClockIn,
+        t.attMainActionClockInSubtitle,
+        AppColors.accent,
+        false,
+      ),
+      (
+        AttendanceAction.clockOut,
+        Icons.logout_rounded,
+        t.attMainActionClockOut,
+        t.attMainActionClockOutSubtitle,
+        AppColors.textSecondary,
+        false,
+      ),
+      (
+        AttendanceAction.breakShortPaid,
+        Icons.coffee_rounded,
+        t.attMainActionShortBreak,
+        t.attMainActionShortBreakSubtitle,
+        AppColors.warning,
+        false,
+      ),
+      (
+        AttendanceAction.breakLongUnpaid,
+        Icons.free_breakfast_rounded,
+        t.attMainActionLongBreak,
+        t.attMainActionLongBreakSubtitle,
+        AppColors.warning,
+        true,
+      ),
+      (
+        AttendanceAction.breakEnd,
+        Icons.play_circle_outline_rounded,
+        t.attMainActionEndBreak,
+        t.attMainActionEndBreakSubtitle,
+        AppColors.success,
+        false,
+      ),
+    ];
+
     await showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      barrierLabel: 'Close',
+      barrierLabel: t.actionClose,
       barrierColor: Colors.black.withValues(alpha: 0.55),
       transitionDuration: const Duration(milliseconds: 180),
       pageBuilder: (ctx, _, __) {
@@ -675,9 +755,9 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
-                                  'CHOOSE ACTION',
-                                  style: TextStyle(
+                                Text(
+                                  t.attMainChooseAction,
+                                  style: const TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     color: AppColors.accent,
@@ -686,7 +766,9 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
-                                  selected.userName.isEmpty ? 'Unknown' : selected.userName,
+                                  selected.userName.isEmpty
+                                      ? t.commonUnknown
+                                      : selected.userName,
                                   style: const TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.w800,
@@ -709,13 +791,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                         spacing: 14,
                         runSpacing: 14,
                         children: [
-                          for (final entry in const [
-                            (AttendanceAction.clockIn,    Icons.login_rounded,            'CLOCK IN',     'Start Workday',   AppColors.accent,      false),
-                            (AttendanceAction.clockOut,   Icons.logout_rounded,           'CLOCK OUT',    'End Schedule',    AppColors.textSecondary, false),
-                            (AttendanceAction.breakShortPaid, Icons.coffee_rounded,        'SHORT BREAK',  'Paid · 10 min',   AppColors.warning,     false),
-                            (AttendanceAction.breakLongUnpaid, Icons.free_breakfast_rounded,'LONG BREAK',   'Unpaid · 30 min', AppColors.warning,     true),
-                            (AttendanceAction.breakEnd,   Icons.play_circle_outline_rounded,'END BREAK',   'Resume Work',     AppColors.success,     false),
-                          ])
+                          for (final entry in actionEntries)
                             SizedBox(
                               width: 200,
                               child: _ShiftActionButton(
@@ -747,6 +823,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
   // ─── 중: Currently On Shift ───────────────────────────────────────
 
   Widget _buildOnShiftSection() {
+    final t = AppL10n.of(context);
     final dashboard = ref.watch(attendanceDashboardProvider);
     // 출근 후 working / on_break, 또는 지각이지만 clock-in 한 케이스만 포함.
     // (late + clockIn null 인 케이스는 Not Clocked In 섹션에서 처리)
@@ -763,9 +840,9 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
         children: [
           Row(
             children: [
-              const Text(
-                'Clocked In',
-                style: TextStyle(
+              Text(
+                t.attMainClockedIn,
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: AppColors.text,
@@ -780,7 +857,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  '${rows.length} ACTIVE',
+                  t.attMainActiveBadge(rows.length),
                   style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w700,
@@ -795,7 +872,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
           ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 120),
             child: rows.isEmpty
-                ? const _Placeholder(text: 'No one is currently on shift')
+                ? _Placeholder(text: t.attMainNoOneOnShift)
                 : ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -828,6 +905,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
   // storeNow 는 _now 를 store tz offset 만큼 보정한 "벽시계" 시각.
 
   Widget _buildComingUpSection() {
+    final t = AppL10n.of(context);
     final dashboard = ref.watch(attendanceDashboardProvider);
 
     // Eager 모델 전환 후: 서버가 effective status (upcoming/soon/late/no_show)를
@@ -902,28 +980,28 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     final badges = <Widget>[];
     if (upcoming.isNotEmpty) {
       badges.add(_countBadge(
-        label: '${upcoming.length} UPCOMING',
+        label: t.attMainBadgeUpcoming(upcoming.length),
         bg: AppColors.bg,
         fg: AppColors.textMuted,
       ));
     }
     if (soon.isNotEmpty) {
       badges.add(_countBadge(
-        label: '${soon.length} SOON',
+        label: t.attMainBadgeSoon(soon.length),
         bg: _soonBg,
         fg: _soonColor,
       ));
     }
     if (late_.isNotEmpty) {
       badges.add(_countBadge(
-        label: '${late_.length} LATE',
+        label: t.attMainBadgeLate(late_.length),
         bg: AppColors.warningBg,
         fg: AppColors.warning,
       ));
     }
     if (noShow.isNotEmpty) {
       badges.add(_countBadge(
-        label: '${noShow.length} NO SHOW',
+        label: t.attMainBadgeNoShow(noShow.length),
         bg: AppColors.dangerBg,
         fg: AppColors.danger,
       ));
@@ -931,7 +1009,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     // 하나도 없으면 기본 "0 UPCOMING" 회색 배지 유지 (empty state 와 조화)
     if (badges.isEmpty) {
       badges.add(_countBadge(
-        label: '0 UPCOMING',
+        label: t.attMainBadgeUpcoming(0),
         bg: AppColors.bg,
         fg: AppColors.textMuted,
       ));
@@ -943,9 +1021,9 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
         children: [
           Row(
             children: [
-              const Text(
-                'Not Clocked In',
-                style: TextStyle(
+              Text(
+                t.attMainNotClockedIn,
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: AppColors.text,
@@ -964,7 +1042,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
           ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 80),
             child: rows.isEmpty
-                ? const _Placeholder(text: 'No upcoming shifts')
+                ? _Placeholder(text: t.attMainNoUpcoming)
                 : ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -1010,6 +1088,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
   // ─── 중: Completed Today (clocked_out) ───────────────────────────
 
   Widget _buildCompletedSection() {
+    final t = AppL10n.of(context);
     final dashboard = ref.watch(attendanceDashboardProvider);
     final rows = dashboard.staff
         .where((r) => r.status == 'clocked_out')
@@ -1029,9 +1108,9 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
         children: [
           Row(
             children: [
-              const Text(
-                'Clocked Out',
-                style: TextStyle(
+              Text(
+                t.attMainClockedOut,
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: AppColors.text,
@@ -1046,7 +1125,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  '${rows.length} DONE',
+                  t.attMainDoneBadge(rows.length),
                   style: const TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
@@ -1060,7 +1139,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
           ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 80),
             child: rows.isEmpty
-                ? const _Placeholder(text: 'No completed shifts yet')
+                ? _Placeholder(text: t.attMainNoCompletedShifts)
                 : ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
@@ -1081,6 +1160,8 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
   // ─── 우: Current Time (store tz 기준) ─────────────────────────────
 
   Widget _buildCurrentTime() {
+    final t = AppL10n.of(context);
+    final localeTag = Localizations.localeOf(context).toString();
     final device = ref.watch(attendanceDeviceProvider).device;
     // 브라우저 로컬 무관, store 타임존 기준 벽시계 시각 계산
     final offsetMin = device?.storeTimezoneOffsetMinutes ?? 0;
@@ -1095,9 +1176,9 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
       ),
       child: Column(
         children: [
-          const Text(
-            'CURRENT TIME',
-            style: TextStyle(
+          Text(
+            t.attMainCurrentTimeLabel,
+            style: const TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w600,
               color: Colors.white54,
@@ -1106,7 +1187,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            DateFormat('hh:mm').format(storeNow),
+            DateFormat('hh:mm', localeTag).format(storeNow),
             style: const TextStyle(
               fontSize: 48,
               fontWeight: FontWeight.w800,
@@ -1115,7 +1196,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
             ),
           ),
           Text(
-            DateFormat('a').format(storeNow),
+            DateFormat('a', localeTag).format(storeNow),
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -1124,7 +1205,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            DateFormat('EEE, MMM d, yyyy').format(storeNow),
+            DateFormat('EEE, MMM d, yyyy', localeTag).format(storeNow),
             style: const TextStyle(fontSize: 12, color: Colors.white54),
           ),
           if (device?.storeTimezone != null) ...[
@@ -1142,6 +1223,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
   // ─── 우: Notice Board ─────────────────────────────────────────────
 
   Widget _buildNoticeBoard() {
+    final t = AppL10n.of(context);
     final dashboard = ref.watch(attendanceDashboardProvider);
     final notices = dashboard.notices;
     return _PanelCard(
@@ -1150,9 +1232,9 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
         children: [
           Row(
             children: [
-              const Text(
-                'Notice Board',
-                style: TextStyle(
+              Text(
+                t.attMainNoticeBoard,
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: AppColors.text,
@@ -1181,7 +1263,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
           const SizedBox(height: 12),
           Expanded(
             child: notices.isEmpty
-                ? const _Placeholder(text: 'No notices')
+                ? _Placeholder(text: t.attMainNoNotices)
                 : ListView.separated(
                     itemCount: notices.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 10),
@@ -1255,7 +1337,8 @@ class _OnShiftCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final schedule = _formatScheduleRange(row);
+    final t = AppL10n.of(context);
+    final schedule = _formatScheduleRange(row, t);
     final clockIn = row.clockInDisplay ?? '--:--';
 
     final isOnBreak = row.status == 'on_break';
@@ -1317,7 +1400,7 @@ class _OnShiftCard extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(
-                        row.userName.isEmpty ? 'Unknown' : row.userName,
+                        row.userName.isEmpty ? t.commonUnknown : row.userName,
                         style: const TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
@@ -1326,8 +1409,8 @@ class _OnShiftCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    if (isOnBreak) _buildBreakBadge(row.currentBreak),
-                    if (isLate) _buildLateBadge(),
+                    if (isOnBreak) _buildBreakBadge(t, row.currentBreak),
+                    if (isLate) _buildLateBadge(t),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -1340,7 +1423,7 @@ class _OnShiftCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Clocked in at $clockIn',
+                  t.attMainClockedInAt(clockIn),
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -1356,12 +1439,12 @@ class _OnShiftCard extends StatelessWidget {
     );
   }
 
-  Widget _buildBreakBadge(TodayStaffBreak? br) {
+  Widget _buildBreakBadge(AppL10n t, TodayStaffBreak? br) {
     final label = br?.breakType == 'unpaid_long'
-        ? 'Long Unpaid'
+        ? t.attMainBreakLong
         : br?.breakType == 'paid_short'
-            ? 'Short Paid'
-            : 'On Break';
+            ? t.attMainBreakShort
+            : t.attMainBreakOnBreak;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -1369,7 +1452,7 @@ class _OnShiftCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(
-        'On Break · $label',
+        t.attMainOnBreakWith(label),
         style: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
@@ -1380,16 +1463,16 @@ class _OnShiftCard extends StatelessWidget {
     );
   }
 
-  Widget _buildLateBadge() {
+  Widget _buildLateBadge(AppL10n t) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: AppColors.dangerBg,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: const Text(
-        'Late',
-        style: TextStyle(
+      child: Text(
+        t.attMainLateBadge,
+        style: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
           color: AppColors.danger,
@@ -1400,10 +1483,10 @@ class _OnShiftCard extends StatelessWidget {
   }
 }
 
-String _formatScheduleRange(TodayStaffRow row) {
+String _formatScheduleRange(TodayStaffRow row, AppL10n t) {
   final s = row.scheduledStartDisplay;
   final e = row.scheduledEndDisplay;
-  if (s == null && e == null) return 'No schedule';
+  if (s == null && e == null) return t.attMainNoSchedule;
   return '${s ?? '--:--'} – ${e ?? '--:--'}';
 }
 
@@ -1454,6 +1537,7 @@ class _ComingUpRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final start = row.scheduledStartDisplay ?? '--:--';
     final end = row.scheduledEndDisplay;
     final range = end != null && end.isNotEmpty ? '$start – $end' : start;
@@ -1474,7 +1558,7 @@ class _ComingUpRow extends StatelessWidget {
         iconColor = _soonColor;
         timeColor = _soonColor;
         trailingBadge = _InlineStatusBadge(
-          label: 'SOON',
+          label: t.attMainBadgeSoonShort,
           bg: _soonBg,
           fg: _soonColor,
         );
@@ -1484,7 +1568,7 @@ class _ComingUpRow extends StatelessWidget {
         iconColor = AppColors.warning;
         timeColor = AppColors.warning;
         trailingBadge = _InlineStatusBadge(
-          label: 'LATE',
+          label: t.attMainBadgeLateShort,
           bg: AppColors.warningBg,
           fg: AppColors.warning,
         );
@@ -1494,7 +1578,7 @@ class _ComingUpRow extends StatelessWidget {
         iconColor = AppColors.danger;
         timeColor = AppColors.danger;
         trailingBadge = _InlineStatusBadge(
-          label: 'NO SHOW',
+          label: t.attMainBadgeNoShowShort,
           bg: AppColors.dangerBg,
           fg: AppColors.danger,
         );
@@ -1546,7 +1630,7 @@ class _ComingUpRow extends StatelessWidget {
                 children: [
                   Flexible(
                     child: Text(
-                      row.userName.isEmpty ? 'Unknown' : row.userName,
+                      row.userName.isEmpty ? t.commonUnknown : row.userName,
                       style: const TextStyle(
                         fontSize: 21,
                         fontWeight: FontWeight.w600,
@@ -1624,6 +1708,7 @@ class _CompletedRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final inTime = row.clockInDisplay ?? '--:--';
     final outTime = row.clockOutDisplay ?? '--:--';
     // 완료된 shift는 더 이상 액션 대상 아니라 컴팩트하게 유지.
@@ -1655,7 +1740,7 @@ class _CompletedRow extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              row.userName.isEmpty ? 'Unknown' : row.userName,
+              row.userName.isEmpty ? t.commonUnknown : row.userName,
               style: const TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
@@ -1687,7 +1772,9 @@ class _NoticeRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final timeAgo = _timeAgo(notice.createdAt.toLocal());
+    final t = AppL10n.of(context);
+    final localeTag = Localizations.localeOf(context).toString();
+    final timeAgo = _timeAgo(t, localeTag, notice.createdAt.toLocal());
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1698,7 +1785,7 @@ class _NoticeRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            notice.title.isEmpty ? 'Untitled' : notice.title,
+            notice.title.isEmpty ? t.commonUntitled : notice.title,
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w700,
@@ -1720,13 +1807,13 @@ class _NoticeRow extends StatelessWidget {
     );
   }
 
-  String _timeAgo(DateTime dt) {
+  String _timeAgo(AppL10n t, String localeTag, DateTime dt) {
     final diff = DateTime.now().difference(dt);
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return DateFormat('MMM d').format(dt);
+    if (diff.inMinutes < 1) return t.attMainTimeAgoJustNow;
+    if (diff.inMinutes < 60) return t.attMainTimeAgoMinutes(diff.inMinutes);
+    if (diff.inHours < 24) return t.attMainTimeAgoHours(diff.inHours);
+    if (diff.inDays < 7) return t.attMainTimeAgoDays(diff.inDays);
+    return DateFormat('MMM d', localeTag).format(dt);
   }
 }
 

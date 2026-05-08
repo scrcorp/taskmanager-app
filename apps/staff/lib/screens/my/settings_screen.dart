@@ -6,13 +6,15 @@
 /// 항목:
 /// - Alert Settings → /my/alert-settings
 /// - Edit Username (dialog)
-/// - Preferred Language (bottom sheet picker)
+/// - Preferred Language (bottom sheet picker) — 즉시 LocaleNotifier 반영
 /// - Change Password → /my/change-password
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/locale_provider.dart';
 import '../../widgets/app_header.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -26,15 +28,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   String _languageLabel(String? code) {
     switch (code) {
       case 'es':
-        return 'Español';
+        return '🇪🇸 Español';
       case 'ko':
-        return '한국어';
+        return '🇰🇷 한국어';
       default:
-        return 'English';
+        return '🇺🇸 English';
     }
   }
 
   Future<void> _showLanguagePicker() async {
+    final t = AppL10n.of(context);
     final user = ref.read(authProvider).user;
     if (user == null) return;
     final selected = await showModalBottomSheet<String>(
@@ -51,18 +54,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               margin: const EdgeInsets.only(top: 12, bottom: 16),
               decoration: BoxDecoration(color: AppColors.border, borderRadius: BorderRadius.circular(2)),
             ),
-            const Padding(
-              padding: EdgeInsets.only(bottom: 8),
-              child: Text('Preferred Language',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(t.fieldPreferredLanguage,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
             ),
             for (final entry in const [
-              MapEntry('en', 'English'),
-              MapEntry('es', 'Español'),
-              MapEntry('ko', '한국어'),
+              MapEntry('en', ('🇺🇸', 'English')),
+              MapEntry('es', ('🇪🇸', 'Español')),
+              MapEntry('ko', ('🇰🇷', '한국어')),
             ])
               ListTile(
-                title: Text(entry.value),
+                leading: Text(entry.value.$1, style: const TextStyle(fontSize: 22)),
+                title: Text(entry.value.$2),
                 trailing: user.preferredLanguage == entry.key
                     ? const Icon(Icons.check, color: AppColors.accent)
                     : null,
@@ -79,16 +83,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     });
     if (!mounted) return;
     if (success) {
+      // 즉시 화면 반영
+      if (supportedLocales.any((l) => l.languageCode == selected)) {
+        await ref.read(localeProvider.notifier).setLocale(Locale(selected));
+      }
+      if (!mounted) return;
       await AppModal.show(context,
-          title: 'Saved', message: 'Language preference saved.', type: ModalType.success);
+          title: t.commonSavedTitle, message: t.settingsLanguageSaved, type: ModalType.success);
     } else {
-      final error = ref.read(authProvider).error ?? 'Failed to update language';
+      final error = ref.read(authProvider).error ?? t.settingsLanguageFailed;
       await AppModal.show(context,
-          title: "Couldn't save", message: error, type: ModalType.error);
+          title: t.commonSaveFailedTitle, message: error, type: ModalType.error);
     }
   }
 
   Future<void> _showEditUsernameDialog() async {
+    final t = AppL10n.of(context);
     final user = ref.read(authProvider).user;
     if (user == null) return;
 
@@ -105,23 +115,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (!mounted) return;
       if (success) {
         await AppModal.show(context,
-            title: 'Saved', message: 'Username updated.', type: ModalType.success);
+            title: t.commonSavedTitle, message: t.settingsUsernameSaved, type: ModalType.success);
       } else {
-        final error = ref.read(authProvider).error ?? 'Failed to update username';
+        final error = ref.read(authProvider).error ?? t.settingsUsernameFailed;
         await AppModal.show(context,
-            title: "Couldn't save", message: error, type: ModalType.error);
+            title: t.commonSaveFailedTitle, message: error, type: ModalType.error);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final user = ref.watch(authProvider).user;
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: Column(
         children: [
-          AppHeader(title: 'Settings', isDetail: true, onBack: () => context.pop()),
+          AppHeader(title: t.settingsHeader, isDetail: true, onBack: () => context.pop()),
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -136,12 +147,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     child: Column(
                       children: [
                         _SettingsItem(
-                          label: 'Alert Settings',
+                          label: t.settingsAlertSettings,
                           onTap: () => context.push('/my/alert-settings'),
                         ),
                         const Divider(height: 1, color: AppColors.border),
                         _SettingsItem(
-                          label: 'Edit Username',
+                          label: t.settingsEditUsername,
                           trailing: Text(
                             user?.username ?? '',
                             style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
@@ -150,7 +161,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const Divider(height: 1, color: AppColors.border),
                         _SettingsItem(
-                          label: 'Preferred Language',
+                          label: t.fieldPreferredLanguage,
                           trailing: Text(
                             _languageLabel(user?.preferredLanguage),
                             style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
@@ -159,7 +170,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const Divider(height: 1, color: AppColors.border),
                         _SettingsItem(
-                          label: 'Change Password',
+                          label: t.settingsChangePassword,
                           onTap: () => context.push('/my/change-password'),
                         ),
                       ],
@@ -235,6 +246,7 @@ class _EditUsernameDialogState extends State<_EditUsernameDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
@@ -243,15 +255,15 @@ class _EditUsernameDialogState extends State<_EditUsernameDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Edit Username',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.text)),
+            Text(t.settingsEditUsername,
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.text)),
             const SizedBox(height: 16),
             TextField(
               controller: widget.controller,
               autofocus: true,
               decoration: InputDecoration(
-                labelText: 'Username',
-                hintText: 'Enter new username',
+                labelText: t.fieldUsername,
+                hintText: t.settingsEnterNewUsername,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                 focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
@@ -264,7 +276,7 @@ class _EditUsernameDialogState extends State<_EditUsernameDialog> {
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+                  child: Text(t.actionCancel, style: const TextStyle(color: AppColors.textSecondary)),
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton(
@@ -275,7 +287,7 @@ class _EditUsernameDialogState extends State<_EditUsernameDialog> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   ),
-                  child: const Text('Save'),
+                  child: Text(t.actionSave),
                 ),
               ],
             ),

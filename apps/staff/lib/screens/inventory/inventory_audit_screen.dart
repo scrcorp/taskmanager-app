@@ -12,6 +12,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/inventory.dart';
 import '../../providers/inventory_provider.dart';
 import '../../widgets/app_header.dart';
@@ -53,6 +54,7 @@ class _InventoryAuditScreenState
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final state = ref.watch(inventoryProvider);
 
     return Scaffold(
@@ -60,20 +62,20 @@ class _InventoryAuditScreenState
       body: Column(
         children: [
           AppHeader(
-            title: 'Audit',
+            title: t.auditHeader,
             isDetail: true,
             onBack: () => _onBack(context),
           ),
           if (state.isLoading && state.inventoryItems.isEmpty)
-            const Expanded(
+            Expanded(
               child: Center(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircularProgressIndicator(color: AppColors.accent),
-                    SizedBox(height: 12),
-                    Text('Loading inventory...',
-                        style: TextStyle(
+                    const CircularProgressIndicator(color: AppColors.accent),
+                    const SizedBox(height: 12),
+                    Text(t.auditLoading,
+                        style: const TextStyle(
                             fontSize: 14, color: AppColors.textSecondary)),
                   ],
                 ),
@@ -107,17 +109,17 @@ class _InventoryAuditScreenState
                         }
                         setState(() {});
                       },
-                      child: const Text('Retry'),
+                      child: Text(t.actionRetry),
                     ),
                   ],
                 ),
               ),
             )
           else if (state.inventoryItems.isEmpty)
-            const Expanded(
+            Expanded(
               child: Center(
-                child: Text('No inventory items',
-                    style: TextStyle(
+                child: Text(t.auditEmpty,
+                    style: const TextStyle(
                         fontSize: 14, color: AppColors.textSecondary)),
               ),
             )
@@ -205,9 +207,9 @@ class _InventoryAuditScreenState
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Text(
-                      'Modified only',
-                      style: TextStyle(
+                    Text(
+                      AppL10n.of(context).auditModifiedOnly,
+                      style: const TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary),
                     ),
@@ -224,7 +226,7 @@ class _InventoryAuditScreenState
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
             children: [
               if (hasBothSections && frequentItems.isNotEmpty) ...[
-                _SectionHeader(label: 'Frequent'),
+                _SectionHeader(label: AppL10n.of(context).auditSectionFrequent),
                 const SizedBox(height: 8),
               ],
               ...displayFrequent.map((item) => Padding(
@@ -239,7 +241,7 @@ class _InventoryAuditScreenState
                   )),
               if (hasBothSections && regularItems.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                _SectionHeader(label: 'All Items'),
+                _SectionHeader(label: AppL10n.of(context).auditSectionAll),
                 const SizedBox(height: 8),
               ],
               ...displayRegular.map((item) => Padding(
@@ -258,8 +260,8 @@ class _InventoryAuditScreenState
                     padding: const EdgeInsets.all(32),
                     child: Text(
                       _showModifiedOnly
-                          ? 'No modified items yet'
-                          : 'No items in audit',
+                          ? AppL10n.of(context).auditNoModified
+                          : AppL10n.of(context).auditNoItems,
                       style: const TextStyle(
                           fontSize: 14, color: AppColors.textSecondary),
                     ),
@@ -288,8 +290,8 @@ class _InventoryAuditScreenState
                         height: 20,
                         child: CircularProgressIndicator(
                             color: Colors.white, strokeWidth: 2))
-                    : const Text('Complete Audit',
-                        style: TextStyle(
+                    : Text(AppL10n.of(context).auditCompleteButton,
+                        style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700)),
               ),
@@ -325,9 +327,9 @@ class _InventoryAuditScreenState
               const Icon(Icons.check_circle_outline,
                   size: 40, color: AppColors.success),
               const SizedBox(height: 10),
-              const Text(
-                'Audit Complete',
-                style: TextStyle(
+              Text(
+                AppL10n.of(context).auditCompleteHeading,
+                style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
                     color: AppColors.text),
@@ -343,9 +345,9 @@ class _InventoryAuditScreenState
         ),
         if (changed.isNotEmpty) ...[
           const SizedBox(height: 20),
-          const Text(
-            'Adjustments Applied',
-            style: TextStyle(
+          Text(
+            AppL10n.of(context).auditAdjustmentsApplied,
+            style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
                 color: AppColors.text),
@@ -405,9 +407,9 @@ class _InventoryAuditScreenState
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
-            child: const Text('Done',
+            child: Text(AppL10n.of(context).actionDone,
                 style:
-                    TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
           ),
         ),
       ],
@@ -415,13 +417,13 @@ class _InventoryAuditScreenState
   }
 
   Future<void> _completeAudit() async {
+    final t = AppL10n.of(context);
     final confirmed = await AppModal.show(
       context,
-      title: 'Complete Audit',
-      message:
-          'This will apply all quantity adjustments. Are you sure?',
+      title: t.auditCompleteTitle,
+      message: t.auditCompleteMessage,
       type: ModalType.confirm,
-      confirmText: 'Complete',
+      confirmText: t.auditCompleteConfirm,
     );
     if (confirmed != true || !mounted) return;
 
@@ -445,31 +447,32 @@ class _InventoryAuditScreenState
       setState(() => _completed = true);
       await AppModal.show(
         context,
-        title: 'Completed',
-        message: 'Audit completed',
+        title: t.auditCompletedTitle,
+        message: t.auditCompletedMessage,
         type: ModalType.success,
       );
     } else {
       await AppModal.show(
         context,
-        title: "Couldn't submit audit",
-        message: 'Failed to submit audit',
+        title: t.commonSaveFailedTitle,
+        message: t.auditFailedMessage,
         type: ModalType.error,
       );
     }
   }
 
   void _onBack(BuildContext context) {
+    final t = AppL10n.of(context);
     if (_completed) {
       context.pop();
       return;
     }
     AppModal.show(
       context,
-      title: 'Exit Audit',
-      message: 'Are you sure? Progress will not be saved.',
+      title: t.auditExitTitle,
+      message: t.auditExitMessage,
       type: ModalType.confirm,
-      confirmText: 'Exit',
+      confirmText: t.actionExit,
     ).then((confirmed) {
       if (confirmed == true && mounted) {
         context.pop();

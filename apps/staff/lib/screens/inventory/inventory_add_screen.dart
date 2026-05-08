@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/inventory.dart';
 import '../../providers/inventory_provider.dart';
 import '../../services/inventory_service.dart';
@@ -158,6 +159,7 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
   }
 
   Future<void> _pickProductImage() async {
+    final t = AppL10n.of(context);
     await showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -176,8 +178,8 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
                     color: AppColors.border,
                     borderRadius: BorderRadius.circular(2)),
               ),
-              const Text('Product Image',
-                  style: TextStyle(
+              Text(t.invAddImageSection,
+                  style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: AppColors.text)),
@@ -191,7 +193,7 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
                   child: const Icon(Icons.camera_alt,
                       color: AppColors.accent, size: 20),
                 ),
-                title: const Text('Take Photo', style: TextStyle(fontSize: 15)),
+                title: Text(t.invAddTakePhoto, style: const TextStyle(fontSize: 15)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _getProductImage(ImageSource.camera);
@@ -206,8 +208,8 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
                   child: const Icon(Icons.photo_library,
                       color: AppColors.accent, size: 20),
                 ),
-                title: const Text('Choose from Gallery',
-                    style: TextStyle(fontSize: 15)),
+                title: Text(t.invAddChooseGallery,
+                    style: const TextStyle(fontSize: 15)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _getProductImage(ImageSource.gallery);
@@ -223,8 +225,8 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
                     child: const Icon(Icons.delete_outline,
                         color: AppColors.danger, size: 20),
                   ),
-                  title: const Text('Remove Photo',
-                      style: TextStyle(fontSize: 15, color: AppColors.danger)),
+                  title: Text(t.invAddRemovePhoto,
+                      style: const TextStyle(fontSize: 15, color: AppColors.danger)),
                   onTap: () {
                     Navigator.pop(ctx);
                     setState(() {
@@ -272,10 +274,12 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
     } catch (_) {
       if (mounted) {
         setState(() => _isUploadingImage = false);
+        if (!mounted) return;
+        final t = AppL10n.of(context);
         await AppModal.show(
           context,
-          title: "Couldn't upload",
-          message: 'Image upload failed',
+          title: t.invAddUploadFailedTitle,
+          message: t.invAddUploadFailedMessage,
           type: ModalType.error,
         );
       }
@@ -296,12 +300,13 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: Column(
         children: [
           AppHeader(
-            title: 'Add Product',
+            title: t.invAddTitle,
             isDetail: true,
             onBack: () => context.pop(),
           ),
@@ -316,15 +321,16 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
   }
 
   Widget _buildSearchSection() {
+    final t = AppL10n.of(context);
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         // Search bar
         TextField(
           controller: _searchCtrl,
-          decoration: const InputDecoration(
-            hintText: 'Search products by name or code...',
-            prefixIcon: Icon(Icons.search, size: 20, color: AppColors.textMuted),
+          decoration: InputDecoration(
+            hintText: t.invAddSearchHint,
+            prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textMuted),
           ),
           onChanged: (v) => _searchProducts(v),
         ),
@@ -339,13 +345,13 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: AppColors.accent.withValues(alpha: 0.3)),
             ),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.add_circle_outline, size: 18, color: AppColors.accent),
-                SizedBox(width: 8),
+                const Icon(Icons.add_circle_outline, size: 18, color: AppColors.accent),
+                const SizedBox(width: 8),
                 Text(
-                  'Create New Product',
-                  style: TextStyle(
+                  t.invAddCreateNewProduct,
+                  style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: AppColors.accent),
@@ -445,9 +451,9 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
                                 color: AppColors.bg,
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: const Text(
-                                'Already Added',
-                                style: TextStyle(
+                              child: Text(
+                                t.invAddAlreadyAdded,
+                                style: const TextStyle(
                                     fontSize: 11, color: AppColors.textMuted),
                               ),
                             )
@@ -469,6 +475,7 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
   }
 
   Widget _buildAddToStorePanel(InventoryProduct product) {
+    final t = AppL10n.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(16),
@@ -484,14 +491,14 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
             children: [
               Expanded(
                 child: _LabeledNumberField(
-                  label: 'Min Quantity',
+                  label: t.invAddMinQtyLabel,
                   controller: _minQtyCtrl,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _LabeledNumberField(
-                  label: 'Initial Quantity',
+                  label: t.invAddInitialQtyLabel,
                   controller: _initialQtyCtrl,
                 ),
               ),
@@ -505,8 +512,8 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
                 onChanged: (v) => setState(() => _isFrequent = v ?? false),
                 activeColor: AppColors.accent,
               ),
-              const Text('Frequent audit',
-                  style: TextStyle(fontSize: 14, color: AppColors.text)),
+              Text(t.invAddFrequentAudit,
+                  style: const TextStyle(fontSize: 14, color: AppColors.text)),
             ],
           ),
           const SizedBox(height: 12),
@@ -519,7 +526,7 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
                       width: 18, height: 18,
                       child: CircularProgressIndicator(
                           color: Colors.white, strokeWidth: 2))
-                  : const Text('Add to Store'),
+                  : Text(t.invAddAddToStore),
             ),
           ),
         ],
@@ -528,6 +535,7 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
   }
 
   Widget _buildCreateForm() {
+    final t = AppL10n.of(context);
     final nameEmpty = _hasSubmitted && _nameCtrl.text.trim().isEmpty;
     final categoryEmpty = _hasSubmitted && _selectedCategoryId == null;
     final subUnitSelected = _selectedSubUnit != null;
@@ -549,9 +557,9 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
               child: const Icon(Icons.arrow_back, size: 22, color: AppColors.text),
             ),
             const SizedBox(width: 12),
-            const Text(
-              'Create New Product',
-              style: TextStyle(
+            Text(
+              t.invAddCreateNewProduct,
+              style: const TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
                   color: AppColors.text),
@@ -562,9 +570,9 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
 
         // ── 1. Image upload ────────────────────────────────────────────────
         _buildFormCard(children: [
-          const Text(
-            'Product Image',
-            style: TextStyle(
+          Text(
+            t.invAddImageSection,
+            style: const TextStyle(
                 fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.text),
           ),
           const SizedBox(height: 12),
@@ -618,18 +626,18 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: AppColors.border, width: 1.5),
                     ),
-                    child: const Column(
+                    child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.add_photo_alternate_outlined,
+                        const Icon(Icons.add_photo_alternate_outlined,
                             size: 32, color: AppColors.textMuted),
-                        SizedBox(height: 8),
-                        Text('Tap to add photo',
-                            style: TextStyle(
+                        const SizedBox(height: 8),
+                        Text(t.invAddTapToAddPhoto,
+                            style: const TextStyle(
                                 fontSize: 13, color: AppColors.textMuted)),
-                        SizedBox(height: 2),
-                        Text('Camera or Gallery',
-                            style: TextStyle(
+                        const SizedBox(height: 2),
+                        Text(t.invAddCameraOrGallery,
+                            style: const TextStyle(
                                 fontSize: 11, color: AppColors.textMuted)),
                       ],
                     ),
@@ -642,11 +650,11 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
         _buildFormCard(children: [
           // Product Name *
           _FormField(
-            label: 'Product Name *',
+            label: t.invAddNameLabel,
             child: TextField(
               controller: _nameCtrl,
               decoration: InputDecoration(
-                hintText: 'e.g. Whole Milk (1L)',
+                hintText: t.invAddNameHint,
                 enabledBorder: nameEmpty
                     ? OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
@@ -667,34 +675,34 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
           ),
           if (nameEmpty) ...[
             const SizedBox(height: 4),
-            const Text('Product name is required',
-                style: TextStyle(fontSize: 11, color: AppColors.danger)),
+            Text(t.invAddNameRequired,
+                style: const TextStyle(fontSize: 11, color: AppColors.danger)),
           ],
           const SizedBox(height: 12),
           // Product Code
           _FormField(
-            label: 'Product Code',
+            label: t.invAddCodeLabel,
             child: TextField(
               controller: _codeCtrl,
-              decoration: const InputDecoration(
-                  hintText: 'Auto-generated if empty'),
+              decoration: InputDecoration(
+                  hintText: t.invAddCodeHint),
             ),
           ),
           const SizedBox(height: 12),
           // Category *
           _FormField(
-            label: 'Category *',
+            label: t.invAddCategoryLabel,
             child: _buildCategorySelector(categoryEmpty),
           ),
           if (categoryEmpty) ...[
             const SizedBox(height: 4),
-            const Text('Category is required',
-                style: TextStyle(fontSize: 11, color: AppColors.danger)),
+            Text(t.invAddCategoryRequired,
+                style: const TextStyle(fontSize: 11, color: AppColors.danger)),
           ],
           const SizedBox(height: 12),
           // Subcategory (optional, filtered by selected category)
           _FormField(
-            label: 'Subcategory',
+            label: t.invAddSubcategoryLabel,
             child: _buildSubcategorySelector(),
           ),
         ]),
@@ -702,15 +710,15 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
 
         // ── 5-6. Sub unit ──────────────────────────────────────────────────
         _buildFormCard(children: [
-          const Text(
-            'Sub Unit',
-            style: TextStyle(
+          Text(
+            t.invAddSubUnitLabel,
+            style: const TextStyle(
                 fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.text),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Leave empty if counted only in ea',
-            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+          Text(
+            t.invAddSubUnitHelp,
+            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
           const SizedBox(height: 12),
           _buildSubUnitSelector(),
@@ -718,14 +726,14 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
             const SizedBox(height: 12),
             // Sub Unit Ratio *
             _FormField(
-              label: 'Sub Unit Ratio *',
+              label: t.invAddSubUnitRatioLabel,
               child: TextField(
                 controller: _subUnitRatioCtrl,
                 keyboardType: TextInputType.number,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 decoration: InputDecoration(
                   hintText:
-                      '1 ${_selectedSubUnit!.name} = ? ea (e.g. 24)',
+                      t.invAddSubUnitRatioHint(_selectedSubUnit!.name),
                   enabledBorder: ratioEmpty
                       ? OutlineInputBorder(
                           borderRadius: BorderRadius.circular(8),
@@ -746,8 +754,8 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
             ),
             if (ratioEmpty) ...[
               const SizedBox(height: 4),
-              const Text('Ratio must be greater than 0',
-                  style: TextStyle(fontSize: 11, color: AppColors.danger)),
+              Text(t.invAddRatioInvalid,
+                  style: const TextStyle(fontSize: 11, color: AppColors.danger)),
             ],
           ],
         ]),
@@ -756,12 +764,12 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
         // ── 7. Description ────────────────────────────────────────────────
         _buildFormCard(children: [
           _FormField(
-            label: 'Description',
+            label: t.invAddDescriptionLabel,
             child: TextField(
               controller: _descriptionCtrl,
               maxLines: 3,
-              decoration: const InputDecoration(
-                  hintText: 'Short product description'),
+              decoration: InputDecoration(
+                  hintText: t.invAddDescriptionHint),
             ),
           ),
         ]),
@@ -769,9 +777,9 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
 
         // ── separator + 8-10. Store settings ──────────────────────────────
         _buildFormCard(children: [
-          const Text(
-            'Store Settings',
-            style: TextStyle(
+          Text(
+            t.invAddStoreSettingsSection,
+            style: const TextStyle(
                 fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.text),
           ),
           const SizedBox(height: 12),
@@ -779,14 +787,14 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
             children: [
               Expanded(
                 child: _LabeledNumberField(
-                  label: 'Min Quantity',
+                  label: t.invAddMinQtyLabel,
                   controller: _newMinQtyCtrl,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _LabeledNumberField(
-                  label: 'Initial Quantity',
+                  label: t.invAddInitialQtyLabel,
                   controller: _newInitialQtyCtrl,
                 ),
               ),
@@ -800,8 +808,8 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
                 onChanged: (v) => setState(() => _newIsFrequent = v ?? false),
                 activeColor: AppColors.accent,
               ),
-              const Text('Frequent audit',
-                  style: TextStyle(fontSize: 14, color: AppColors.text)),
+              Text(t.invAddFrequentAudit,
+                  style: const TextStyle(fontSize: 14, color: AppColors.text)),
             ],
           ),
         ]),
@@ -822,8 +830,8 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
                     width: 20, height: 20,
                     child: CircularProgressIndicator(
                         color: Colors.white, strokeWidth: 2))
-                : const Text('Create & Add to Store',
-                    style: TextStyle(
+                : Text(t.invAddCreateAndAdd,
+                    style: const TextStyle(
                         fontSize: 16, fontWeight: FontWeight.w700)),
           ),
         ),
@@ -835,6 +843,7 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
   // ── Category selector (server-loaded, top-level) ───────────────────────────
 
   Widget _buildCategorySelector(bool hasError) {
+    final t = AppL10n.of(context);
     if (_loadingCategories) {
       return const SizedBox(
         height: 48,
@@ -854,7 +863,7 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
         DropdownButtonFormField<String>(
           value: _selectedCategoryId,
           decoration: InputDecoration(
-            hintText: 'Select category',
+            hintText: t.invAddCategoryHint,
             enabledBorder: hasError
                 ? OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
@@ -875,8 +884,8 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
                   value: c.id,
                   child: Text(c.name),
                 )),
-            const DropdownMenuItem(
-                value: '__add_new__', child: Text('+ Add New')),
+            DropdownMenuItem(
+                value: '__add_new__', child: Text(t.invAddAddNew)),
           ],
           onChanged: (val) {
             if (val == '__add_new__') {
@@ -899,8 +908,8 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
                 child: TextField(
                   controller: _newCategoryCtrl,
                   autofocus: true,
-                  decoration: const InputDecoration(
-                    hintText: 'e.g. Produce, Snacks...',
+                  decoration: InputDecoration(
+                    hintText: t.invAddNewCategoryHint,
                     isDense: true,
                   ),
                   onSubmitted: (_) => _addNewCategory(),
@@ -931,11 +940,12 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
     final val = _newCategoryCtrl.text.trim();
     if (val.isEmpty) return;
     final normalized = val[0].toUpperCase() + val.substring(1);
+    final t = AppL10n.of(context);
     if (_categories.any((c) => c.name.toLowerCase() == normalized.toLowerCase())) {
       await AppModal.show(
         context,
-        title: 'Already exists',
-        message: '"$normalized" already exists',
+        title: t.invAddAlreadyExistsTitle,
+        message: t.invAddAlreadyExistsMessage(normalized),
         type: ModalType.error,
       );
       return;
@@ -953,10 +963,11 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
       });
     } catch (e) {
       if (!mounted) return;
+      final t = AppL10n.of(context);
       await AppModal.show(
         context,
-        title: "Couldn't create category",
-        message: 'Failed to create category',
+        title: t.invAddCreateCategoryFailedTitle,
+        message: t.invAddCreateCategoryFailedMessage,
         type: ModalType.error,
       );
     }
@@ -968,14 +979,15 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
   final _newSubcategoryCtrl = TextEditingController();
 
   Widget _buildSubcategorySelector() {
+    final t = AppL10n.of(context);
     if (_selectedCategoryId == null) {
-      return const SizedBox(
+      return SizedBox(
         height: 48,
         child: Align(
           alignment: Alignment.centerLeft,
           child: Text(
-            'Select a category first',
-            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+            t.invAddSelectCategoryFirst,
+            style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
           ),
         ),
       );
@@ -988,15 +1000,15 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
       children: [
         DropdownButtonFormField<String>(
           value: _selectedSubcategoryId,
-          decoration: const InputDecoration(hintText: 'None'),
+          decoration: InputDecoration(hintText: t.invAddNone),
           items: [
-            const DropdownMenuItem<String>(value: null, child: Text('None')),
+            DropdownMenuItem<String>(value: null, child: Text(t.invAddNone)),
             ...subs.map((c) => DropdownMenuItem(
                   value: c.id,
                   child: Text(c.name),
                 )),
-            const DropdownMenuItem<String>(
-                value: '__add_new__', child: Text('＋ Add New')),
+            DropdownMenuItem<String>(
+                value: '__add_new__', child: Text(t.invAddAddNew)),
           ],
           onChanged: (val) {
             if (val == '__add_new__') {
@@ -1017,8 +1029,8 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
                 child: TextField(
                   controller: _newSubcategoryCtrl,
                   autofocus: true,
-                  decoration: const InputDecoration(
-                    hintText: 'New subcategory name...',
+                  decoration: InputDecoration(
+                    hintText: t.invAddNewSubcategoryHint,
                     isDense: true,
                   ),
                   onSubmitted: (_) => _addNewSubcategory(),
@@ -1063,10 +1075,11 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
       });
     } catch (e) {
       if (!mounted) return;
+      final t = AppL10n.of(context);
       await AppModal.show(
         context,
-        title: "Couldn't create subcategory",
-        message: 'Failed to create subcategory',
+        title: t.invAddCreateSubcategoryFailedTitle,
+        message: t.invAddCreateSubcategoryFailedMessage,
         type: ModalType.error,
       );
     }
@@ -1075,6 +1088,7 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
   // ── Sub-unit selector (server-loaded + add new) ────────────────────────────
 
   Widget _buildSubUnitSelector() {
+    final t = AppL10n.of(context);
     if (_loadingSubUnits) {
       return const SizedBox(
         height: 48,
@@ -1093,17 +1107,17 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
       children: [
         DropdownButtonFormField<String>(
           value: _selectedSubUnit?.id,
-          decoration: const InputDecoration(
-            hintText: 'None (ea only)',
+          decoration: InputDecoration(
+            hintText: t.invAddSubUnitNone,
           ),
           items: [
-            const DropdownMenuItem<String>(value: null, child: Text('None (ea only)')),
+            DropdownMenuItem<String>(value: null, child: Text(t.invAddSubUnitNone)),
             ..._allSubUnits.map((u) => DropdownMenuItem(
                   value: u.id,
                   child: Text(u.name[0].toUpperCase() + u.name.substring(1)),
                 )),
-            const DropdownMenuItem(
-                value: '__add_new__', child: Text('+ Add New')),
+            DropdownMenuItem(
+                value: '__add_new__', child: Text(t.invAddAddNew)),
           ],
           onChanged: (val) {
             if (val == '__add_new__') {
@@ -1135,8 +1149,8 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
                 child: TextField(
                   controller: _newSubUnitCtrl,
                   autofocus: true,
-                  decoration: const InputDecoration(
-                    hintText: 'e.g. crate, tray...',
+                  decoration: InputDecoration(
+                    hintText: t.invAddNewSubUnitHint,
                     isDense: true,
                   ),
                   onSubmitted: (_) => _addNewSubUnit(),
@@ -1166,11 +1180,12 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
   Future<void> _addNewSubUnit() async {
     final val = _newSubUnitCtrl.text.trim().toLowerCase();
     if (val.isEmpty) return;
+    final t = AppL10n.of(context);
     if (_allSubUnits.any((u) => u.code == val)) {
       await AppModal.show(
         context,
-        title: 'Already exists',
-        message: '"$val" already exists',
+        title: t.invAddAlreadyExistsTitle,
+        message: t.invAddAlreadyExistsMessage(val),
         type: ModalType.error,
       );
       return;
@@ -1193,10 +1208,11 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
       });
     } catch (e) {
       if (!mounted) return;
+      final t = AppL10n.of(context);
       await AppModal.show(
         context,
-        title: "Couldn't create sub unit",
-        message: 'Failed to create sub unit',
+        title: t.invAddCreateSubUnitFailedTitle,
+        message: t.invAddCreateSubUnitFailedMessage,
         type: ModalType.error,
       );
     }
@@ -1240,20 +1256,23 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
       if (!mounted) return;
       await ref.read(inventoryProvider.notifier).loadInventory(widget.storeId);
       await ref.read(inventoryProvider.notifier).loadSummary(widget.storeId);
+      if (!mounted) return;
+      final t = AppL10n.of(context);
       await AppModal.show(
         context,
-        title: 'Added',
-        message: '${product.name} added to store',
+        title: t.invAddAddedTitle,
+        message: t.invAddAddedMessage(product.name),
         type: ModalType.success,
       );
       if (!mounted) return;
       context.pop();
     } catch (_) {
       if (!mounted) return;
+      final t = AppL10n.of(context);
       await AppModal.show(
         context,
-        title: "Couldn't add product",
-        message: 'Failed to add product',
+        title: t.invAddAddFailedTitle,
+        message: t.invAddAddFailedMessage,
         type: ModalType.error,
       );
     } finally {
@@ -1313,20 +1332,23 @@ class _InventoryAddScreenState extends ConsumerState<InventoryAddScreen> {
       if (!mounted) return;
       await ref.read(inventoryProvider.notifier).loadInventory(widget.storeId);
       await ref.read(inventoryProvider.notifier).loadSummary(widget.storeId);
+      if (!mounted) return;
+      final t = AppL10n.of(context);
       await AppModal.show(
         context,
-        title: 'Created',
-        message: '$name created and added to store',
+        title: t.invAddCreatedTitle,
+        message: t.invAddCreatedMessage(name),
         type: ModalType.success,
       );
       if (!mounted) return;
       context.pop();
     } catch (_) {
       if (!mounted) return;
+      final t = AppL10n.of(context);
       await AppModal.show(
         context,
-        title: "Couldn't create product",
-        message: 'Failed to create product',
+        title: t.invAddCreateProductFailedTitle,
+        message: t.invAddCreateProductFailedMessage,
         type: ModalType.error,
       );
     } finally {

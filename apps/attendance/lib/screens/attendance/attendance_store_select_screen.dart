@@ -8,6 +8,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/attendance_device_provider.dart';
 import '../../services/attendance_device_service.dart';
 
@@ -94,10 +95,11 @@ class _AttendanceStoreSelectScreenState
     } catch (e) {
       if (!mounted) return;
       // 서버 조회 실패 시 dart-define preset fallback
+      final t = AppL10n.of(context);
       setState(() {
         _stores = _parsePresetStores();
         _loading = false;
-        _loadError = 'Failed to load stores from server. Showing preset/manual fallback.';
+        _loadError = t.attStoreSelectLoadFailed;
       });
     }
   }
@@ -111,10 +113,12 @@ class _AttendanceStoreSelectScreenState
     if (!mounted) return;
     setState(() => _submitting = false);
     if (!ok) {
-      final error = ref.read(attendanceDeviceProvider).error ?? 'Failed to assign store';
+      final t = AppL10n.of(context);
+      final error =
+          ref.read(attendanceDeviceProvider).error ?? t.attStoreSelectAssignFailed;
       await AppModal.show(
         context,
-        title: 'Couldn\'t assign store',
+        title: t.attStoreSelectAssignFailedTitle,
         message: error,
         type: ModalType.error,
       );
@@ -123,6 +127,7 @@ class _AttendanceStoreSelectScreenState
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final device = ref.watch(attendanceDeviceProvider).device;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -145,9 +150,9 @@ class _AttendanceStoreSelectScreenState
                     size: 36, color: AppColors.accent),
               ),
               const SizedBox(height: 20),
-              const Text(
-                'Select Store',
-                style: TextStyle(
+              Text(
+                t.attStoreSelectTitle,
+                style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
                   color: AppColors.text,
@@ -157,8 +162,8 @@ class _AttendanceStoreSelectScreenState
               const SizedBox(height: 8),
               Text(
                 device != null
-                    ? 'This device (${device.deviceName}) needs to be assigned to a store.'
-                    : 'This device needs to be assigned to a store.',
+                    ? t.attStoreSelectDeviceNeedsAssignment(device.deviceName)
+                    : t.attStoreSelectGenericNeedsAssignment,
                 style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
@@ -193,7 +198,7 @@ class _AttendanceStoreSelectScreenState
                         ),
                         TextButton(
                           onPressed: _loading ? null : _loadStores,
-                          child: const Text('Retry'),
+                          child: Text(t.actionRetry),
                         ),
                       ],
                     ),
@@ -211,9 +216,9 @@ class _AttendanceStoreSelectScreenState
                       )),
                   const SizedBox(height: 12),
                 ] else if (_loadError == null) ...[
-                  const Text(
-                    'No stores available. Contact an administrator.',
-                    style: TextStyle(
+                  Text(
+                    t.attStoreSelectEmpty,
+                    style: const TextStyle(
                         fontSize: 13, color: AppColors.textSecondary),
                     textAlign: TextAlign.center,
                   ),
@@ -222,8 +227,8 @@ class _AttendanceStoreSelectScreenState
                 // Manual UUID fallback (debug/admin 전용)
                 const Divider(),
                 const SizedBox(height: 12),
-                const Text('Manual Store ID',
-                    style: TextStyle(
+                Text(t.attStoreSelectManualLabel,
+                    style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textSecondary)),
@@ -231,8 +236,8 @@ class _AttendanceStoreSelectScreenState
                 TextField(
                   controller: _controller,
                   enabled: !_submitting,
-                  decoration: const InputDecoration(
-                    hintText: 'Paste store UUID (fallback)',
+                  decoration: InputDecoration(
+                    hintText: t.attStoreSelectManualHint,
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -247,7 +252,7 @@ class _AttendanceStoreSelectScreenState
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white),
                         )
-                      : const Text('Assign Store'),
+                      : Text(t.attStoreSelectAssignButton),
                 ),
               ],
             ],

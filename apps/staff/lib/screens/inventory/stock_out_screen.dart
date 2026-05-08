@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/inventory.dart';
 import '../../providers/inventory_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -71,6 +72,8 @@ class _StockOutScreenState extends ConsumerState<StockOutScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
+    final localeStr = Localizations.localeOf(context).toString();
     final user = ref.watch(authProvider).user;
     final userName = user?.fullName ?? '-';
 
@@ -79,7 +82,7 @@ class _StockOutScreenState extends ConsumerState<StockOutScreen> {
       body: Column(
         children: [
           AppHeader(
-            title: 'Stock Out',
+            title: t.invStockOutTitle,
             isDetail: true,
             onBack: () => context.pop(),
           ),
@@ -91,7 +94,7 @@ class _StockOutScreenState extends ConsumerState<StockOutScreen> {
                 if (_hasWarnings) _buildWarningBanner(),
                 if (_hasWarnings) const SizedBox(height: 12),
                 // Header info card
-                _buildHeaderCard(userName),
+                _buildHeaderCard(userName, localeStr),
                 const SizedBox(height: 16),
                 // Items section
                 _buildItemsSection(),
@@ -145,7 +148,7 @@ class _StockOutScreenState extends ConsumerState<StockOutScreen> {
     );
   }
 
-  Widget _buildHeaderCard(String userName) {
+  Widget _buildHeaderCard(String userName, String localeStr) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -170,7 +173,7 @@ class _StockOutScreenState extends ConsumerState<StockOutScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    DateFormat('EEEE, MMMM d, yyyy').format(_date),
+                    DateFormat.yMMMMEEEEd(localeStr).format(_date),
                     style: const TextStyle(
                         fontSize: 14, color: AppColors.text),
                   ),
@@ -215,6 +218,7 @@ class _StockOutScreenState extends ConsumerState<StockOutScreen> {
   }
 
   Widget _buildItemsSection() {
+    final t = AppL10n.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -233,9 +237,9 @@ class _StockOutScreenState extends ConsumerState<StockOutScreen> {
         children: [
           Row(
             children: [
-              const Text(
-                'Items',
-                style: TextStyle(
+              Text(
+                t.stockItemsLabel,
+                style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: AppColors.text),
@@ -259,13 +263,13 @@ class _StockOutScreenState extends ConsumerState<StockOutScreen> {
             const SizedBox(height: 24),
             Center(
               child: Column(
-                children: const [
-                  Icon(Icons.output_outlined,
+                children: [
+                  const Icon(Icons.output_outlined,
                       size: 40, color: AppColors.textMuted),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
-                    'Tap + to add items',
-                    style: TextStyle(
+                    t.stockTapToAddItems,
+                    style: const TextStyle(
                         fontSize: 14, color: AppColors.textSecondary),
                   ),
                 ],
@@ -294,6 +298,7 @@ class _StockOutScreenState extends ConsumerState<StockOutScreen> {
   }
 
   Widget _buildReasonField() {
+    final t = AppL10n.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -310,16 +315,17 @@ class _StockOutScreenState extends ConsumerState<StockOutScreen> {
       child: TextField(
         controller: _reasonCtrl,
         maxLines: 3,
-        decoration: const InputDecoration(
-          labelText: 'Reason (optional)',
+        decoration: InputDecoration(
+          labelText: t.stockReasonOptional,
           hintText: 'e.g. Used for morning prep',
-          border: OutlineInputBorder(),
+          border: const OutlineInputBorder(),
         ),
       ),
     );
   }
 
   Widget _buildSaveButton() {
+    final t = AppL10n.of(context);
     final enabled = _items.isNotEmpty && !_isSaving;
     return SizedBox(
       width: double.infinity,
@@ -340,8 +346,8 @@ class _StockOutScreenState extends ConsumerState<StockOutScreen> {
                 height: 20,
                 child: CircularProgressIndicator(
                     color: Colors.white, strokeWidth: 2))
-            : const Text('Save',
-                style: TextStyle(
+            : Text(t.actionSave,
+                style: const TextStyle(
                     fontSize: 16, fontWeight: FontWeight.w700)),
       ),
     );
@@ -396,8 +402,8 @@ class _StockOutScreenState extends ConsumerState<StockOutScreen> {
     if (ok) {
       await AppModal.show(
         context,
-        title: 'Saved',
-        message: 'Stock out recorded successfully',
+        title: AppL10n.of(context).stockSavedTitle,
+        message: AppL10n.of(context).stockOutSavedMessage,
         type: ModalType.success,
       );
       if (!mounted) return;
@@ -406,7 +412,7 @@ class _StockOutScreenState extends ConsumerState<StockOutScreen> {
       await AppModal.show(
         context,
         title: "Couldn't save",
-        message: 'Failed to save. Please try again.',
+        message: AppL10n.of(context).stockSaveFailed,
         type: ModalType.error,
       );
     }
@@ -607,7 +613,7 @@ class _ItemRowState extends State<_ItemRow> {
           if (widget.lineItem.willBeNegative) ...[
             const SizedBox(height: 6),
             Text(
-              'Will be negative '
+              '${AppL10n.of(context).stockWillBeNegative} '
               '(${item.currentQuantity - widget.lineItem.eaQuantity} ea)',
               style: const TextStyle(
                   fontSize: 11, color: AppColors.warning),
@@ -615,7 +621,7 @@ class _ItemRowState extends State<_ItemRow> {
           ] else if (widget.lineItem.willBeBelowMin) ...[
             const SizedBox(height: 6),
             Text(
-              'Will be below minimum '
+              '${AppL10n.of(context).stockWillBeBelowMin} '
               '(${item.currentQuantity - widget.lineItem.eaQuantity} ea, '
               'min: ${item.minQuantity})',
               style: const TextStyle(
@@ -728,9 +734,9 @@ class _ProductSearchSheetState
             child: TextField(
               controller: _searchCtrl,
               autofocus: true,
-              decoration: const InputDecoration(
-                hintText: 'Search inventory...',
-                prefixIcon: Icon(Icons.search,
+              decoration: InputDecoration(
+                hintText: AppL10n.of(context).stockSearchHint,
+                prefixIcon: const Icon(Icons.search,
                     size: 20, color: AppColors.textMuted),
               ),
               onChanged: _search,
@@ -745,7 +751,7 @@ class _ProductSearchSheetState
                 : _results == null || _results!.isEmpty
                     ? Center(
                         child: Text(
-                          'No products found',
+                          AppL10n.of(context).stockNoProductsFound,
                           style: const TextStyle(
                               fontSize: 14,
                               color: AppColors.textSecondary),
@@ -812,9 +818,9 @@ class _ProductSearchSheetState
                                       ),
                                     ),
                                     if (alreadyAdded)
-                                      const Text(
-                                        'Added',
-                                        style: TextStyle(
+                                      Text(
+                                        AppL10n.of(context).stockAddedBadge,
+                                        style: const TextStyle(
                                             fontSize: 11,
                                             color: AppColors.textMuted),
                                       ),
