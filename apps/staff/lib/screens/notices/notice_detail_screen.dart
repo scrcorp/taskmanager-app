@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/notice.dart';
 import '../../providers/notice_provider.dart';
 import '../../utils/date_utils.dart';
@@ -49,13 +50,14 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
   }
 
   Future<void> _toggleAcknowledge() async {
+    final t = AppL10n.of(context);
     final current = ref.read(noticeProvider).selected;
     ref.read(noticeProvider.notifier).toggleAcknowledge(widget.id);
     if (current != null && !current.isAcknowledged) {
       await AppModal.show(
         context,
-        title: 'Acknowledged',
-        message: 'Acknowledged',
+        title: t.noticeAcknowledgedTitle,
+        message: t.noticeAcknowledgedMessage,
         type: ModalType.success,
       );
     }
@@ -63,6 +65,7 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final state = ref.watch(noticeProvider);
     final notice = state.selected;
 
@@ -70,13 +73,13 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
       backgroundColor: AppColors.bg,
       body: Column(
         children: [
-          AppHeader(title: 'Notice', isDetail: true, onBack: () => context.pop()),
+          AppHeader(title: t.noticeDetailHeader, isDetail: true, onBack: () => context.pop()),
           if (state.isLoading && notice == null)
             const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (notice == null)
             Expanded(
               child: Center(
-                child: Text(state.error ?? 'Notice not found',
+                child: Text(state.error ?? t.noticeNotFound,
                     style: const TextStyle(color: AppColors.textMuted)),
               ),
             )
@@ -160,7 +163,7 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
                     const Icon(Icons.person_outline,
                         size: 14, color: AppColors.textMuted),
                     const SizedBox(width: 4),
-                    Text(notice.createdByName ?? 'Unknown',
+                    Text(notice.createdByName ?? AppL10n.of(context).commonUnknown,
                         style: const TextStyle(
                             fontSize: 13, color: AppColors.textSecondary)),
                   ],
@@ -196,6 +199,7 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
   }
 
   Widget _buildCommentsSection(Notice notice) {
+    final t = AppL10n.of(context);
     return Container(
       width: double.infinity,
       color: AppColors.white,
@@ -204,7 +208,7 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Comments (${notice.comments.length})',
+            t.noticeCommentsCount(notice.comments.length),
             style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -220,14 +224,14 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
                       size: 32,
                       color: AppColors.textMuted.withValues(alpha: 0.5)),
                   const SizedBox(height: 8),
-                  const Text(
-                    'No comments yet',
-                    style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                  Text(
+                    t.noticeNoComments,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Be the first to leave a comment',
-                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                  Text(
+                    t.noticeFirstComment,
+                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
                   ),
                 ],
               ),
@@ -244,6 +248,7 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
   }
 
   Widget _buildCommentInput() {
+    final t = AppL10n.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
       decoration: const BoxDecoration(
@@ -265,7 +270,7 @@ class _NoticeDetailScreenState extends ConsumerState<NoticeDetailScreen> {
                 controller: _commentController,
                 focusNode: _commentFocus,
                 decoration: InputDecoration(
-                  hintText: 'Write a comment...',
+                  hintText: t.noticeCommentHint,
                   hintStyle: const TextStyle(
                       fontSize: 14, color: AppColors.textMuted),
                   border: OutlineInputBorder(
@@ -314,6 +319,7 @@ class _AcknowledgmentSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final acks = notice.acknowledgments;
     final isAcked = notice.isAcknowledged;
 
@@ -351,7 +357,7 @@ class _AcknowledgmentSection extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    isAcked ? 'Acknowledged' : 'Mark as read',
+                    isAcked ? t.noticeAcknowledgedButton : t.noticeMarkAsRead,
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -416,7 +422,7 @@ class _AcknowledgmentSection extends StatelessWidget {
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        ack.userName ?? 'Unknown',
+                        ack.userName ?? t.commonUnknown,
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w500,

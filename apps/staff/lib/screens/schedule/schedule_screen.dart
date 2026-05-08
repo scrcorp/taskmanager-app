@@ -12,15 +12,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
+import 'package:intl/intl.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/schedule.dart';
 import '../../providers/schedule_provider.dart';
 
-const _weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-const _monthAbbr = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
+String _localeOf(BuildContext ctx) => Localizations.localeOf(ctx).toString();
+String _wdShort(BuildContext ctx, DateTime d) =>
+    DateFormat.E(_localeOf(ctx)).format(d);
+String _moShort(BuildContext ctx, DateTime d) =>
+    DateFormat.MMM(_localeOf(ctx)).format(d);
+String _moLong(BuildContext ctx, DateTime d) =>
+    DateFormat.MMMM(_localeOf(ctx)).format(d);
+String _wdShortByIndex(BuildContext ctx, int sundayBased) {
+  // sundayBased: 0=Sun..6=Sat — DateFormat의 dayOfWeek는 1=Mon..7=Sun
+  // 임의의 일요일 기준 날짜로 변환
+  final base = DateTime(2024, 1, 7); // 2024-01-07 is Sunday
+  return _wdShort(ctx, base.add(Duration(days: sundayBased)));
+}
 
 // ────── Unified shift item for combining entries + requests ──────
 
@@ -269,6 +278,7 @@ class _ViewToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
       child: Container(
@@ -279,9 +289,9 @@ class _ViewToggle extends StatelessWidget {
         ),
         child: Row(
           children: [
-            _segBtn('Weekly', mode == ScheduleViewMode.weekly,
+            _segBtn(t.scheduleViewWeekly, mode == ScheduleViewMode.weekly,
                 () => onChanged(ScheduleViewMode.weekly)),
-            _segBtn('Monthly', mode == ScheduleViewMode.monthly,
+            _segBtn(t.scheduleViewMonthly, mode == ScheduleViewMode.monthly,
                 () => onChanged(ScheduleViewMode.monthly)),
           ],
         ),
@@ -334,6 +344,7 @@ class _WeeklySummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     int totalMinutes = 0;
     int pending = 0, confirmed = 0, rejected = 0;
     final workDates = <String>{};
@@ -371,16 +382,16 @@ class _WeeklySummaryCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'This week',
-                    style: TextStyle(
+                  Text(
+                    t.scheduleThisWeek,
+                    style: const TextStyle(
                         fontSize: 11,
                         color: AppColors.textMuted,
                         fontWeight: FontWeight.w500),
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '$dayCount days · ${totalHours}h',
+                    t.scheduleDaysHours(dayCount, totalHours),
                     style: const TextStyle(
                         fontSize: 17, fontWeight: FontWeight.w700),
                   ),
@@ -392,11 +403,11 @@ class _WeeklySummaryCard extends StatelessWidget {
               runSpacing: 4,
               children: [
                 if (pending > 0)
-                  _badge('Pending $pending', AppColors.accent, AppColors.accentBg),
+                  _badge(t.scheduleBadgePending(pending), AppColors.accent, AppColors.accentBg),
                 if (confirmed > 0)
-                  _badge('Confirmed $confirmed', AppColors.success, AppColors.successBg),
+                  _badge(t.scheduleBadgeConfirmed(confirmed), AppColors.success, AppColors.successBg),
                 if (rejected > 0)
-                  _badge('Rejected $rejected', AppColors.danger, AppColors.dangerBg),
+                  _badge(t.scheduleBadgeRejected(rejected), AppColors.danger, AppColors.dangerBg),
               ],
             ),
           ],
@@ -433,17 +444,18 @@ class _WeekRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final weekEnd = weekStart.add(const Duration(days: 6));
-    final rangeLabel = '${_monthAbbr[weekStart.month - 1]} ${weekStart.day}'
-        ' – ${_monthAbbr[weekEnd.month - 1]} ${weekEnd.day}';
+    final rangeLabel = '${_moShort(context, weekStart)} ${weekStart.day}'
+        ' – ${_moShort(context, weekEnd)} ${weekEnd.day}';
 
     final totalMinutes =
         shifts.where((s) => s.status != 'rejected').fold<int>(0, (sum, s) => sum + s.netMinutes);
     final totalHours = totalMinutes ~/ 60;
     final shiftCount = shifts.length;
     final subLabel = shiftCount > 0
-        ? '$shiftCount shifts · ${totalHours}h'
-        : 'No shifts';
+        ? t.scheduleShiftsHours(shiftCount, totalHours)
+        : t.scheduleNoShifts;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
@@ -523,9 +535,8 @@ class _ShiftCard extends StatelessWidget {
     final isPending = shift.status == 'submitted' || shift.status == 'modified';
     final isRejected = shift.status == 'rejected';
 
-    final dow = shift.date.weekday % 7; // 0=Sun
     final dateLabel =
-        '${_monthAbbr[shift.date.month - 1]} ${shift.date.day} ${_weekdays[dow]}';
+        '${_moShort(context, shift.date)} ${shift.date.day} ${_wdShort(context, shift.date)}';
     final timeLabel = shift.hasBreak
         ? '${_trimTime(shift.startTime)}–${_trimTime(shift.breakStartTime!)} · ${_trimTime(shift.breakEndTime!)}–${_trimTime(shift.endTime)}'
         : '${_trimTime(shift.startTime)} – ${_trimTime(shift.endTime)}';
@@ -647,13 +658,9 @@ class _MonthNav extends StatelessWidget {
     required this.onToday,
   });
 
-  static const _monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December',
-  ];
-
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       child: Row(
@@ -665,7 +672,7 @@ class _MonthNav extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            '${_monthNames[month.month - 1]} ${month.year}',
+            '${_moLong(context, month)} ${month.year}',
             style: const TextStyle(
               fontSize: 17,
               fontWeight: FontWeight.w700,
@@ -687,9 +694,9 @@ class _MonthNav extends StatelessWidget {
                 color: AppColors.accentBg,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Text(
-                'Today',
-                style: TextStyle(
+              child: Text(
+                t.scheduleToday,
+                style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: AppColors.accent,
@@ -720,7 +727,7 @@ class _WeekdayHeader extends StatelessWidget {
           return Expanded(
             child: Center(
               child: Text(
-                _weekdays[i],
+                _wdShortByIndex(context, i),
                 style: TextStyle(
                     fontSize: 11, fontWeight: FontWeight.w600, color: color),
               ),
@@ -1025,8 +1032,6 @@ class _DayDetailSheet extends StatefulWidget {
 class _DayDetailSheetState extends State<_DayDetailSheet> {
   late DateTime _date;
 
-  static const _dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-
   @override
   void initState() {
     super.initState();
@@ -1113,7 +1118,7 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
                 ),
                 Expanded(
                   child: Text(
-                    '${_dayNames[_date.weekday - 1]}, ${_monthAbbr[_date.month - 1]} ${_date.day}',
+                    '${_wdShort(context, _date)}, ${_moShort(context, _date)} ${_date.day}',
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                         fontSize: 17, fontWeight: FontWeight.w700),
@@ -1165,6 +1170,7 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
 
   Widget _confirmedSection(
       BuildContext context, _EntryGroup group, List<ScheduleEntry> dayEntries) {
+    final t = AppL10n.of(context);
     final groupEntries = dayEntries
         .where((e) =>
             (e.storeName ?? '') == group.storeName &&
@@ -1196,14 +1202,14 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
                 const Icon(Icons.check, size: 14, color: AppColors.white),
           ),
           const SizedBox(width: 8),
-          const Text('Confirmed Schedule',
+          Text(t.scheduleConfirmedSection,
               style:
-                  TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                  const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
         ]),
         const SizedBox(height: 16),
-        _labelRow('Store', group.storeName),
+        _labelRow(t.scheduleStoreLabel, group.storeName),
         const SizedBox(height: 6),
-        _labelRow('Work Role', group.workRoleName),
+        _labelRow(t.scheduleWorkRoleLabel, group.workRoleName),
         const SizedBox(height: 12),
         ...group.timeBlocks.map((tb) => Padding(
               padding: const EdgeInsets.only(bottom: 6),
@@ -1225,7 +1231,7 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
             )),
         const SizedBox(height: 4),
         Center(
-          child: Text('Net work: $totalDisplay',
+          child: Text(t.scheduleNetWork(totalDisplay),
               style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -1240,7 +1246,7 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
             final isFuture = entryDate.isAfter(today);
             final isPast = entryDate.isBefore(today);
 
-            final label = isFuture ? 'Upcoming Checklist' : 'View Checklist';
+            final label = isFuture ? t.scheduleUpcomingChecklist : t.scheduleViewChecklist;
             final color = isFuture ? AppColors.textMuted : AppColors.accent;
             final bg = isFuture ? AppColors.bg : AppColors.accentBg;
 
@@ -1284,8 +1290,9 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
   }
 
   Widget _requestSection(ScheduleRequest r) {
+    final t = AppL10n.of(context);
     final (color, bg) = _statusColors(r.status);
-    final label = _statusLabel(r.status);
+    final label = _statusLabel(context, r.status);
     final isModified = r.status == 'modified';
     final start = r.preferredStartTime ?? '';
     final end = r.preferredEndTime ?? '';
@@ -1312,14 +1319,14 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
             ),
           ),
           const SizedBox(width: 8),
-          Text('$label Schedule',
+          Text(t.scheduleRequestSection(label),
               style: const TextStyle(
                   fontSize: 15, fontWeight: FontWeight.w700)),
         ]),
         const SizedBox(height: 16),
-        _labelRow('Store', r.storeName ?? ''),
+        _labelRow(t.scheduleStoreLabel, r.storeName ?? ''),
         const SizedBox(height: 6),
-        _labelRow('Work Role', r.workRoleName ?? ''),
+        _labelRow(t.scheduleWorkRoleLabel, r.workRoleName ?? ''),
         const SizedBox(height: 12),
         Container(
           width: double.infinity,
@@ -1357,9 +1364,9 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
                   children: [
                     const Icon(Icons.warning, size: 14, color: AppColors.warning),
                     const SizedBox(width: 4),
-                    const Text(
-                      'Changed by manager',
-                      style: TextStyle(
+                    Text(
+                      t.scheduleChangedByManager,
+                      style: const TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: AppColors.warning,
@@ -1370,10 +1377,10 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    const SizedBox(
+                    SizedBox(
                       width: 40,
-                      child: Text('Time',
-                          style: TextStyle(
+                      child: Text(t.scheduleTimeLabel,
+                          style: const TextStyle(
                               fontSize: 12, color: AppColors.textMuted)),
                     ),
                     Text(
@@ -1440,16 +1447,17 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
   }
 
   Widget _emptyState() {
+    final t = AppL10n.of(context);
     // read-only mode — "Tap to request" CTA 제거, 단순 empty state
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          Icon(Icons.calendar_today_outlined,
+        children: [
+          const Icon(Icons.calendar_today_outlined,
               size: 36, color: AppColors.textMuted),
-          SizedBox(height: 12),
-          Text('No schedule',
-              style: TextStyle(
+          const SizedBox(height: 12),
+          Text(t.scheduleEmpty,
+              style: const TextStyle(
                   fontSize: 14, color: AppColors.textMuted)),
         ],
       ),
@@ -1459,20 +1467,21 @@ class _DayDetailSheetState extends State<_DayDetailSheet> {
 
 // ────── Helpers ──────
 
-String _statusLabel(String status) {
+String _statusLabel(BuildContext ctx, String status) {
+  final t = AppL10n.of(ctx);
   switch (status) {
     case 'confirmed':
     case 'approved':
     case 'accepted':
-      return 'Confirmed';
+      return t.scheduleStatusConfirmed;
     case 'rejected':
-      return 'Rejected';
+      return t.scheduleStatusRejected;
     case 'modified':
-      return 'Modified';
+      return t.scheduleStatusModified;
     case 'submitted':
-      return 'Submitted';
+      return t.scheduleStatusSubmitted;
     default:
-      return 'Pending';
+      return t.scheduleStatusPending;
   }
 }
 

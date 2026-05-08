@@ -23,6 +23,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/checklist.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/my_schedule_provider.dart';
@@ -182,10 +183,11 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
       _saveDraft();
     } catch (e) {
       if (mounted) {
+        final t = AppL10n.of(context);
         await AppModal.show(
           context,
-          title: "Couldn't upload",
-          message: 'Photo upload failed',
+          title: t.commonSaveFailedTitle,
+          message: t.chatPhotoUploadFailed,
           type: ModalType.error,
         );
       }
@@ -207,10 +209,11 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
     final item = _item;
     // 사진 필요한데 없으면 안내
     if (item.requiresPhoto && _pendingPhotoUrls.isEmpty) {
+      final t = AppL10n.of(context);
       await AppModal.show(
         context,
-        title: 'Photo required',
-        message: 'Please attach a photo.',
+        title: t.chatPhotoRequiredTitle,
+        message: t.chatPhotoRequiredMessage,
         type: ModalType.error,
       );
       return;
@@ -249,10 +252,11 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
       _scrollToBottom();
     } catch (e) {
       if (mounted) {
+        final t = AppL10n.of(context);
         await AppModal.show(
           context,
-          title: "Couldn't submit",
-          message: 'Failed to submit. Please try again.',
+          title: t.commonSaveFailedTitle,
+          message: t.chatSubmitFailed,
           type: ModalType.error,
         );
       }
@@ -280,10 +284,11 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
       _scrollToBottom();
     } catch (e) {
       if (mounted) {
+        final t = AppL10n.of(context);
         await AppModal.show(
           context,
-          title: "Couldn't send",
-          message: 'Send failed',
+          title: t.commonSaveFailedTitle,
+          message: t.chatSendFailed,
           type: ModalType.error,
         );
       }
@@ -321,10 +326,11 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
       _scrollToBottom();
     } catch (e) {
       if (mounted) {
+        final t = AppL10n.of(context);
         await AppModal.show(
           context,
-          title: "Couldn't send photo",
-          message: 'Photo send failed',
+          title: t.commonSaveFailedTitle,
+          message: t.chatPhotoSendFailed,
           type: ModalType.error,
         );
       }
@@ -334,6 +340,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
   }
 
   Future<ImageSource?> _showPhotoSourceSheet() {
+    final t = AppL10n.of(context);
     return showDialog<ImageSource>(
       context: context,
       builder: (ctx) => Dialog(
@@ -354,9 +361,9 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
                     color: AppColors.accent, size: 28),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Add Photo',
-                style: TextStyle(
+              Text(
+                t.chatAddPhoto,
+                style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
                     color: AppColors.text),
@@ -367,7 +374,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
                     borderRadius: BorderRadius.circular(10)),
                 leading: const Icon(Icons.camera_alt_outlined,
                     color: AppColors.accent),
-                title: const Text('Take Photo'),
+                title: Text(t.chatTakePhoto),
                 onTap: () => Navigator.pop(ctx, ImageSource.camera),
               ),
               ListTile(
@@ -375,13 +382,13 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
                     borderRadius: BorderRadius.circular(10)),
                 leading: const Icon(Icons.photo_library_outlined,
                     color: AppColors.accent),
-                title: const Text('Choose from Gallery'),
+                title: Text(t.chatChooseGallery),
                 onTap: () => Navigator.pop(ctx, ImageSource.gallery),
               ),
               const SizedBox(height: 4),
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel'),
+                child: Text(t.actionCancel),
               ),
             ],
           ),
@@ -395,6 +402,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
   Widget build(BuildContext context) {
     // provider 상태 변경 시 리빌드 트리거
     ref.watch(myScheduleProvider);
+    final t = AppL10n.of(context);
     final item = _item;
 
     return Scaffold(
@@ -441,7 +449,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
                     const CircularProgressIndicator(color: AppColors.accent),
                     const SizedBox(height: 12),
                     Text(
-                      _isSubmitting ? 'Submitting...' : 'Uploading photo...',
+                      _isSubmitting ? t.chatSubmitting : t.chatUploadingPhoto,
                       style: const TextStyle(
                           color: AppColors.white,
                           fontSize: 14,
@@ -486,23 +494,24 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
 
   /// 통합 헤더: 상태바 + 접기/펼치기 submit/resubmit 폼
   Widget _buildUnifiedHeader(ChecklistItem item) {
+    final t = AppL10n.of(context);
     String statusText;
     Color statusColor;
 
     if (item.isRejected && !item.isResolved) {
-      statusText = 'Rejected — Resubmission required';
+      statusText = t.chatStatusRejected;
       statusColor = AppColors.danger;
     } else if (item.isPendingReReview) {
-      statusText = 'Pending re-review';
+      statusText = t.chatStatusReReview;
       statusColor = AppColors.warning;
     } else if (item.isApproved) {
-      statusText = 'Approved';
+      statusText = t.chatStatusApproved;
       statusColor = AppColors.success;
     } else if (item.isCompleted) {
-      statusText = 'Completed — Awaiting review';
+      statusText = t.chatStatusCompleted;
       statusColor = AppColors.accent;
     } else {
-      statusText = 'Not completed — Submit below';
+      statusText = t.chatStatusNotCompleted;
       statusColor = AppColors.textSecondary;
     }
 
@@ -554,23 +563,24 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
   }
 
   Widget _buildStatusBar(ChecklistItem item) {
+    final t = AppL10n.of(context);
     String statusText;
     Color statusColor;
 
     if (item.isRejected && !item.isResolved) {
-      statusText = 'Rejected — Resubmission required';
+      statusText = t.chatStatusRejected;
       statusColor = AppColors.danger;
     } else if (item.isPendingReReview) {
-      statusText = 'Pending re-review';
+      statusText = t.chatStatusReReview;
       statusColor = AppColors.warning;
     } else if (item.isApproved) {
-      statusText = 'Approved';
+      statusText = t.chatStatusApproved;
       statusColor = AppColors.success;
     } else if (item.isCompleted) {
-      statusText = 'Completed — Awaiting review';
+      statusText = t.chatStatusCompleted;
       statusColor = AppColors.accent;
     } else {
-      statusText = 'Not completed — Submit below';
+      statusText = t.chatStatusNotCompleted;
       statusColor = AppColors.textSecondary;
     }
 
@@ -597,21 +607,13 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
 
   /// 제출/재제출 카드 (mockup 5C 기반)
   Widget _buildSubmitCard(ChecklistItem item) {
+    final t = AppL10n.of(context);
     final isResubmit = item.isCompleted && item.isRejected;
     final accentColor = isResubmit ? AppColors.danger : AppColors.accent;
     final minPhotos = item.minPhotos ?? 1;
     final photosFulfilled = !item.requiresPhoto ||
         _pendingPhotoUrls.length >= minPhotos;
     final canSubmit = photosFulfilled && !_isSubmitting && !_isUploading;
-
-    // 접힌 상태 요약 텍스트
-    String collapsedHint = '';
-    if (item.requiresPhoto) {
-      collapsedHint = '${_pendingPhotoUrls.length}/$minPhotos photos';
-    }
-    if (item.requiresComment && _memoController.text.isNotEmpty) {
-      collapsedHint += collapsedHint.isEmpty ? 'note added' : ', note added';
-    }
 
     return Container(
       margin: const EdgeInsets.fromLTRB(0, 0, 0, 0),
@@ -640,12 +642,12 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
                 children: [
                   if (item.requiresPhoto)
                     _RequirementRow(
-                      label: 'Photos (required, min $minPhotos)',
+                      label: t.chatPhotosLabel(minPhotos),
                       isDone: _pendingPhotoUrls.length >= minPhotos,
                     ),
                   if (item.requiresComment)
                     _RequirementRow(
-                      label: 'Text (required)',
+                      label: t.chatTextLabel,
                       isDone: _memoController.text.isNotEmpty,
                     ),
                 ],
@@ -662,7 +664,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
                       child: OutlinedButton.icon(
                         onPressed: _isUploading ? null : _addPhotoFromCamera,
                         icon: const Icon(Icons.camera_alt_outlined, size: 15),
-                        label: const Text('Take Photo'),
+                        label: Text(t.chatTakePhotoBtn),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.text,
                           side: const BorderSide(color: AppColors.border),
@@ -680,7 +682,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
                       child: OutlinedButton.icon(
                         onPressed: _isUploading ? null : _addPhotoFromGallery,
                         icon: const Icon(Icons.photo_library_outlined, size: 15),
-                        label: const Text('Gallery'),
+                        label: Text(t.chatGalleryBtn),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.text,
                           side: const BorderSide(color: AppColors.border),
@@ -706,7 +708,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
                         size: 13, color: AppColors.textSecondary),
                     const SizedBox(width: 4),
                     Text(
-                      'Photos: ${_pendingPhotoUrls.length}/$minPhotos required',
+                      t.chatPhotosCount(_pendingPhotoUrls.length, minPhotos),
                       style: TextStyle(
                         fontSize: 12,
                         color: _pendingPhotoUrls.length >= minPhotos
@@ -749,8 +751,8 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
                 },
                 decoration: InputDecoration(
                   hintText: isResubmit
-                      ? 'Reason for resubmission...'
-                      : 'Text (optional) — e.g. task completed',
+                      ? t.chatReasonForResubmission
+                      : t.chatTextOptional,
                   hintStyle: const TextStyle(
                       color: AppColors.textMuted, fontSize: 13),
                   filled: true,
@@ -795,7 +797,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: Text(isResubmit ? 'Resubmit' : 'Submit'),
+                  child: Text(isResubmit ? t.chatResubmit : t.chatSubmit),
                 ),
               ),
             ),
@@ -819,12 +821,13 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
   }
 
   Widget _buildTimelineEvent(ChecklistItemEvent event) {
+    final t = AppL10n.of(context);
     switch (event.type) {
       case 'submitted':
         return Column(
           children: [
             _SystemEventDivider(
-              label: 'Submitted',
+              label: t.chatBadgeSubmitted,
               icon: Icons.check_circle_rounded,
               color: AppColors.accent,
               time: event.atDisplay,
@@ -840,7 +843,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
         return Column(
           children: [
             _SystemEventDivider(
-              label: 'Resubmitted',
+              label: t.chatBadgeResubmitted,
               icon: Icons.redo_rounded,
               color: AppColors.warning,
               time: event.atDisplay,
@@ -856,7 +859,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
         return Column(
           children: [
             _SystemEventDivider(
-              label: 'Rejected',
+              label: t.chatBadgeRejected,
               icon: Icons.cancel_rounded,
               color: AppColors.danger,
               time: event.atDisplay,
@@ -872,7 +875,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
         return Column(
           children: [
             _SystemEventDivider(
-              label: 'Approved',
+              label: t.chatBadgeApproved,
               icon: Icons.verified_rounded,
               color: AppColors.success,
               time: event.atDisplay,
@@ -886,14 +889,14 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
         );
       case 'pending_re_review':
         return _SystemEventDivider(
-          label: 'Pending Re-review',
+          label: t.chatBadgeReReview,
           icon: Icons.hourglass_top_rounded,
           color: AppColors.warning,
           time: event.atDisplay,
         );
       case 'pending':
         return _SystemEventDivider(
-          label: 'Pending',
+          label: t.chatBadgePending,
           icon: Icons.hourglass_top_rounded,
           color: AppColors.textMuted,
           time: null,
@@ -927,6 +930,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
   }
 
   Widget _buildChatInputBar() {
+    final t = AppL10n.of(context);
     return SafeArea(
       child: Container(
         color: AppColors.white,
@@ -959,7 +963,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
                   maxLines: null,
                   textInputAction: TextInputAction.newline,
                   decoration: InputDecoration(
-                    hintText: 'Type a message...',
+                    hintText: t.chatTypeMessage,
                     hintStyle: const TextStyle(
                         color: AppColors.textMuted, fontSize: 14),
                     filled: true,
@@ -1019,28 +1023,29 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     String label;
     Color bgColor;
     Color textColor;
 
     if (reviewResult == 'fail') {
-      label = 'Rejected';
+      label = t.chatLabelRejected;
       bgColor = AppColors.dangerBg;
       textColor = AppColors.danger;
     } else if (reviewResult == 'pass') {
-      label = 'Approved';
+      label = t.chatLabelApproved;
       bgColor = AppColors.successBg;
       textColor = const Color(0xFF008F76);
     } else if (reviewResult == 'pending_re_review') {
-      label = 'Re-review';
+      label = t.chatLabelReReview;
       bgColor = AppColors.warningBg;
       textColor = const Color(0xFFC07C00);
     } else if (isCompleted) {
-      label = 'Done';
+      label = t.chatLabelDone;
       bgColor = AppColors.accentBg;
       textColor = AppColors.accent;
     } else {
-      label = 'Pending';
+      label = t.chatLabelPending;
       bgColor = AppColors.border;
       textColor = AppColors.textMuted;
     }

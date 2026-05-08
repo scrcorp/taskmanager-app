@@ -4,9 +4,12 @@
 /// staff 앱과 분리된 별개 entrypoint — JWT 인증/라우터를 사용하지 않는다.
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
 
+import 'l10n/app_localizations.dart';
+import 'providers/locale_provider.dart';
 import 'screens/attendance/attendance_shell_screen.dart';
 
 const _appEnv = String.fromEnvironment('APP_ENV');
@@ -28,16 +31,25 @@ Future<void> main() async {
   runApp(const ProviderScope(child: AttendanceApp()));
 }
 
-class AttendanceApp extends StatelessWidget {
+class AttendanceApp extends ConsumerWidget {
   const AttendanceApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final locale = ref.watch(localeProvider);
     return MaterialApp(
       title: _appTitle,
       theme: AppTheme.light,
       home: const AttendanceShellScreen(),
       debugShowCheckedModeBanner: false,
+      locale: locale,
+      supportedLocales: supportedLocales,
+      localizationsDelegates: const [
+        AppL10n.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
     );
   }
 }

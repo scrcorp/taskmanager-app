@@ -8,6 +8,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import 'attendance_main_screen.dart';
 
 class AttendanceSuccessScreen extends StatefulWidget {
@@ -32,18 +33,18 @@ class _AttendanceSuccessScreenState extends State<AttendanceSuccessScreen>
   late AnimationController _animCtrl;
   late Animation<double> _scaleAnim;
 
-  String get _title {
+  String _title(AppL10n t) {
     switch (widget.action) {
       case AttendanceAction.clockIn:
-        return 'Clock In Successful';
+        return t.attSuccessClockIn;
       case AttendanceAction.clockOut:
-        return 'Clock Out Successful';
+        return t.attSuccessClockOut;
       case AttendanceAction.breakShortPaid:
-        return 'Short Break Started';
+        return t.attSuccessShortBreak;
       case AttendanceAction.breakLongUnpaid:
-        return 'Long Break Started';
+        return t.attSuccessLongBreak;
       case AttendanceAction.breakEnd:
-        return 'Break Ended';
+        return t.attSuccessBreakEnded;
     }
   }
 
@@ -88,6 +89,7 @@ class _AttendanceSuccessScreenState extends State<AttendanceSuccessScreen>
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
@@ -141,7 +143,7 @@ class _AttendanceSuccessScreenState extends State<AttendanceSuccessScreen>
                 ),
                 const SizedBox(height: 28),
                 Text(
-                  _title,
+                  _title(t),
                   style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w800,
@@ -158,10 +160,10 @@ class _AttendanceSuccessScreenState extends State<AttendanceSuccessScreen>
                       fontFamily: 'DMSans',
                     ),
                     children: [
-                      const TextSpan(text: 'Welcome back'),
+                      TextSpan(text: t.attSuccessWelcomeBack),
                       if (widget.userName.isNotEmpty)
                         TextSpan(
-                          text: ', ${widget.userName}!',
+                          text: t.attSuccessWelcomeBackName(widget.userName),
                           style: const TextStyle(
                             fontWeight: FontWeight.w700,
                             color: AppColors.accent,
@@ -183,19 +185,19 @@ class _AttendanceSuccessScreenState extends State<AttendanceSuccessScreen>
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'Go to Dashboard',
-                          style: TextStyle(
+                          t.attSuccessGoToDashboard,
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
                           ),
                         ),
-                        SizedBox(width: 8),
-                        Icon(Icons.arrow_forward_rounded,
+                        const SizedBox(width: 8),
+                        const Icon(Icons.arrow_forward_rounded,
                             size: 18, color: Colors.white),
                       ],
                     ),
@@ -215,7 +217,7 @@ class _AttendanceSuccessScreenState extends State<AttendanceSuccessScreen>
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'REDIRECTING IN $_countdown SECONDS',
+                  t.attSuccessRedirecting(_countdown),
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,

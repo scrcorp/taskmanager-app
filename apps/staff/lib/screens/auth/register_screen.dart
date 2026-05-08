@@ -11,8 +11,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/auth_service.dart';
+import '../../widgets/language_switcher.dart';
 
 /// 회원가입 화면 위젯 — IndexedStack으로 5단계를 전환
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -80,11 +82,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   // Step 1 validation
   Future<void> _validateStep1() async {
+    final t = AppL10n.of(context);
     if (!_term1 || !_term2) {
       await AppModal.show(
         context,
-        title: 'Heads up',
-        message: 'Please agree to all required terms.',
+        title: t.commonHeadsUp,
+        message: t.registerTermsRequired,
         type: ModalType.warning,
       );
       return;
@@ -98,6 +101,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   // Step 2: Store loading — login/register와 동일하게 auth_service 내부에서 TokenStorage 사용
   Future<void> _loadStores() async {
+    final t = AppL10n.of(context);
     setState(() { _storesLoading = true; _storesError = null; });
     try {
       final authService = ref.read(authServiceProvider);
@@ -109,7 +113,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (mounted) {
         setState(() {
           _storesLoading = false;
-          _storesError = _parseApiError(e, 'Failed to load stores.');
+          _storesError = _parseApiError(e, t.registerStoresLoadFailed);
         });
       }
     }
@@ -126,11 +130,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _validateStep2() async {
+    final t = AppL10n.of(context);
     if (_selectedStoreIds.isEmpty) {
       await AppModal.show(
         context,
-        title: 'Heads up',
-        message: 'Please select at least one store.',
+        title: t.commonHeadsUp,
+        message: t.registerSelectStoreRequired,
         type: ModalType.warning,
       );
       return;
@@ -140,11 +145,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   // Step 3: Info validation → move to email step
   Future<void> _validateStep3() async {
+    final t = AppL10n.of(context);
     if (_nameCtrl.text.trim().isEmpty) {
       await AppModal.show(
         context,
-        title: 'Heads up',
-        message: 'Please enter your name.',
+        title: t.commonHeadsUp,
+        message: t.registerEnterName,
         type: ModalType.warning,
       );
       return;
@@ -152,8 +158,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (_idCtrl.text.trim().isEmpty) {
       await AppModal.show(
         context,
-        title: 'Heads up',
-        message: 'Please enter a username.',
+        title: t.commonHeadsUp,
+        message: t.registerEnterUsername,
         type: ModalType.warning,
       );
       return;
@@ -161,8 +167,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (_pwCtrl.text.isEmpty) {
       await AppModal.show(
         context,
-        title: 'Heads up',
-        message: 'Please enter a password.',
+        title: t.commonHeadsUp,
+        message: t.registerEnterPassword,
         type: ModalType.warning,
       );
       return;
@@ -170,8 +176,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (_confirmPwCtrl.text != _pwCtrl.text) {
       await AppModal.show(
         context,
-        title: 'Heads up',
-        message: 'Passwords do not match.',
+        title: t.commonHeadsUp,
+        message: t.resetPasswordsMismatchMessage,
         type: ModalType.warning,
       );
       return;
@@ -201,12 +207,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _sendCode() async {
+    final t = AppL10n.of(context);
     final email = _emailCtrl.text.trim();
     if (email.isEmpty || !_emailRegex.hasMatch(email)) {
       await AppModal.show(
         context,
-        title: 'Heads up',
-        message: 'Please enter a valid email address.',
+        title: t.commonHeadsUp,
+        message: t.registerEnterValidEmail,
         type: ModalType.warning,
       );
       return;
@@ -220,21 +227,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         _startTimer();
         await AppModal.show(
           context,
-          title: 'Code Sent',
-          message: 'Verification code sent.',
+          title: t.emailVerifyCodeSentTitle,
+          message: t.emailVerifyCodeSentMessage,
           type: ModalType.success,
         );
       }
     } catch (e) {
       if (mounted) {
         setState(() { _isLoading = false; });
-        final msg = _parseApiError(e, 'Failed to send code. Please try again.');
+        final msg = _parseApiError(e, t.registerCodeSendFailed);
         if (e is DioException && e.response?.statusCode == 409) {
           setState(() { _emailError = msg; });
         } else {
           await AppModal.show(
             context,
-            title: "Couldn't send code",
+            title: t.emailVerifyCodeSendErrorTitle,
             message: msg,
             type: ModalType.error,
           );
@@ -244,12 +251,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Future<void> _verifyCode() async {
+    final t = AppL10n.of(context);
     final code = _codeCtrl.text.trim();
     if (code.isEmpty || code.length != 6) {
       await AppModal.show(
         context,
-        title: 'Heads up',
-        message: 'Please enter the 6-digit code.',
+        title: t.commonHeadsUp,
+        message: t.emailVerifyMissing6Digit,
         type: ModalType.warning,
       );
       return;
@@ -269,8 +277,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         _timer?.cancel();
         AppModal.show(
           context,
-          title: 'Email Verified',
-          message: 'Your email has been verified successfully.',
+          title: t.registerEmailVerifiedTitle,
+          message: t.registerEmailVerifiedMessage,
           type: ModalType.info,
         );
       }
@@ -279,8 +287,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         setState(() => _isLoading = false);
         await AppModal.show(
           context,
-          title: 'Verification Failed',
-          message: _parseApiError(e, 'Verification failed.'),
+          title: t.emailVerifyFailedTitle,
+          message: _parseApiError(e, t.emailVerifyFailedDefault),
           type: ModalType.error,
         );
       }
@@ -289,11 +297,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   /// Email verified → register → complete
   Future<void> _submitRegistration() async {
+    final t = AppL10n.of(context);
     if (!_emailVerified) {
       await AppModal.show(
         context,
-        title: 'Heads up',
-        message: 'Please verify your email first.',
+        title: t.commonHeadsUp,
+        message: t.registerVerifyEmailFirst,
         type: ModalType.warning,
       );
       return;
@@ -313,10 +322,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (success) {
       _nextStep();
     } else {
-      final error = ref.read(authProvider).error ?? 'Registration failed';
+      final error = ref.read(authProvider).error ?? t.registerFailedDefault;
       AppModal.show(
         context,
-        title: 'Registration Failed',
+        title: t.registerFailedTitle,
         message: error,
         type: ModalType.error,
       );
@@ -325,6 +334,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   /// 서버 에러 응답에서 사용자 친화적 메시지 추출
   String _parseApiError(Object e, String fallback) {
+    final t = AppL10n.of(context);
     if (e is DioException && e.response?.data != null) {
       final data = e.response!.data;
       if (data is Map<String, dynamic>) {
@@ -338,14 +348,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     if (e is DioException) {
       final statusCode = e.response?.statusCode;
       if (statusCode != null && statusCode >= 500) {
-        return 'Server error. Please try again later.';
+        return t.errorServerLater;
       }
       if (e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout) {
-        return 'Server not responding. Please try again.';
+        return t.errorServerNotResponding;
       }
       if (e.type == DioExceptionType.connectionError) {
-        return 'No internet connection.';
+        return t.errorNoInternet;
       }
     }
     return fallback;
@@ -358,6 +368,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Scaffold(
       backgroundColor: AppColors.white,
       body: SafeArea(
@@ -380,7 +391,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   const Spacer(),
                   if (_currentStep < 4)
                     Text(
-                      'Register',
+                      t.actionRegister,
                       style: Theme.of(context).textTheme.headlineMedium,
                     )
                   else
@@ -392,7 +403,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       onPressed: _goHome,
                     )
                   else
-                    const SizedBox(width: 48),
+                    const Padding(
+                      padding: EdgeInsets.only(right: 8),
+                      child: LanguageSwitcher(),
+                    ),
                 ],
               ),
             ),
@@ -400,7 +414,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             // Progress bar
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-              child: _StepProgressBar(currentStep: _currentStep, totalSteps: 5),
+              child: _StepProgressBar(
+                currentStep: _currentStep,
+                labels: [
+                  t.registerStepTerms,
+                  t.registerStepStore,
+                  t.registerStepInfo,
+                  t.registerStepEmail,
+                  t.registerStepDone,
+                ],
+              ),
             ),
 
             // Content
@@ -424,15 +447,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   // Step 1: Terms
   Widget _buildStep1() {
+    final t = AppL10n.of(context);
     final allAgreed = _term1 && _term2 && _term3;
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Review the Terms', style: Theme.of(context).textTheme.headlineLarge),
+          Text(t.registerTermsHeading, style: Theme.of(context).textTheme.headlineLarge),
           const SizedBox(height: 8),
-          Text('Please agree to the terms to use the service.', style: Theme.of(context).textTheme.bodyMedium),
+          Text(t.registerTermsSubheading, style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 28),
           Expanded(
             child: SingleChildScrollView(
@@ -445,16 +469,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       color: AppColors.bg,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Text(
-                      'Terms of Service\n\n'
-                      'These terms govern your use of the HTM service. '
-                      'Please read them carefully before using the service.\n\n'
-                      'Article 1 (Purpose)\n'
-                      'These terms define the rights, obligations, and responsibilities '
-                      'between the company and its members regarding the use of the service.\n\n'
-                      'Article 2 (Definitions)\n'
-                      'The definitions of terms used in these terms are as follows.',
-                      style: TextStyle(
+                    child: Text(
+                      t.registerTermsBody,
+                      style: const TextStyle(
                         fontSize: 13,
                         color: Color(0xFF9CA3AF),
                         height: 1.6,
@@ -463,7 +480,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   const SizedBox(height: 24),
                   _TermCheckbox(
-                    label: 'Agree to all terms',
+                    label: t.registerAgreeAll,
                     value: allAgreed,
                     isBold: true,
                     onChanged: (_) {
@@ -477,19 +494,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ),
                   const Divider(height: 24),
                   _TermCheckbox(
-                    label: 'I agree to the Terms of Service. (Required)',
+                    label: t.registerAgreeTos,
                     value: _term1,
                     onChanged: (v) => setState(() => _term1 = v ?? false),
                   ),
                   const SizedBox(height: 12),
                   _TermCheckbox(
-                    label: 'I agree to the Privacy Policy. (Required)',
+                    label: t.registerAgreePrivacy,
                     value: _term2,
                     onChanged: (v) => setState(() => _term2 = v ?? false),
                   ),
                   const SizedBox(height: 12),
                   _TermCheckbox(
-                    label: 'I agree to receive marketing information. (Optional)',
+                    label: t.registerAgreeMarketing,
                     value: _term3,
                     onChanged: (v) => setState(() => _term3 = v ?? false),
                   ),
@@ -499,7 +516,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ),
           const SizedBox(height: 16),
           _BottomButton(
-            label: 'Next',
+            label: t.actionNext,
             onPressed: (_term1 && _term2) ? _validateStep1 : null,
           ),
         ],
@@ -509,16 +526,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   // Step 2: Store Selection
   Widget _buildStep2() {
+    final t = AppL10n.of(context);
     final filtered = _filteredStores;
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Select Your Stores', style: Theme.of(context).textTheme.headlineLarge),
+          Text(t.registerStoresHeading, style: Theme.of(context).textTheme.headlineLarge),
           const SizedBox(height: 8),
           Text(
-            'Choose the stores you work at.\nYou can select multiple stores.',
+            t.registerStoresSubheading,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           if (_selectedStoreIds.isNotEmpty) ...[
@@ -530,7 +548,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
-                '${_selectedStoreIds.length} store${_selectedStoreIds.length > 1 ? 's' : ''} selected',
+                t.registerStoresSelectedCount(_selectedStoreIds.length),
                 style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600, fontSize: 13),
               ),
             ),
@@ -541,7 +559,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             controller: _storeSearchCtrl,
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
-              hintText: 'Search stores...',
+              hintText: t.registerStoresSearchHint,
               prefixIcon: const Icon(Icons.search_rounded, size: 20),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               filled: true,
@@ -570,7 +588,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             const SizedBox(height: 12),
                             Text(_storesError!, style: TextStyle(color: AppColors.textSecondary)),
                             const SizedBox(height: 12),
-                            TextButton(onPressed: _loadStores, child: const Text('Retry')),
+                            TextButton(onPressed: _loadStores, child: Text(t.actionRetry)),
                           ],
                         ),
                       )
@@ -583,8 +601,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 const SizedBox(height: 12),
                                 Text(
                                   _storeSearchCtrl.text.isNotEmpty
-                                      ? 'No stores found for "${_storeSearchCtrl.text}".'
-                                      : 'No stores available.\nPlease contact your manager.',
+                                      ? t.registerStoresNoSearchResult(_storeSearchCtrl.text)
+                                      : t.registerStoresEmpty,
                                   textAlign: TextAlign.center,
                                   style: TextStyle(color: AppColors.textSecondary),
                                 ),
@@ -593,7 +611,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           )
                         : ListView.separated(
                             itemCount: filtered.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 8),
+                            separatorBuilder: (_, _) => const SizedBox(height: 8),
                             itemBuilder: (context, index) {
                               final store = filtered[index];
                               final id = store['id'] as String;
@@ -617,7 +635,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ),
           const SizedBox(height: 12),
           _BottomButton(
-            label: 'Continue',
+            label: t.actionContinue,
             onPressed: _selectedStoreIds.isNotEmpty ? _validateStep2 : null,
           ),
         ],
@@ -627,45 +645,46 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   // Step 3: Info Form
   Widget _buildStep3() {
+    final t = AppL10n.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Tell us about yourself', style: Theme.of(context).textTheme.headlineLarge),
+          Text(t.registerInfoHeading, style: Theme.of(context).textTheme.headlineLarge),
           const SizedBox(height: 8),
-          Text('Enter your basic information to get started.', style: Theme.of(context).textTheme.bodyMedium),
+          Text(t.registerInfoSubheading, style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 28),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _FormLabel('Full Name'),
+                  _FormLabel(t.fieldFullName),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _nameCtrl,
-                    decoration: const InputDecoration(hintText: 'Enter your full name'),
+                    decoration: InputDecoration(hintText: t.hintFullName),
                   ),
                   const SizedBox(height: 20),
-                  const _FormLabel('Username'),
+                  _FormLabel(t.fieldUsername),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _idCtrl,
                     textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(hintText: 'Choose a username'),
+                    decoration: InputDecoration(hintText: t.hintChooseUsername),
                   ),
                   const SizedBox(height: 20),
-                  const _FormLabel('Password'),
+                  _FormLabel(t.fieldPassword),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _pwCtrl,
                     obscureText: true,
                     textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(hintText: 'Enter password'),
+                    decoration: InputDecoration(hintText: t.hintEnterPassword),
                   ),
                   const SizedBox(height: 20),
-                  const _FormLabel('Confirm Password'),
+                  _FormLabel(t.fieldConfirmPassword),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _confirmPwCtrl,
@@ -674,14 +693,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     onSubmitted: (_) => _validateStep3(),
                     onChanged: (_) => setState(() {}),
                     decoration: InputDecoration(
-                      hintText: 'Re-enter your password',
+                      hintText: t.hintReenterPassword,
                       errorText: _confirmPwCtrl.text.isNotEmpty && _confirmPwCtrl.text != _pwCtrl.text
-                          ? 'Passwords do not match'
+                          ? t.passwordsMismatchInline
                           : null,
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const _FormLabel('Preferred Language'),
+                  _FormLabel(t.fieldPreferredLanguage),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
                     value: _preferredLanguage,
@@ -699,7 +718,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          _BottomButton(label: 'Continue', onPressed: _validateStep3),
+          _BottomButton(label: t.actionContinue, onPressed: _validateStep3),
         ],
       ),
     );
@@ -707,21 +726,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   // Step 4: Email Verification (moved from original Step 2)
   Widget _buildStep4() {
+    final t = AppL10n.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Verify Your Email', style: Theme.of(context).textTheme.headlineLarge),
+          Text(t.emailVerifyHeading, style: Theme.of(context).textTheme.headlineLarge),
           const SizedBox(height: 8),
-          Text("We'll send a verification code to your email.", style: Theme.of(context).textTheme.bodyMedium),
+          Text(t.registerEmailSubheading, style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 32),
-          const _FormLabel('Email'),
+          _FormLabel(t.fieldEmail),
           const SizedBox(height: 8),
           _FieldWithButton(
             controller: _emailCtrl,
-            hint: 'example@email.com',
-            buttonLabel: _codeSent ? 'Resend' : 'Send Code',
+            hint: t.hintEmailExample,
+            buttonLabel: _codeSent ? t.actionResend : t.actionSendCode,
             onButtonTap: _emailVerified ? null : _sendCode,
             keyboardType: TextInputType.emailAddress,
             isDone: _emailVerified,
@@ -743,7 +763,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 child: Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
-                    'Change Email',
+                    t.emailVerifyChangeEmail,
                     style: TextStyle(
                       fontSize: 13,
                       color: AppColors.accent,
@@ -769,12 +789,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             ),
           ],
           const SizedBox(height: 20),
-          const _FormLabel('Verification Code'),
+          _FormLabel(t.fieldVerificationCode),
           const SizedBox(height: 8),
           _FieldWithButton(
             controller: _codeCtrl,
-            hint: '6-digit code',
-            buttonLabel: 'Verify',
+            hint: t.hint6DigitCode,
+            buttonLabel: t.actionVerify,
             onButtonTap: _codeSent && !_emailVerified ? _verifyCode : null,
             isDone: _emailVerified,
             enabled: _codeSent && !_emailVerified,
@@ -783,7 +803,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(
-                '⏱ $_timerText remaining',
+                t.emailVerifyTimerRemaining(_timerText),
                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.danger),
               ),
             ),
@@ -796,22 +816,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   color: AppColors.successBg,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text(
-                  '✓ Email verified',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.success),
+                child: Text(
+                  t.registerEmailVerifiedBadge,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.success),
                 ),
               ),
             ),
           if (_codeSent && !_emailVerified) ...[
             const SizedBox(height: 12),
             Text(
-              'Code expires in 5 minutes after sending.',
+              t.registerCodeExpiresHint,
               style: TextStyle(fontSize: 12, color: AppColors.textMuted),
             ),
           ],
           const Spacer(),
           _BottomButton(
-            label: 'Register',
+            label: t.actionRegister,
             onPressed: _emailVerified ? (_isLoading ? null : _submitRegistration) : null,
             isLoading: _isLoading,
           ),
@@ -822,6 +842,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   // Step 5: Completion
   Widget _buildStep5() {
+    final t = AppL10n.of(context);
     final name = _nameCtrl.text.trim();
     final selectedStoreNames = _stores
         .where((s) => _selectedStoreIds.contains(s['id'] as String))
@@ -833,12 +854,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         children: [
           const Spacer(flex: 2),
           Text(
-            'Welcome, $name!',
+            t.registerWelcomeName(name),
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontSize: 28, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 4),
           Text(
-            'Registration Complete',
+            t.registerCompleteTitle,
             style: Theme.of(context).textTheme.headlineLarge?.copyWith(fontSize: 28, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 40),
@@ -905,7 +926,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             const SizedBox(height: 16),
           ],
           Text(
-            'Start using the service right away.',
+            t.registerCompleteMessage,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: AppColors.textSecondary,
                   height: 1.6,
@@ -914,7 +935,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ),
           const Spacer(flex: 3),
           _BottomButton(
-            label: 'Get Started',
+            label: t.actionGetStarted,
             onPressed: _goHome,
           ),
         ],
@@ -929,14 +950,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
 class _StepProgressBar extends StatelessWidget {
   final int currentStep;
-  final int totalSteps;
+  final List<String> labels;
 
-  const _StepProgressBar({required this.currentStep, required this.totalSteps});
-
-  static const _labels = ['Terms', 'Store', 'Info', 'Email', 'Done'];
+  const _StepProgressBar({required this.currentStep, required this.labels});
 
   @override
   Widget build(BuildContext context) {
+    final totalSteps = labels.length;
     return Column(
       children: [
         ClipRRect(
@@ -956,7 +976,7 @@ class _StepProgressBar extends StatelessWidget {
           children: List.generate(totalSteps, (i) {
             final isActive = i <= currentStep;
             return Text(
-              _labels[i],
+              labels[i],
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: i == currentStep ? FontWeight.w700 : FontWeight.w500,
@@ -1110,7 +1130,6 @@ class _FieldWithButton extends StatelessWidget {
   final String hint;
   final String buttonLabel;
   final VoidCallback? onButtonTap;
-  final bool obscureText;
   final TextInputType? keyboardType;
   final bool isDone;
   final bool enabled;
@@ -1120,7 +1139,6 @@ class _FieldWithButton extends StatelessWidget {
     required this.hint,
     required this.buttonLabel,
     this.onButtonTap,
-    this.obscureText = false,
     this.keyboardType,
     this.isDone = false,
     this.enabled = true,
@@ -1134,7 +1152,6 @@ class _FieldWithButton extends StatelessWidget {
         Expanded(
           child: TextField(
             controller: controller,
-            obscureText: obscureText,
             keyboardType: keyboardType,
             enabled: enabled,
             decoration: InputDecoration(hintText: hint),

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/task_provider.dart';
 import '../../models/task.dart';
 import '../../utils/date_utils.dart';
@@ -31,6 +32,7 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final state = ref.watch(taskProvider);
     final filtered = _filter == 'all'
         ? state.tasks
@@ -40,14 +42,14 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
       backgroundColor: AppColors.bg,
       body: Column(
         children: [
-          AppHeader(title: 'Tasks', isDetail: true, onBack: () => context.pop()),
+          AppHeader(title: t.tasksHeader, isDetail: true, onBack: () => context.pop()),
           // Filter row
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: Row(
               children: [
-                const Text('Filter: ',
-                    style: TextStyle(
+                Text(t.tasksFilterLabel,
+                    style: const TextStyle(
                         fontSize: 14, color: AppColors.textSecondary)),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -60,13 +62,13 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
                     value: _filter,
                     underline: const SizedBox(),
                     isDense: true,
-                    items: const [
-                      DropdownMenuItem(value: 'all', child: Text('All')),
-                      DropdownMenuItem(value: 'pending', child: Text('Pending')),
+                    items: [
+                      DropdownMenuItem(value: 'all', child: Text(t.tasksFilterAll)),
+                      DropdownMenuItem(value: 'pending', child: Text(t.tasksFilterPending)),
                       DropdownMenuItem(
-                          value: 'in_progress', child: Text('In Progress')),
+                          value: 'in_progress', child: Text(t.tasksFilterInProgress)),
                       DropdownMenuItem(
-                          value: 'completed', child: Text('Completed')),
+                          value: 'completed', child: Text(t.tasksFilterCompleted)),
                     ],
                     onChanged: (v) => setState(() => _filter = v ?? 'all'),
                   ),
@@ -79,9 +81,9 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen> {
             child: state.isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : filtered.isEmpty
-                    ? const Center(
-                        child: Text('No tasks',
-                            style: TextStyle(color: AppColors.textMuted)))
+                    ? Center(
+                        child: Text(t.tasksEmpty,
+                            style: const TextStyle(color: AppColors.textMuted)))
                     : RefreshIndicator(
                         onRefresh: () =>
                             ref.read(taskProvider.notifier).loadTasks(),
@@ -116,6 +118,7 @@ class _TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: GestureDetector(
@@ -157,7 +160,7 @@ class _TaskCard extends StatelessWidget {
                       children: [
                         if (task.dueDate != null)
                           Text(
-                              'Due: ${formatFixedDate(task.dueDate!)}',
+                              t.tasksDuePrefix(formatFixedDate(task.dueDate!)),
                               style: const TextStyle(
                                   fontSize: 12, color: AppColors.textMuted)),
                         Text(task.statusLabel,

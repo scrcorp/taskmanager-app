@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/alert_provider.dart';
 import '../../widgets/app_header.dart';
 
@@ -55,13 +56,14 @@ class _AlertScreenState extends ConsumerState<AlertScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final state = ref.watch(alertProvider);
 
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: Column(
         children: [
-          AppHeader(title: 'Alerts', isDetail: true, onBack: () => context.pop()),
+          AppHeader(title: t.alertsHeader, isDetail: true, onBack: () => context.pop()),
 
           // Mark all read bar
           if (state.unreadCount > 0)
@@ -71,12 +73,12 @@ class _AlertScreenState extends ConsumerState<AlertScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('${state.unreadCount} unread',
+                  Text(t.alertsUnreadCount(state.unreadCount),
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
                   GestureDetector(
                     onTap: () => ref.read(alertProvider.notifier).markAllAsRead(),
-                    child: const Text('Mark all read',
-                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.accent)),
+                    child: Text(t.alertsMarkAllRead,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.accent)),
                   ),
                 ],
               ),
@@ -89,6 +91,7 @@ class _AlertScreenState extends ConsumerState<AlertScreen> {
   }
 
   Widget _buildBody(AlertState state) {
+    final t = AppL10n.of(context);
     if (state.isLoading && state.alerts.isEmpty) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.accent),
@@ -105,16 +108,16 @@ class _AlertScreenState extends ConsumerState<AlertScreen> {
               const Icon(Icons.error_outline,
                   size: 48, color: AppColors.textMuted),
               const SizedBox(height: 12),
-              const Text(
-                'Failed to load alerts',
-                style: TextStyle(
+              Text(
+                t.alertsLoadFailed,
+                style: const TextStyle(
                     fontSize: 15, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () =>
                     ref.read(alertProvider.notifier).loadAlerts(),
-                child: const Text('Retry'),
+                child: Text(t.actionRetry),
               ),
             ],
           ),
@@ -123,18 +126,18 @@ class _AlertScreenState extends ConsumerState<AlertScreen> {
     }
 
     if (state.alerts.isEmpty) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.notifications_none,
+              const Icon(Icons.notifications_none,
                   size: 48, color: AppColors.textMuted),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               Text(
-                'No alerts yet',
-                style: TextStyle(fontSize: 15, color: AppColors.textSecondary),
+                t.alertsEmpty,
+                style: const TextStyle(fontSize: 15, color: AppColors.textSecondary),
               ),
             ],
           ),
@@ -226,14 +229,16 @@ class _AlertScreenState extends ConsumerState<AlertScreen> {
   }
 
   String _timeAgo(DateTime dt) {
+    final t = AppL10n.of(context);
+    final localeStr = Localizations.localeOf(context).toString();
     final now = DateTime.now();
     final diff = now.difference(dt);
-    if (diff.inSeconds < 60) return 'just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays == 1) return 'yesterday';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-    if (diff.inDays < 30) return '${(diff.inDays / 7).floor()}w ago';
-    return DateFormat('MMM d, yyyy').format(dt);
+    if (diff.inSeconds < 60) return t.timeJustNow;
+    if (diff.inMinutes < 60) return t.timeMinAgo(diff.inMinutes);
+    if (diff.inHours < 24) return t.timeHourAgo(diff.inHours);
+    if (diff.inDays == 1) return t.timeYesterday;
+    if (diff.inDays < 7) return t.timeDayAgo(diff.inDays);
+    if (diff.inDays < 30) return t.timeWeekAgo((diff.inDays / 7).floor());
+    return DateFormat.yMMMd(localeStr).format(dt);
   }
 }

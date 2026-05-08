@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/notice.dart';
 import '../../providers/notice_provider.dart';
 import '../../widgets/app_header.dart';
@@ -29,20 +30,21 @@ class _NoticeListScreenState extends ConsumerState<NoticeListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final state = ref.watch(noticeProvider);
 
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: Column(
         children: [
-          AppHeader(title: 'Notices', isDetail: true, onBack: () => context.pop()),
+          AppHeader(title: t.noticesHeader, isDetail: true, onBack: () => context.pop()),
           Expanded(
             child: state.isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : state.notices.isEmpty
-                    ? const Center(
-                        child: Text('No notices',
-                            style: TextStyle(color: AppColors.textMuted)))
+                    ? Center(
+                        child: Text(t.noticesEmpty,
+                            style: const TextStyle(color: AppColors.textMuted)))
                     : RefreshIndicator(
                         onRefresh: () =>
                             ref.read(noticeProvider.notifier).loadNotices(),
@@ -67,6 +69,8 @@ class _NoticeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
+    final localeStr = Localizations.localeOf(context).toString();
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: GestureDetector(
@@ -117,7 +121,7 @@ class _NoticeCard extends StatelessWidget {
                     Icon(Icons.person_outline,
                         size: 13, color: AppColors.textMuted),
                     const SizedBox(width: 3),
-                    Text(notice.createdByName ?? 'Unknown',
+                    Text(notice.createdByName ?? t.commonUnknown,
                         style: const TextStyle(
                             fontSize: 12, color: AppColors.textMuted)),
                     const SizedBox(width: 8),
@@ -128,7 +132,7 @@ class _NoticeCard extends StatelessWidget {
                   // Date
                   if (notice.createdAt != null)
                     Text(
-                        DateFormat('MMM d, yyyy').format(notice.createdAt!),
+                        DateFormat.yMMMd(localeStr).format(notice.createdAt!),
                         style: const TextStyle(
                             fontSize: 12, color: AppColors.textMuted)),
                 ],

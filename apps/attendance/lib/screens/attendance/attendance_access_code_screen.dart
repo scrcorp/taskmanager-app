@@ -11,7 +11,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/attendance_device_provider.dart';
+import '../../widgets/language_switcher.dart';
 
 /// Access code 화면 사용 목적
 enum AccessCodeMode {
@@ -60,10 +62,11 @@ class _AttendanceAccessCodeScreenState
     if (!mounted) return;
     setState(() => _submitting = false);
     if (!ok) {
-      final error = ref.read(attendanceDeviceProvider).error ?? 'Invalid access code';
+      final t = AppL10n.of(context);
+      final error = ref.read(attendanceDeviceProvider).error ?? t.attAccessCodeInvalid;
       await AppModal.show(
         context,
-        title: 'Couldn\'t register device',
+        title: t.attAccessCodeRegisterFailedTitle,
         message: error,
         type: ModalType.error,
       );
@@ -78,16 +81,28 @@ class _AttendanceAccessCodeScreenState
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final error = ref.watch(attendanceDeviceProvider).error;
     final isReset = widget.mode == AccessCodeMode.reset;
-    final title = isReset ? 'Change Store' : 'Register This Device';
+    final title = isReset
+        ? t.attAccessCodeChangeStoreTitle
+        : t.attAccessCodeRegisterTitle;
     final description = isReset
-        ? 'Enter a new 6-character access code to switch this device to a different store.'
-        : 'Enter the 6-character access code provided by your manager.';
-    final buttonLabel = isReset ? 'Continue' : 'Register Device';
+        ? t.attAccessCodeChangeStoreDescription
+        : t.attAccessCodeRegisterDescription;
+    final buttonLabel = isReset
+        ? t.actionContinue
+        : t.attAccessCodeRegisterButton;
     return Padding(
       padding: const EdgeInsets.all(24),
-      child: Center(
+      child: Stack(
+        children: [
+          const Positioned(
+            top: 0,
+            right: 0,
+            child: LanguageSwitcher(),
+          ),
+          Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
           child: Column(
@@ -180,6 +195,8 @@ class _AttendanceAccessCodeScreenState
             ],
           ),
         ),
+      ),
+        ],
       ),
     );
   }

@@ -1,0 +1,281 @@
+{
+  "@@locale": "es",
+  "appTitle": "HTM Asistencia",
+
+  "actionCancel": "Cancelar",
+  "actionConfirm": "Confirmar",
+  "actionSave": "Guardar",
+  "actionRetry": "Reintentar",
+  "actionClose": "Cerrar",
+  "actionContinue": "Continuar",
+  "actionDone": "Listo",
+
+  "commonHeadsUp": "Atención",
+  "commonSavedTitle": "Guardado",
+  "commonSaveFailedTitle": "No se pudo guardar",
+  "commonComingSoon": "Próximamente",
+  "commonUnknown": "Desconocido",
+  "commonStore": "Tienda",
+  "commonDevice": "Dispositivo",
+  "commonDismiss": "Descartar",
+  "commonRefresh": "Actualizar",
+  "commonSettings": "Ajustes",
+  "commonUntitled": "Sin título",
+
+  "attAccessCodeRegisterTitle": "Registrar este dispositivo",
+  "attAccessCodeRegisterDescription": "Ingresa el código de acceso de 6 caracteres proporcionado por tu gerente.",
+  "attAccessCodeRegisterButton": "Registrar dispositivo",
+  "attAccessCodeChangeStoreTitle": "Cambiar tienda",
+  "attAccessCodeChangeStoreDescription": "Ingresa un nuevo código de acceso de 6 caracteres para cambiar este dispositivo a otra tienda.",
+  "attAccessCodeInvalid": "Código de acceso inválido",
+  "attAccessCodeRegisterFailedTitle": "No se pudo registrar el dispositivo",
+
+  "attStoreSelectTitle": "Seleccionar tienda",
+  "attStoreSelectDeviceNeedsAssignment": "Este dispositivo ({deviceName}) necesita ser asignado a una tienda.",
+  "@attStoreSelectDeviceNeedsAssignment": {
+    "placeholders": {
+      "deviceName": { "type": "String" }
+    }
+  },
+  "attStoreSelectGenericNeedsAssignment": "Este dispositivo necesita ser asignado a una tienda.",
+  "attStoreSelectLoadFailed": "No se pudieron cargar las tiendas del servidor. Mostrando opciones predeterminadas/manuales.",
+  "attStoreSelectEmpty": "No hay tiendas disponibles. Contacta a un administrador.",
+  "attStoreSelectManualLabel": "ID de tienda manual",
+  "attStoreSelectManualHint": "Pegar UUID de tienda (alternativa)",
+  "attStoreSelectAssignButton": "Asignar tienda",
+  "attStoreSelectAssignFailed": "No se pudo asignar la tienda",
+  "attStoreSelectAssignFailedTitle": "No se pudo asignar la tienda",
+
+  "attSettingsTitle": "Ajustes del dispositivo",
+  "attSettingsDeviceLabel": "Dispositivo",
+  "attSettingsStoreLabel": "Tienda",
+  "attSettingsStoreNotAssigned": "Sin asignar",
+  "attSettingsDeviceIdLabel": "ID del dispositivo",
+  "attSettingsLanguageLabel": "Idioma",
+  "attSettingsLanguageEnglish": "English",
+  "attSettingsLanguageSpanish": "Español",
+  "attSettingsChangeStore": "Cambiar tienda",
+  "attSettingsChangeStoreConfirm": "Para cambiar este dispositivo a otra tienda, necesitarás un nuevo código de acceso. Se revocará el registro actual del dispositivo.",
+  "attSettingsKioskLockTitle": "Bloqueo de quiosco",
+  "attSettingsKioskLockOn": "La aplicación está bloqueada. Desactiva para usar el dispositivo libremente.",
+  "attSettingsKioskLockOff": "La aplicación está desbloqueada. Activa para restringir el dispositivo.",
+  "attSettingsKioskEnableTitle": "Activar bloqueo de quiosco",
+  "attSettingsKioskEnableMessage": "Android mostrará un cuadro de diálogo del sistema pidiendo fijar esta aplicación. DEBES tocar \"Entendido\" / \"OK\" para activar el modo quiosco. Si tocas \"No, gracias\", el dispositivo quedará desbloqueado.",
+  "attSettingsKioskNotActiveTitle": "Bloqueo no activo",
+  "attSettingsKioskNotActiveMessage": "Rechazaste el aviso de fijación. El modo quiosco es obligatorio para este dispositivo. Toca Reintentar y confirma el cuadro de diálogo del sistema.",
+  "attSettingsKioskDisableTitle": "Desactivar bloqueo de quiosco",
+  "attSettingsKioskDisableConfirm": "Desbloquear",
+  "attSettingsKioskDisabledTitle": "Quiosco desactivado",
+  "attSettingsKioskDisabledMessage": "El bloqueo de quiosco se reactivará automáticamente en 5 minutos. Actívalo de nuevo en cualquier momento para volver a bloquear de inmediato.",
+  "attSettingsUnregister": "Cancelar registro de este dispositivo",
+  "attSettingsUnregisterConfirmTitle": "Cancelar registro del dispositivo",
+  "attSettingsUnregisterConfirmMessage": "Este dispositivo será eliminado de la organización. Necesitarás un nuevo código de acceso para registrarlo de nuevo.",
+  "attSettingsUnregisterVerifyTitle": "Confirmar cancelación de registro",
+  "attSettingsUnregisterVerifyConfirm": "Cancelar registro",
+  "attSettingsAccessCodePromptTitle": "No se puede continuar",
+  "attSettingsAccessCodePromptMessage": "No hay código de acceso registrado. Vuelve a registrar este dispositivo para habilitar esta acción.",
+  "attSettingsAccessCodeEnter": "Ingresa el código de acceso del dispositivo.",
+  "attSettingsAccessCodeIncorrectTitle": "Código incorrecto",
+  "attSettingsAccessCodeIncorrectMessage": "El código de acceso no coincide.",
+  "attSettingsAccessCodeHint": "ABC123",
+  "attSettingsKioskUnlockedTitle": "Quiosco desbloqueado",
+  "attSettingsKioskUnlockedMessage": "Ahora puedes salir de la aplicación. Vuelve a registrar o reinstala para reactivar el modo quiosco.",
+
+  "attPinHi": "Hola, {name}",
+  "@attPinHi": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "attPinTitle": "Ingresa tu PIN",
+  "attPinSubtitle": "Usa tu número de {length} dígitos para continuar",
+  "@attPinSubtitle": {
+    "placeholders": {
+      "length": { "type": "int" }
+    }
+  },
+  "attPinCancelReturn": "Cancelar y volver",
+  "attPinVerify": "Verificar identidad",
+  "attPinPadClear": "BORRAR",
+  "attPinSecureAccessTitle": "Acceso seguro",
+  "attPinSecureAccessDescription": "La verificación garantiza la seguridad y responsabilidad de todo el personal.",
+  "attPinShiftRecognitionTitle": "Reconocimiento de turno",
+  "attPinShiftRecognitionDescription": "Marcar entrada registra tu presencia para el ciclo actual.",
+  "attPinVerificationFailedTitle": "Verificación fallida",
+  "attPinVerificationFailedMessage": "PIN inválido. Intenta de nuevo.",
+
+  "attSuccessClockIn": "Entrada exitosa",
+  "attSuccessClockOut": "Salida exitosa",
+  "attSuccessShortBreak": "Descanso corto iniciado",
+  "attSuccessLongBreak": "Descanso largo iniciado",
+  "attSuccessBreakEnded": "Descanso terminado",
+  "attSuccessWelcomeBack": "Bienvenido de nuevo",
+  "attSuccessWelcomeBackName": ", ¡{name}!",
+  "@attSuccessWelcomeBackName": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "attSuccessGoToDashboard": "Ir al panel",
+  "attSuccessRedirecting": "REDIRIGIENDO EN {seconds} SEGUNDOS",
+  "@attSuccessRedirecting": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
+
+  "attMainWorkDateLabel": "FECHA DE TRABAJO",
+  "attMainKioskUnlockedTitle": "Quiosco desbloqueado",
+  "attMainKioskUnlockedMessage": "Bloqueo de quiosco desactivado temporalmente. Se reactivará automáticamente en 5 minutos.",
+  "attMainAttendanceLabel": "ASISTENCIA",
+  "attMainSelectNameFirst": "Selecciona tu nombre primero",
+  "attMainShiftCompleted": "Turno ya completado",
+  "attMainTapToChooseAction": "Toca para elegir acción",
+  "attMainSelected": "SELECCIONADO",
+  "attMainClearSelection": "Borrar selección",
+  "attMainChooseAction": "ELEGIR ACCIÓN",
+  "attMainActionClockIn": "ENTRADA",
+  "attMainActionClockInSubtitle": "Iniciar jornada",
+  "attMainActionClockOut": "SALIDA",
+  "attMainActionClockOutSubtitle": "Terminar turno",
+  "attMainActionShortBreak": "DESCANSO CORTO",
+  "attMainActionShortBreakSubtitle": "Pagado · 10 min",
+  "attMainActionLongBreak": "DESCANSO LARGO",
+  "attMainActionLongBreakSubtitle": "No pagado · 30 min",
+  "attMainActionEndBreak": "TERMINAR DESCANSO",
+  "attMainActionEndBreakSubtitle": "Volver al trabajo",
+
+  "attMainClockedIn": "Trabajando",
+  "attMainActiveBadge": "{count} ACTIVOS",
+  "@attMainActiveBadge": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attMainNoOneOnShift": "Nadie está en turno actualmente",
+  "attMainNotClockedIn": "Sin marcar entrada",
+  "attMainNoUpcoming": "No hay turnos próximos",
+  "attMainBadgeUpcoming": "{count} PRÓXIMOS",
+  "@attMainBadgeUpcoming": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attMainBadgeSoon": "{count} PRONTO",
+  "@attMainBadgeSoon": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attMainBadgeLate": "{count} TARDE",
+  "@attMainBadgeLate": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attMainBadgeNoShow": "{count} NO SE PRESENTÓ",
+  "@attMainBadgeNoShow": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attMainBadgeSoonShort": "PRONTO",
+  "attMainBadgeLateShort": "TARDE",
+  "attMainBadgeNoShowShort": "NO SE PRESENTÓ",
+  "attMainClockedOut": "Salidos",
+  "attMainDoneBadge": "{count} TERMINADOS",
+  "@attMainDoneBadge": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attMainNoCompletedShifts": "Aún no hay turnos completados",
+  "attMainCurrentTimeLabel": "HORA ACTUAL",
+  "attMainNoticeBoard": "Tablero de avisos",
+  "attMainNoNotices": "Sin avisos",
+  "attMainNoSchedule": "Sin horario",
+  "attMainClockedInAt": "Entrada a las {time}",
+  "@attMainClockedInAt": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
+  "attMainBreakLong": "Largo no pagado",
+  "attMainBreakShort": "Corto pagado",
+  "attMainBreakOnBreak": "En descanso",
+  "attMainOnBreakWith": "En descanso · {label}",
+  "@attMainOnBreakWith": {
+    "placeholders": {
+      "label": { "type": "String" }
+    }
+  },
+  "attMainLateBadge": "Tarde",
+  "attMainEarlyClockOutTitle": "Saliendo antes de tiempo",
+  "attMainEarlyClockOutMessage": "Tu turno aún tiene {remaining} restantes. ¿Estás seguro de que quieres marcar salida ahora?",
+  "@attMainEarlyClockOutMessage": {
+    "placeholders": {
+      "remaining": { "type": "String" }
+    }
+  },
+  "attMainEarlyClockOutReasonLabel": "Por favor ingresa una razón — requerida para salida temprana.",
+  "attMainEarlyClockOutReasonHint": "ej. Emergencia familiar, no me siento bien",
+  "attMainTimeAgoJustNow": "Justo ahora",
+  "attMainTimeAgoMinutes": "hace {count} min",
+  "@attMainTimeAgoMinutes": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attMainTimeAgoHours": "hace {count}h",
+  "@attMainTimeAgoHours": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attMainTimeAgoDays": "hace {count}d",
+  "@attMainTimeAgoDays": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "attMainDurationHM": "{hours}h {minutes}m",
+  "@attMainDurationHM": {
+    "placeholders": {
+      "hours": { "type": "int" },
+      "minutes": { "type": "int" }
+    }
+  },
+  "attMainDurationM": "{minutes}m",
+  "@attMainDurationM": {
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
+
+  "attUpdateRequiredTitle": "Actualización de la app requerida",
+  "attUpdateRequiredMessage": "Este dispositivo ejecuta {current} pero se requiere {required} o superior para continuar.",
+  "@attUpdateRequiredMessage": {
+    "placeholders": {
+      "current": { "type": "String" },
+      "required": { "type": "String" }
+    }
+  },
+  "attUpdateDownloadButton": "Descargar actualización (v{version})",
+  "@attUpdateDownloadButton": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "attUpdateUnavailableTitle": "Actualización no disponible",
+  "attUpdateUnavailableMessage": "No hay URL de descarga configurada. Contacta a tu administrador.",
+  "attUpdateCannotOpenTitle": "No se puede abrir la descarga",
+  "attUpdateCannotOpenMessage": "No se pudo abrir la URL de descarga.",
+  "attUpdateAvailableBanner": "Actualización disponible: v{latest} (actual v{current})",
+  "@attUpdateAvailableBanner": {
+    "placeholders": {
+      "latest": { "type": "String" },
+      "current": { "type": "String" }
+    }
+  },
+  "attUpdateButton": "Actualizar"
+}

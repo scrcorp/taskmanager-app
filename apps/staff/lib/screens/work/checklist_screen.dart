@@ -14,6 +14,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../models/checklist.dart';
 import '../../models/my_schedule.dart';
 import '../../providers/my_schedule_provider.dart';
@@ -70,10 +71,11 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
   void _showCompletionToast() {
     if (_celebrationShown) return;
     _celebrationShown = true;
+    final t = AppL10n.of(context);
     AppModal.show(
       context,
-      title: 'All Done',
-      message: 'All items completed! Great work.',
+      title: t.checklistAllDoneTitle,
+      message: t.checklistAllDoneMessage,
       type: ModalType.success,
     );
   }
@@ -174,19 +176,21 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
             photoUrls: result.photoUrls,
           );
       if (mounted) {
+        final t = AppL10n.of(context);
         await AppModal.show(
           context,
-          title: 'Resubmitted',
-          message: 'Resubmitted.',
+          title: t.checklistResubmittedTitle,
+          message: t.checklistResubmittedMessage,
           type: ModalType.success,
         );
       }
     } catch (e) {
       if (mounted) {
+        final t = AppL10n.of(context);
         await AppModal.show(
           context,
-          title: "Couldn't resubmit",
-          message: 'Failed to resubmit. Please try again.',
+          title: t.checklistResubmitFailed,
+          message: t.checklistResubmitFailedMessage,
           type: ModalType.error,
         );
       }
@@ -216,10 +220,11 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
           );
     } catch (e) {
       if (mounted) {
+        final t = AppL10n.of(context);
         await AppModal.show(
           context,
-          title: "Couldn't complete",
-          message: 'Failed to complete item. Please try again.',
+          title: t.checklistCompleteFailed,
+          message: t.checklistCompleteFailedMessage,
           type: ModalType.error,
         );
       }
@@ -251,10 +256,11 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
           );
     } catch (e) {
       if (mounted) {
+        final t = AppL10n.of(context);
         await AppModal.show(
           context,
-          title: "Couldn't undo",
-          message: 'Failed to undo. Please try again.',
+          title: t.checklistUndoFailed,
+          message: t.checklistUndoFailedMessage,
           type: ModalType.error,
         );
       }
@@ -265,6 +271,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
 
   /// 체크 해제 확인 다이얼로그
   Future<bool> _showUncompleteDialog(ChecklistItem item) async {
+    final t = AppL10n.of(context);
     return await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -286,13 +293,13 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
                     child: const Icon(Icons.undo_rounded, color: AppColors.warning),
                   ),
                   const SizedBox(height: 14),
-                  const Text(
-                    'Undo Complete',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  Text(
+                    t.checklistUndoCompleteTitle,
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Are you sure you want to undo this item?',
+                    t.checklistUndoCompleteMessage,
                     style: const TextStyle(
                         fontSize: 14, color: AppColors.textSecondary, height: 1.5),
                   ),
@@ -303,11 +310,11 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel'),
+                child: Text(t.actionCancel),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Undo', style: TextStyle(color: AppColors.warning)),
+                child: Text(t.checklistUndoAction, style: const TextStyle(color: AppColors.warning)),
               ),
             ],
           ),
@@ -317,6 +324,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
 
   /// 리뷰 존재로 해제 불가 안내 다이얼로그
   void _showBlockedUncompleteDialog(ChecklistItem item) {
+    final t = AppL10n.of(context);
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -338,14 +346,14 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
                 child: const Icon(Icons.lock_rounded, color: AppColors.warning),
               ),
               const SizedBox(height: 14),
-              const Text(
-                'Cannot Uncheck',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+              Text(
+                t.checklistCannotUncheckTitle,
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Reviewed items cannot be unchecked.',
-                style: TextStyle(
+              Text(
+                t.checklistCannotUncheckMessage,
+                style: const TextStyle(
                     fontSize: 14, color: AppColors.textSecondary, height: 1.5),
               ),
               const SizedBox(height: 20),
@@ -355,7 +363,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Confirm'),
+            child: Text(t.actionConfirm),
           ),
         ],
       ),
@@ -364,6 +372,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
 
   /// 리포트 제출 확인 다이얼로그
   Future<void> _onSendReport() async {
+    final t = AppL10n.of(context);
     final confirmed = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
@@ -385,14 +394,14 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
                     child: const Icon(Icons.send_rounded, color: AppColors.accent),
                   ),
                   const SizedBox(height: 14),
-                  const Text(
-                    'Submit Report',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  Text(
+                    t.checklistSubmitReportTitle,
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Submit checklist completion report? Changes may be restricted after submission.',
-                    style: TextStyle(
+                  Text(
+                    t.checklistSubmitReportMessage,
+                    style: const TextStyle(
                         fontSize: 14, color: AppColors.textSecondary, height: 1.5),
                   ),
                   const SizedBox(height: 20),
@@ -402,11 +411,11 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text('Cancel'),
+                child: Text(t.actionCancel),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Submit', style: TextStyle(color: AppColors.accent)),
+                child: Text(t.checklistSubmitAction, style: const TextStyle(color: AppColors.accent)),
               ),
             ],
           ),
@@ -420,19 +429,21 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
       if (instanceId == null) return;
       await ref.read(myScheduleProvider.notifier).sendReport(instanceId, scheduleId: widget.id);
       if (mounted) {
+        final t2 = AppL10n.of(context);
         await AppModal.show(
           context,
-          title: 'Submitted',
-          message: 'Report submitted.',
+          title: t2.checklistSubmittedTitle,
+          message: t2.checklistSubmittedMessage,
           type: ModalType.success,
         );
       }
     } catch (e) {
       if (mounted) {
+        final t2 = AppL10n.of(context);
         await AppModal.show(
           context,
-          title: "Couldn't submit report",
-          message: 'Failed to submit report. Please try again.',
+          title: t2.checklistSubmitFailed,
+          message: t2.checklistSubmitFailedMessage,
           type: ModalType.error,
         );
       }
@@ -460,10 +471,11 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
       return urls['file_url'];
     } catch (e) {
       if (mounted) {
+        final t = AppL10n.of(context);
         await AppModal.show(
           context,
-          title: "Couldn't upload",
-          message: 'Photo upload failed',
+          title: t.checklistPhotoUploadFailedTitle,
+          message: t.checklistPhotoUploadFailed,
           type: ModalType.error,
         );
       }
@@ -475,6 +487,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
 
   /// 완료 항목 탭 → 제출 내역 보기 다이얼로그
   void _showSubmittedDialog(ChecklistItem item) {
+    final t = AppL10n.of(context);
     final photos = item.photoUrls;
     final note = item.note;
     final reviewStatus = item.reviewResult;
@@ -516,7 +529,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
                         Text(item.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
                         if (reviewStatus != null)
                           Text(
-                            reviewStatus == 'pass' ? 'Approved' : reviewStatus == 'fail' ? 'Rejected' : 'Pending Re-review',
+                            reviewStatus == 'pass' ? t.checklistApproved : reviewStatus == 'fail' ? t.checklistRejected : t.checklistReReviewPending,
                             style: TextStyle(
                               fontSize: 13,
                               color: reviewStatus == 'pass' ? AppColors.success : reviewStatus == 'fail' ? AppColors.danger : AppColors.warning,
@@ -569,9 +582,9 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
               ],
 
               if (photos.isEmpty && (note == null || note.isEmpty))
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 12),
-                  child: Text('No attachments', style: TextStyle(fontSize: 14, color: AppColors.textMuted)),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(t.checklistNoAttachments, style: const TextStyle(fontSize: 14, color: AppColors.textMuted)),
                 ),
 
               // Close button
@@ -587,7 +600,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
                       border: Border.all(color: AppColors.border),
                     ),
                     alignment: Alignment.center,
-                    child: const Text('Close', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                    child: Text(t.actionClose, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
                   ),
                 ),
               ),
@@ -599,6 +612,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
   }
 
   Future<ImageSource?> _showPhotoSourceSheet() {
+    final t = AppL10n.of(context);
     return showDialog<ImageSource>(
       context: context,
       builder: (ctx) => Dialog(
@@ -619,9 +633,9 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
                     color: AppColors.accent, size: 28),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Add Photo',
-                style: TextStyle(
+              Text(
+                t.checklistAddPhoto,
+                style: const TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
                     color: AppColors.text),
@@ -632,7 +646,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
                     borderRadius: BorderRadius.circular(10)),
                 leading: const Icon(Icons.camera_alt_outlined,
                     color: AppColors.accent),
-                title: const Text('Take Photo'),
+                title: Text(t.checklistTakePhoto),
                 onTap: () => Navigator.pop(ctx, ImageSource.camera),
               ),
               ListTile(
@@ -640,13 +654,13 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
                     borderRadius: BorderRadius.circular(10)),
                 leading: const Icon(Icons.photo_library_outlined,
                     color: AppColors.accent),
-                title: const Text('Choose from Gallery'),
+                title: Text(t.checklistChooseGallery),
                 onTap: () => Navigator.pop(ctx, ImageSource.gallery),
               ),
               const SizedBox(height: 4),
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel'),
+                child: Text(t.actionCancel),
               ),
             ],
           ),
@@ -657,6 +671,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final state = ref.watch(myScheduleProvider);
     final schedule = state.selected;
 
@@ -692,7 +707,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
           body: Column(
             children: [
               AppHeader(
-                title: schedule?.store.name ?? 'Checklist',
+                title: schedule?.store.name ?? t.checklistTitle,
                 isDetail: true,
                 onBack: () => context.pop(),
               ),
@@ -706,9 +721,9 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text(
-                            'Failed to load schedule',
-                            style: TextStyle(
+                          Text(
+                            t.checklistFailedToLoad,
+                            style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                               color: AppColors.danger,
@@ -719,7 +734,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
                             onPressed: () => ref
                                 .read(myScheduleProvider.notifier)
                                 .loadSchedule(widget.id),
-                            child: const Text('Retry'),
+                            child: Text(t.actionRetry),
                           ),
                         ],
                       ),
@@ -727,7 +742,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
                   ),
                 )
               else if (schedule == null)
-                const Expanded(child: Center(child: Text('Schedule not found.')))
+                Expanded(child: Center(child: Text(t.checklistNotFound)))
               else ...[
                 // Progress section
                 _ProgressSection(schedule: schedule),
@@ -793,15 +808,15 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
         if (_isUploading)
           Container(
             color: Colors.black26,
-            child: const Center(
+            child: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircularProgressIndicator(color: AppColors.accent),
-                  SizedBox(height: 12),
+                  const CircularProgressIndicator(color: AppColors.accent),
+                  const SizedBox(height: 12),
                   Text(
-                    'Uploading photo...',
-                    style: TextStyle(
+                    t.checklistUploading,
+                    style: const TextStyle(
                         color: AppColors.white,
                         fontSize: 14,
                         fontWeight: FontWeight.w600),
@@ -815,15 +830,16 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
   }
 
   String _emptyMessage(_ChecklistFilter filter) {
+    final t = AppL10n.of(context);
     switch (filter) {
       case _ChecklistFilter.todo:
-        return 'No pending items.';
+        return t.checklistEmptyPending;
       case _ChecklistFilter.done:
-        return 'No completed items.';
+        return t.checklistEmptyCompleted;
       case _ChecklistFilter.rejected:
-        return 'No rejected items.';
+        return t.checklistEmptyRejected;
       case _ChecklistFilter.all:
-        return 'No checklist items.';
+        return t.checklistEmptyAll;
     }
   }
 }
@@ -837,6 +853,7 @@ class _ProgressSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final snapshot = schedule.checklistSnapshot;
     final completed = snapshot?.completedItems ?? 0;
     final total = snapshot?.totalItems ?? 0;
@@ -867,7 +884,7 @@ class _ProgressSection extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                isComplete ? 'Complete' : 'In Progress',
+                isComplete ? t.checklistComplete : t.checklistInProgress,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -875,7 +892,7 @@ class _ProgressSection extends StatelessWidget {
                 ),
               ),
               Text(
-                '$completed/$total items',
+                t.checklistItemsCount(completed, total),
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -921,6 +938,7 @@ class _FilterTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Container(
       color: AppColors.white,
       child: TabBar(
@@ -933,10 +951,10 @@ class _FilterTabBar extends StatelessWidget {
         unselectedLabelStyle:
             const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         tabs: [
-          _TabItem(label: 'All', count: allCount, isDanger: false),
-          _TabItem(label: 'Todo', count: todoCount, isDanger: false),
-          _TabItem(label: 'Done', count: doneCount, isDanger: false),
-          _TabItem(label: 'Rejected', count: rejectedCount, isDanger: rejectedCount > 0),
+          _TabItem(label: t.checklistTabAll, count: allCount, isDanger: false),
+          _TabItem(label: t.checklistTabTodo, count: todoCount, isDanger: false),
+          _TabItem(label: t.checklistTabDone, count: doneCount, isDanger: false),
+          _TabItem(label: t.checklistTabRejected, count: rejectedCount, isDanger: rejectedCount > 0),
         ],
       ),
     );
@@ -1015,6 +1033,7 @@ class _ChecklistItemTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       child: InkWell(
@@ -1047,7 +1066,7 @@ class _ChecklistItemTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Badges row — above title
-                  _buildBadgesRow(),
+                  _buildBadgesRow(t),
                   // Title
                   Text(
                     item.title,
@@ -1113,15 +1132,15 @@ class _ChecklistItemTile extends StatelessWidget {
                         border: Border.all(
                             color: AppColors.danger.withOpacity(0.3)),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.redo_rounded,
+                          const Icon(Icons.redo_rounded,
                               size: 12, color: AppColors.danger),
-                          SizedBox(width: 4),
+                          const SizedBox(width: 4),
                           Text(
-                            'Resubmit Required',
-                            style: TextStyle(
+                            t.checklistResubmitRequired,
+                            style: const TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
                                 color: AppColors.danger),
@@ -1199,13 +1218,13 @@ class _ChecklistItemTile extends StatelessWidget {
     );
   }
 
-  Widget _buildBadgesRow() {
+  Widget _buildBadgesRow(AppL10n t) {
     final badges = <Widget>[];
 
     // Recurrence badge — daily or specific days
     if (item.recurrenceType != null) {
       badges.add(_Badge(
-        label: item.isWeekly ? '📅 ${item.recurrenceLabel}' : '📅 Daily',
+        label: item.isWeekly ? '📅 ${item.recurrenceLabel}' : '📅 ${t.checklistBadgeDaily}',
         bgColor: const Color(0xFFEDE9FE),
         textColor: const Color(0xFF6D28D9),
       ));
@@ -1213,7 +1232,7 @@ class _ChecklistItemTile extends StatelessWidget {
 
     if (item.requiresPhoto) {
       badges.add(_Badge(
-        label: '📷 Photo',
+        label: '📷 ${t.checklistBadgePhoto}',
         bgColor: item.hasPhotos ? AppColors.successBg : AppColors.border,
         textColor: item.hasPhotos ? const Color(0xFF008F76) : AppColors.textMuted,
       ));
@@ -1221,7 +1240,7 @@ class _ChecklistItemTile extends StatelessWidget {
 
     if (item.requiresComment) {
       badges.add(_Badge(
-        label: '📝 Text',
+        label: '📝 ${t.checklistBadgeText}',
         bgColor: (item.note?.isNotEmpty == true)
             ? AppColors.successBg
             : AppColors.border,
@@ -1232,16 +1251,16 @@ class _ChecklistItemTile extends StatelessWidget {
     }
 
     if (item.isApproved) {
-      badges.add(const _Badge(
-        label: 'Approved',
+      badges.add(_Badge(
+        label: t.checklistApproved,
         bgColor: AppColors.successBg,
-        textColor: Color(0xFF008F76),
+        textColor: const Color(0xFF008F76),
       ));
     } else if (item.isPendingReReview) {
-      badges.add(const _Badge(
-        label: 'Re-review Pending',
+      badges.add(_Badge(
+        label: t.checklistReReviewPending,
         bgColor: AppColors.warningBg,
-        textColor: Color(0xFFC07C00),
+        textColor: const Color(0xFFC07C00),
       ));
     }
 
@@ -1267,6 +1286,7 @@ class _ExpandableDescriptionState extends State<_ExpandableDescription> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return GestureDetector(
       onTap: () => setState(() => _expanded = !_expanded),
       child: Row(
@@ -1284,9 +1304,9 @@ class _ExpandableDescriptionState extends State<_ExpandableDescription> {
                     widget.description,
                     style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
                   )
-                : const Text(
-                    'Tap to view description',
-                    style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                : Text(
+                    t.checklistTapToView,
+                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
                   ),
           ),
         ],
@@ -1339,11 +1359,12 @@ class _SendReportBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final label = isAllPassed
-        ? 'All Reviewed'
+        ? t.checklistAllReviewed
         : isReported
-            ? 'Report Submitted'
-            : 'Submit Report';
+            ? t.checklistReportSubmitted
+            : t.checklistSubmitReport;
     final icon = isAllPassed
         ? Icons.verified_rounded
         : isReported
@@ -1536,7 +1557,8 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
     if (remaining <= 0) return;
     final trimmed = picked.take(remaining).toList();
     if (trimmed.length < picked.length && mounted) {
-      ToastManager().info(context, 'Only $remaining more photo(s) allowed (max $_maxPhotos)');
+      final t = AppL10n.of(context);
+      ToastManager().info(context, t.checklistMorePhotosAllowed(remaining, _maxPhotos));
     }
 
     setState(() => _isUploading = true);
@@ -1555,10 +1577,11 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
       _saveDraft();
     } catch (e) {
       if (mounted) {
+        final t = AppL10n.of(context);
         await AppModal.show(
           context,
-          title: "Couldn't upload",
-          message: 'Photo upload failed',
+          title: t.checklistPhotoUploadFailedTitle,
+          message: t.checklistPhotoUploadFailed,
           type: ModalType.error,
         );
       }
@@ -1575,11 +1598,12 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
   }
 
   void _showPhotoSource() async {
+    final t = AppL10n.of(context);
     if (_photoMaxReached) {
       await AppModal.show(
         context,
-        title: 'Limit reached',
-        message: 'Maximum $_maxPhotos photos allowed',
+        title: t.checklistMaxPhotosTitle,
+        message: t.checklistMaxPhotosMessage(_maxPhotos),
         type: ModalType.error,
       );
       return;
@@ -1602,24 +1626,24 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
                 child: const Icon(Icons.camera_alt_rounded, color: AppColors.accent, size: 28),
               ),
               const SizedBox(height: 16),
-              const Text('Add Photo', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+              Text(t.checklistAddPhoto, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
               const SizedBox(height: 16),
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: AppColors.accent),
-                title: const Text('Take Photo'),
+                title: Text(t.checklistTakePhoto),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 onTap: () => Navigator.pop(ctx, ImageSource.camera),
               ),
               ListTile(
                 leading: const Icon(Icons.photo_library, color: AppColors.accent),
-                title: const Text('Choose from Gallery'),
+                title: Text(t.checklistChooseGallery),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 onTap: () => Navigator.pop(ctx, ImageSource.gallery),
               ),
               const SizedBox(height: 8),
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+                child: Text(t.actionCancel, style: const TextStyle(color: AppColors.textSecondary)),
               ),
             ],
           ),
@@ -1642,6 +1666,7 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final needsPhoto = item.requiresPhoto;
     final needsText = item.requiresComment;
     final hasInputs = needsPhoto || needsText;
@@ -1680,7 +1705,7 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        widget.isResubmit ? 'Resubmit Item' : 'Complete Item',
+                        widget.isResubmit ? t.checklistResubmitItem : t.checklistCompleteItem,
                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
                       ),
                     ],
@@ -1722,12 +1747,12 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
                           const Icon(Icons.camera_alt_rounded, size: 16, color: AppColors.textSecondary),
                           const SizedBox(width: 6),
                           Text(
-                            'Photo',
+                            t.checklistPhoto,
                             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.text),
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            '${_photoUrls.length}/$_minPhotos min, $_maxPhotos max',
+                            t.checklistPhotoCount(_photoUrls.length, _minPhotos, _maxPhotos),
                             style: TextStyle(
                               fontSize: 11, fontWeight: FontWeight.w600,
                               color: _photoMet ? AppColors.success : AppColors.warning,
@@ -1755,11 +1780,11 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
                                       border: Border.all(color: AppColors.border, width: 1.5),
                                       color: AppColors.white,
                                     ),
-                                    child: const Column(
+                                    child: Column(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        Icon(Icons.add, color: AppColors.textMuted, size: 20),
-                                        Text('Add', style: TextStyle(fontSize: 10, color: AppColors.textMuted)),
+                                        const Icon(Icons.add, color: AppColors.textMuted, size: 20),
+                                        Text(t.checklistAddShort, style: const TextStyle(fontSize: 10, color: AppColors.textMuted)),
                                       ],
                                     ),
                                   ),
@@ -1816,12 +1841,12 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
                             ),
                             child: _isUploading
                                 ? const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)))
-                                : const Row(
+                                : Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.camera_alt_outlined, color: AppColors.textMuted, size: 20),
-                                      SizedBox(width: 8),
-                                      Text('Tap to add photo', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+                                      const Icon(Icons.camera_alt_outlined, color: AppColors.textMuted, size: 20),
+                                      const SizedBox(width: 8),
+                                      Text(t.checklistTapToAddPhoto, style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
                                     ],
                                   ),
                           ),
@@ -1854,12 +1879,12 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
                           const Icon(Icons.edit_note_rounded, size: 16, color: AppColors.textSecondary),
                           const SizedBox(width: 6),
                           Text(
-                            'Note',
+                            t.checklistNote,
                             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.text),
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            needsText ? 'required' : 'optional',
+                            needsText ? t.checklistRequired : t.checklistOptional,
                             style: TextStyle(
                               fontSize: 11, fontWeight: FontWeight.w600,
                               color: needsText ? ((_noteMet) ? AppColors.success : AppColors.warning) : AppColors.textMuted,
@@ -1873,7 +1898,7 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
                         maxLines: 3,
                         onChanged: (_) { setState(() {}); _saveDraft(); },
                         decoration: InputDecoration(
-                          hintText: needsText ? 'Enter note...' : 'Optional note...',
+                          hintText: needsText ? t.checklistEnterNote : t.checklistOptionalNote,
                           hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
                           filled: true, fillColor: AppColors.white,
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -1921,7 +1946,7 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
                           border: Border.all(color: AppColors.border),
                         ),
                         alignment: Alignment.center,
-                        child: const Text('Cancel', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
+                        child: Text(t.actionCancel, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
                       ),
                     ),
                   ),
@@ -1937,7 +1962,7 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
                         ),
                         alignment: Alignment.center,
                         child: Text(
-                          _isSubmitting ? 'Submitting...' : (widget.isResubmit ? 'Resubmit' : 'Complete'),
+                          _isSubmitting ? t.checklistSubmitting : (widget.isResubmit ? t.checklistResubmit : t.checklistCompleteAction),
                           style: TextStyle(
                             fontSize: 15, fontWeight: FontWeight.w700,
                             color: (_canSubmit && !_isUploading && !_isSubmitting) ? AppColors.white : AppColors.textMuted,

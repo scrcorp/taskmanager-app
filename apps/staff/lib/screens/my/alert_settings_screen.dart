@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../services/auth_service.dart';
 import '../../widgets/app_header.dart';
 
@@ -50,7 +51,7 @@ class _AlertSettingsScreenState extends ConsumerState<AlertSettingsScreen> {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _loadError = "Couldn't load alert settings.";
+        _loadError = AppL10n.of(context).alertSettingsLoadFailed;
       });
     }
   }
@@ -98,6 +99,7 @@ class _AlertSettingsScreenState extends ConsumerState<AlertSettingsScreen> {
   }
 
   Future<void> _save() async {
+    final t = AppL10n.of(context);
     setState(() => _saving = true);
     try {
       // 클라가 명시한 값만 보냄 — 빈 entry 카테고리는 default(=on)로 복귀
@@ -117,8 +119,8 @@ class _AlertSettingsScreenState extends ConsumerState<AlertSettingsScreen> {
       });
       await AppModal.show(
         context,
-        title: 'Saved',
-        message: 'Alert preferences updated.',
+        title: t.commonSavedTitle,
+        message: t.alertSettingsSaved,
         type: ModalType.success,
       );
     } catch (e) {
@@ -126,20 +128,21 @@ class _AlertSettingsScreenState extends ConsumerState<AlertSettingsScreen> {
       setState(() => _saving = false);
       await AppModal.show(
         context,
-        title: "Couldn't save",
-        message: 'Please check your connection and try again.',
+        title: t.commonSaveFailedTitle,
+        message: t.commonConnectionError,
         type: ModalType.error,
       );
     }
   }
 
   Future<void> _resetToDefault() async {
+    final t = AppL10n.of(context);
     final ok = await AppModal.show(
       context,
-      title: 'Reset to default?',
-      message: 'All categories will be turned back on. You can adjust them again later.',
+      title: t.alertSettingsResetTitle,
+      message: t.alertSettingsResetMessage,
       type: ModalType.confirm,
-      confirmText: 'Reset',
+      confirmText: t.actionReset,
     );
     if (ok != true) return;
     setState(() => _local = {});
@@ -147,12 +150,13 @@ class _AlertSettingsScreenState extends ConsumerState<AlertSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: Column(
         children: [
           AppHeader(
-            title: 'Alert Settings',
+            title: t.alertSettingsHeader,
             isDetail: true,
             onBack: () => Navigator.of(context).pop(),
           ),
@@ -164,6 +168,7 @@ class _AlertSettingsScreenState extends ConsumerState<AlertSettingsScreen> {
   }
 
   Widget _buildBody() {
+    final t = AppL10n.of(context);
     if (_loading) {
       return const Center(child: CircularProgressIndicator(color: AppColors.accent));
     }
@@ -176,7 +181,7 @@ class _AlertSettingsScreenState extends ConsumerState<AlertSettingsScreen> {
             children: [
               Text(_loadError!, style: const TextStyle(color: AppColors.danger)),
               const SizedBox(height: 12),
-              OutlinedButton(onPressed: _load, child: const Text('Retry')),
+              OutlinedButton(onPressed: _load, child: Text(t.actionRetry)),
             ],
           ),
         ),
@@ -216,7 +221,7 @@ class _AlertSettingsScreenState extends ConsumerState<AlertSettingsScreen> {
           child: TextButton.icon(
             onPressed: _local.isEmpty ? null : _resetToDefault,
             icon: const Icon(Icons.refresh, size: 16),
-            label: const Text('Reset to default'),
+            label: Text(t.alertSettingsResetButton),
             style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
           ),
         ),
@@ -225,6 +230,7 @@ class _AlertSettingsScreenState extends ConsumerState<AlertSettingsScreen> {
   }
 
   Widget _buildFooter() {
+    final t = AppL10n.of(context);
     return Container(
       decoration: BoxDecoration(
         color: AppColors.white,
@@ -248,7 +254,7 @@ class _AlertSettingsScreenState extends ConsumerState<AlertSettingsScreen> {
                     width: 18, height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                : const Text('Save', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                : Text(t.actionSave, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
           ),
         ),
       ),
@@ -261,9 +267,10 @@ class _IntroText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Text(
-      'Choose which categories you receive in the app and via email. A dash (—) means email isn\'t available for that category.',
-      style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+    final t = AppL10n.of(context);
+    return Text(
+      t.alertSettingsIntro,
+      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
     );
   }
 }
@@ -273,6 +280,7 @@ class _GridHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: const BoxDecoration(
@@ -280,14 +288,14 @@ class _GridHeader extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
       child: Row(
-        children: const [
-          Expanded(child: SizedBox()),
+        children: [
+          const Expanded(child: SizedBox()),
           SizedBox(
             width: 56,
             child: Text(
-              'IN-APP',
+              t.alertSettingsHeaderInApp,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted,
                 letterSpacing: 1,
               ),
@@ -296,9 +304,9 @@ class _GridHeader extends StatelessWidget {
           SizedBox(
             width: 56,
             child: Text(
-              'EMAIL',
+              t.alertSettingsHeaderEmail,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted,
                 letterSpacing: 1,
               ),

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
+import '../../l10n/app_localizations.dart';
 import '../../providers/daily_report_provider.dart';
 import '../../models/daily_report.dart';
 import '../../utils/date_utils.dart';
@@ -33,6 +34,7 @@ class _DailyReportListScreenState
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     final state = ref.watch(dailyReportProvider);
     final filtered = _filter == 'all'
         ? state.reports
@@ -43,7 +45,7 @@ class _DailyReportListScreenState
       body: Column(
         children: [
           AppHeader(
-            title: 'Daily Reports',
+            title: t.dailyReportsHeader,
             isDetail: true,
             onBack: () => context.pop(),
           ),
@@ -52,8 +54,8 @@ class _DailyReportListScreenState
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: Row(
               children: [
-                const Text('Filter: ',
-                    style: TextStyle(
+                Text(t.tasksFilterLabel,
+                    style: const TextStyle(
                         fontSize: 14, color: AppColors.textSecondary)),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -66,11 +68,11 @@ class _DailyReportListScreenState
                     value: _filter,
                     underline: const SizedBox(),
                     isDense: true,
-                    items: const [
-                      DropdownMenuItem(value: 'all', child: Text('All')),
-                      DropdownMenuItem(value: 'draft', child: Text('Draft')),
+                    items: [
+                      DropdownMenuItem(value: 'all', child: Text(t.tasksFilterAll)),
+                      DropdownMenuItem(value: 'draft', child: Text(t.dailyReportsFilterDraft)),
                       DropdownMenuItem(
-                          value: 'submitted', child: Text('Submitted')),
+                          value: 'submitted', child: Text(t.dailyReportsFilterSubmitted)),
                     ],
                     onChanged: (v) => setState(() => _filter = v ?? 'all'),
                   ),
@@ -83,9 +85,9 @@ class _DailyReportListScreenState
             child: state.isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : filtered.isEmpty
-                    ? const Center(
-                        child: Text('No reports yet',
-                            style: TextStyle(color: AppColors.textMuted)))
+                    ? Center(
+                        child: Text(t.dailyReportsEmpty,
+                            style: const TextStyle(color: AppColors.textMuted)))
                     : RefreshIndicator(
                         onRefresh: () =>
                             ref.read(dailyReportProvider.notifier).loadReports(),

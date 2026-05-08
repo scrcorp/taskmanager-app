@@ -11,6 +11,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:htm_core/htm_core.dart';
+import '../l10n/app_localizations.dart';
 import '../services/attendance_device_service.dart';
 
 class AppVersionStatus {
@@ -72,12 +73,13 @@ class UpdateBlockerScreen extends StatelessWidget {
   const UpdateBlockerScreen({super.key, required this.status});
 
   Future<void> _onDownload(BuildContext context) async {
+    final t = AppL10n.of(context);
     final url = status.downloadUrl;
     if (url == null || url.isEmpty) {
       await AppModal.show(
         context,
-        title: 'Update Unavailable',
-        message: 'No download URL configured. Contact your administrator.',
+        title: t.attUpdateUnavailableTitle,
+        message: t.attUpdateUnavailableMessage,
         type: ModalType.info,
       );
       return;
@@ -87,8 +89,8 @@ class UpdateBlockerScreen extends StatelessWidget {
     if (!ok && context.mounted) {
       await AppModal.show(
         context,
-        title: 'Cannot Open Download',
-        message: 'Failed to launch the download URL.',
+        title: t.attUpdateCannotOpenTitle,
+        message: t.attUpdateCannotOpenMessage,
         type: ModalType.info,
       );
     }
@@ -96,6 +98,7 @@ class UpdateBlockerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
@@ -114,10 +117,10 @@ class UpdateBlockerScreen extends StatelessWidget {
                     color: AppColors.accent,
                   ),
                   const SizedBox(height: 24),
-                  const Text(
-                    'App Update Required',
+                  Text(
+                    t.attUpdateRequiredTitle,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w800,
                       color: AppColors.text,
@@ -125,7 +128,10 @@ class UpdateBlockerScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'This device is running ${status.current} but ${status.minVersion} or higher is required to continue.',
+                    t.attUpdateRequiredMessage(
+                      status.current,
+                      status.minVersion ?? '?',
+                    ),
                     textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 14,
@@ -156,7 +162,7 @@ class UpdateBlockerScreen extends StatelessWidget {
                     onPressed: () => _onDownload(context),
                     icon: const Icon(Icons.download),
                     label: Text(
-                      'Download Update (v${status.latestVersion ?? "?"})',
+                      t.attUpdateDownloadButton(status.latestVersion ?? '?'),
                     ),
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -189,6 +195,7 @@ class UpdateAvailableBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Material(
       color: AppColors.accentBg,
       child: Padding(
@@ -200,7 +207,10 @@ class UpdateAvailableBanner extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Update available: v${status.latestVersion} (current v${status.current})',
+                t.attUpdateAvailableBanner(
+                  status.latestVersion ?? '?',
+                  status.current,
+                ),
                 style: const TextStyle(
                   fontSize: 13,
                   color: AppColors.text,
@@ -210,12 +220,12 @@ class UpdateAvailableBanner extends StatelessWidget {
             ),
             TextButton(
               onPressed: () => _onDownload(context),
-              child: const Text('Update'),
+              child: Text(t.attUpdateButton),
             ),
             IconButton(
               onPressed: onDismiss,
               icon: const Icon(Icons.close, size: 18),
-              tooltip: 'Dismiss',
+              tooltip: t.commonDismiss,
             ),
           ],
         ),

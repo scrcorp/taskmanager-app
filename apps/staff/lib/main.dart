@@ -4,10 +4,13 @@
 /// ProviderScope로 전역 상태관리를 초기화하고,
 /// 앱 시작 시 저장된 토큰으로 인증 상태를 자동 확인한다.
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
 import 'config/router.dart';
+import 'l10n/app_localizations.dart';
 import 'providers/auth_provider.dart';
+import 'providers/locale_provider.dart';
 import 'utils/web_title.dart';
 
 // 환경별 브라우저 탭 타이틀
@@ -51,12 +54,21 @@ class _HtmAppState extends ConsumerState<HtmApp> {
   Widget build(BuildContext context) {
     // GoRouter 인스턴스를 구독 (인증 상태 변경 시 리다이렉트 자동 반영)
     final router = ref.watch(routerProvider);
+    final locale = ref.watch(localeProvider);
 
     return MaterialApp.router(
       title: appTitle,
       theme: AppTheme.light,
       routerConfig: router,
       debugShowCheckedModeBanner: false,
+      locale: locale,
+      supportedLocales: supportedLocales,
+      localizationsDelegates: const [
+        AppL10n.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
     );
   }
 }
