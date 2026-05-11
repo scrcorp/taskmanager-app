@@ -113,7 +113,7 @@ class AttendanceDeviceService {
 
   /// Break Start — user_id + 6자리 PIN으로 휴식 시작
   ///
-  /// [breakType] — 'paid_short' (10분 유급) 또는 'unpaid_long' (30분 무급)
+  /// [breakType] — 'paid_10min' (10분 유급) 또는 'unpaid_meal' (무급 식사)
   Future<Map<String, dynamic>> breakStart({
     required String userId,
     required String pin,

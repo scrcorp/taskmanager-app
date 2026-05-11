@@ -3,8 +3,8 @@
 /// 좌측: Shift Actions (선택된 직원의 상태별 가능 액션만 활성)
 ///   - Clock In
 ///   - Clock Out
-///   - Short Break (Paid, 10 min)
-///   - Long Break (Unpaid, 30 min)
+///   - 10min Break (Paid)
+///   - Meal Break (Unpaid)
 ///   - End Break
 /// 중앙: Currently On Shift + Schedule (today-staff API, 각 row 탭 선택)
 /// 우측: Current Time (실시간) + Notice Board (notices API)
@@ -54,14 +54,14 @@ extension AttendanceActionX on AttendanceAction {
     }
   }
 
-  /// break-start 에 첨부할 break_type ('paid_short' | 'unpaid_long')
+  /// break-start 에 첨부할 break_type ('paid_10min' | 'unpaid_meal')
   /// 그 외 action 은 null
   String? get breakType {
     switch (this) {
       case AttendanceAction.breakShortPaid:
-        return 'paid_short';
+        return 'paid_10min';
       case AttendanceAction.breakLongUnpaid:
-        return 'unpaid_long';
+        return 'unpaid_meal';
       case AttendanceAction.clockIn:
       case AttendanceAction.clockOut:
       case AttendanceAction.breakEnd:
@@ -77,9 +77,9 @@ extension AttendanceActionX on AttendanceAction {
       case AttendanceAction.clockOut:
         return 'Clock Out';
       case AttendanceAction.breakShortPaid:
-        return 'Short Break';
+        return '10min Break';
       case AttendanceAction.breakLongUnpaid:
-        return 'Long Break';
+        return 'Meal Break';
       case AttendanceAction.breakEnd:
         return 'End Break';
     }
@@ -201,7 +201,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
   /// 유저 상태 기준으로 특정 액션이 활성화 가능한지 판단.
   /// 상태 매핑:
   ///   - upcoming / soon / late / no_show → Clock In
-  ///   - working                          → Clock Out, Short Break, Long Break
+  ///   - working                          → Clock Out, 10min Break, Meal Break
   ///   - on_break                         → End Break, Clock Out
   ///   - clocked_out / cancelled          → (모두 비활성)
   bool _isActionAllowed(AttendanceAction action, String status, {bool clockedIn = false}) {
@@ -677,7 +677,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
 
     final actionEntries = <(
       AttendanceAction,
-      IconData,
+      Widget Function(Color, double),
       String,
       String,
       Color,
@@ -685,7 +685,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     )>[
       (
         AttendanceAction.clockIn,
-        Icons.login_rounded,
+        (c, s) => Icon(Icons.login_rounded, color: c, size: s),
         t.attMainActionClockIn,
         t.attMainActionClockInSubtitle,
         AppColors.accent,
@@ -693,7 +693,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
       ),
       (
         AttendanceAction.clockOut,
-        Icons.logout_rounded,
+        (c, s) => Icon(Icons.logout_rounded, color: c, size: s),
         t.attMainActionClockOut,
         t.attMainActionClockOutSubtitle,
         AppColors.textSecondary,
@@ -701,7 +701,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
       ),
       (
         AttendanceAction.breakShortPaid,
-        Icons.coffee_rounded,
+        _build10minClockIcon,
         t.attMainActionShortBreak,
         t.attMainActionShortBreakSubtitle,
         AppColors.warning,
@@ -709,7 +709,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
       ),
       (
         AttendanceAction.breakLongUnpaid,
-        Icons.free_breakfast_rounded,
+        (c, s) => Icon(Icons.restaurant_rounded, color: c, size: s),
         t.attMainActionLongBreak,
         t.attMainActionLongBreakSubtitle,
         AppColors.warning,
@@ -717,7 +717,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
       ),
       (
         AttendanceAction.breakEnd,
-        Icons.play_circle_outline_rounded,
+        (c, s) => Icon(Icons.play_circle_outline_rounded, color: c, size: s),
         t.attMainActionEndBreak,
         t.attMainActionEndBreakSubtitle,
         AppColors.success,
@@ -795,7 +795,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                             SizedBox(
                               width: 200,
                               child: _ShiftActionButton(
-                                icon: entry.$2,
+                                iconBuilder: entry.$2,
                                 label: entry.$3,
                                 subtitle: entry.$4,
                                 color: entry.$5,
@@ -1440,9 +1440,11 @@ class _OnShiftCard extends StatelessWidget {
   }
 
   Widget _buildBreakBadge(AppL10n t, TodayStaffBreak? br) {
-    final label = br?.breakType == 'unpaid_long'
+    // dual-read: 신규(paid_10min/unpaid_meal) + 레거시(paid_short/unpaid_long) 모두 인식.
+    final bt = br?.breakType;
+    final label = (bt == 'unpaid_meal' || bt == 'unpaid_long')
         ? t.attMainBreakLong
-        : br?.breakType == 'paid_short'
+        : (bt == 'paid_10min' || bt == 'paid_short')
             ? t.attMainBreakShort
             : t.attMainBreakOnBreak;
     return Container(
@@ -1817,6 +1819,36 @@ class _NoticeRow extends StatelessWidget {
   }
 }
 
+// ─── 10min Break 전용 합성 아이콘 ──────────────────────────────────
+//
+// Material Icons.timer_10 은 실제 렌더 시 "10s" 로 보여 10초 휴식으로 오해됨.
+// 시계 외곽선 안에 "10" 텍스트를 직접 합성한다.
+Widget _build10minClockIcon(Color color, double size) {
+  return SizedBox(
+    width: size,
+    height: size,
+    child: Stack(
+      alignment: Alignment.center,
+      children: [
+        Icon(Icons.access_time_rounded, color: color, size: size),
+        Padding(
+          padding: EdgeInsets.only(top: size * 0.08),
+          child: Text(
+            '10',
+            style: TextStyle(
+              fontSize: size * 0.32,
+              fontWeight: FontWeight.w900,
+              color: color,
+              height: 1.0,
+              letterSpacing: -0.5,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 // ─── Shift Action Button ────────────────────────────────────────────
 
 /// 사이드바의 단일 trigger 버튼 — 누르면 _openActionsSheet 모달 호출.
@@ -1918,7 +1950,9 @@ class _ShiftActionTrigger extends StatelessWidget {
 }
 
 class _ShiftActionButton extends StatelessWidget {
-  final IconData icon;
+  /// 색/크기를 받아 아이콘 위젯을 만드는 빌더. 단순 Icon 대신 Stack 등 합성 아이콘
+  /// (예: 시계+"10")도 사용할 수 있게 빌더 인터페이스로 받는다.
+  final Widget Function(Color color, double size) iconBuilder;
   final String label;
   final String subtitle;
   final Color color;
@@ -1927,7 +1961,7 @@ class _ShiftActionButton extends StatelessWidget {
   final VoidCallback onTap;
 
   const _ShiftActionButton({
-    required this.icon,
+    required this.iconBuilder,
     required this.label,
     required this.subtitle,
     required this.color,
@@ -1984,7 +2018,7 @@ class _ShiftActionButton extends StatelessWidget {
           ),
           child: Column(
             children: [
-              Icon(icon, size: 38, color: contentColor),
+              iconBuilder(contentColor, 38),
               const SizedBox(height: 10),
               Text(
                 label,
