@@ -289,10 +289,10 @@ class AppL10nEs extends AppL10n {
   String get attSuccessClockOut => 'Salida exitosa';
 
   @override
-  String get attSuccessShortBreak => 'Descanso corto iniciado';
+  String get attSuccessShortBreak => 'Descanso de 10 min iniciado';
 
   @override
-  String get attSuccessLongBreak => 'Descanso largo iniciado';
+  String get attSuccessLongBreak => 'Comida iniciada';
 
   @override
   String get attSuccessBreakEnded => 'Descanso terminado';
@@ -357,16 +357,16 @@ class AppL10nEs extends AppL10n {
   String get attMainActionClockOutSubtitle => 'Terminar turno';
 
   @override
-  String get attMainActionShortBreak => 'DESCANSO CORTO';
+  String get attMainActionShortBreak => 'DESCANSO 10 MIN';
 
   @override
-  String get attMainActionShortBreakSubtitle => 'Pagado · 10 min';
+  String get attMainActionShortBreakSubtitle => 'Pagado';
 
   @override
-  String get attMainActionLongBreak => 'DESCANSO LARGO';
+  String get attMainActionLongBreak => 'COMIDA';
 
   @override
-  String get attMainActionLongBreakSubtitle => 'No pagado · 30 min';
+  String get attMainActionLongBreakSubtitle => 'No pagado';
 
   @override
   String get attMainActionEndBreak => 'TERMINAR DESCANSO';
@@ -449,10 +449,10 @@ class AppL10nEs extends AppL10n {
   }
 
   @override
-  String get attMainBreakLong => 'Largo no pagado';
+  String get attMainBreakLong => 'Comida no pagada';
 
   @override
-  String get attMainBreakShort => 'Corto pagado';
+  String get attMainBreakShort => '10 min pagado';
 
   @override
   String get attMainBreakOnBreak => 'En descanso';

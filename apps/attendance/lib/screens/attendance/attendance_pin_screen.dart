@@ -37,6 +37,7 @@ class AttendancePinScreen extends ConsumerStatefulWidget {
 class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
   String _pin = '';
   bool _loading = false;
+  bool _revealPin = false;
   static const int _pinLength = 6;
 
   void _onNumberTap(String digit) {
@@ -331,33 +332,61 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
   Widget _buildPinDisplay(double boxW, double boxH, double fontSize) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(_pinLength, (i) {
-        final filled = i < _pin.length;
-        return Container(
-          width: boxW,
-          height: boxH,
-          margin: const EdgeInsets.symmetric(horizontal: 7),
-          decoration: BoxDecoration(
-            color: filled ? AppColors.accentBg : AppColors.bg,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: filled ? AppColors.accent : AppColors.border,
-              width: filled ? 2.5 : 1.5,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        ...List.generate(_pinLength, (i) {
+          final filled = i < _pin.length;
+          return Container(
+            width: boxW,
+            height: boxH,
+            margin: const EdgeInsets.symmetric(horizontal: 7),
+            decoration: BoxDecoration(
+              color: filled ? AppColors.accentBg : AppColors.bg,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: filled ? AppColors.accent : AppColors.border,
+                width: filled ? 2.5 : 1.5,
+              ),
             ),
+            alignment: Alignment.center,
+            child: filled
+                ? (_revealPin
+                    ? Text(
+                        _pin[i],
+                        style: TextStyle(
+                          fontSize: fontSize,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.accent,
+                        ),
+                      )
+                    : Container(
+                        width: boxW * 0.35,
+                        height: boxW * 0.35,
+                        decoration: const BoxDecoration(
+                          color: AppColors.accent,
+                          shape: BoxShape.circle,
+                        ),
+                      ))
+                : null,
+          );
+        }),
+        const SizedBox(width: 6),
+        IconButton(
+          onPressed: _loading || _pin.isEmpty
+              ? null
+              : () => setState(() => _revealPin = !_revealPin),
+          icon: Icon(
+            _revealPin
+                ? Icons.visibility_off_outlined
+                : Icons.visibility_outlined,
+            size: 22,
+            color: AppColors.textSecondary,
           ),
-          alignment: Alignment.center,
-          child: filled
-              ? Text(
-                  _pin[i],
-                  style: TextStyle(
-                    fontSize: fontSize,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.accent,
-                  ),
-                )
-              : null,
-        );
-      }),
+          tooltip: _revealPin ? 'Hide PIN' : 'Show PIN',
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+        ),
+      ],
     );
   }
 

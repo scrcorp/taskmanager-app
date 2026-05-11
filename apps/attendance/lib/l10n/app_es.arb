@@ -106,8 +106,8 @@
 
   "attSuccessClockIn": "Entrada exitosa",
   "attSuccessClockOut": "Salida exitosa",
-  "attSuccessShortBreak": "Descanso corto iniciado",
-  "attSuccessLongBreak": "Descanso largo iniciado",
+  "attSuccessShortBreak": "Descanso de 10 min iniciado",
+  "attSuccessLongBreak": "Comida iniciada",
   "attSuccessBreakEnded": "Descanso terminado",
   "attSuccessWelcomeBack": "Bienvenido de nuevo",
   "attSuccessWelcomeBackName": ", ¡{name}!",
@@ -138,10 +138,10 @@
   "attMainActionClockInSubtitle": "Iniciar jornada",
   "attMainActionClockOut": "SALIDA",
   "attMainActionClockOutSubtitle": "Terminar turno",
-  "attMainActionShortBreak": "DESCANSO CORTO",
-  "attMainActionShortBreakSubtitle": "Pagado · 10 min",
-  "attMainActionLongBreak": "DESCANSO LARGO",
-  "attMainActionLongBreakSubtitle": "No pagado · 30 min",
+  "attMainActionShortBreak": "DESCANSO 10 MIN",
+  "attMainActionShortBreakSubtitle": "Pagado",
+  "attMainActionLongBreak": "COMIDA",
+  "attMainActionLongBreakSubtitle": "No pagado",
   "attMainActionEndBreak": "TERMINAR DESCANSO",
   "attMainActionEndBreakSubtitle": "Volver al trabajo",
 
@@ -200,8 +200,8 @@
       "time": { "type": "String" }
     }
   },
-  "attMainBreakLong": "Largo no pagado",
-  "attMainBreakShort": "Corto pagado",
+  "attMainBreakLong": "Comida no pagada",
+  "attMainBreakShort": "10 min pagado",
   "attMainBreakOnBreak": "En descanso",
   "attMainOnBreakWith": "En descanso · {label}",
   "@attMainOnBreakWith": {

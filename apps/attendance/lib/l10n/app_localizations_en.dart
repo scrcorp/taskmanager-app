@@ -285,10 +285,10 @@ class AppL10nEn extends AppL10n {
   String get attSuccessClockOut => 'Clock Out Successful';
 
   @override
-  String get attSuccessShortBreak => 'Short Break Started';
+  String get attSuccessShortBreak => '10min Break Started';
 
   @override
-  String get attSuccessLongBreak => 'Long Break Started';
+  String get attSuccessLongBreak => 'Meal Break Started';
 
   @override
   String get attSuccessBreakEnded => 'Break Ended';
@@ -353,16 +353,16 @@ class AppL10nEn extends AppL10n {
   String get attMainActionClockOutSubtitle => 'End Schedule';
 
   @override
-  String get attMainActionShortBreak => 'SHORT BREAK';
+  String get attMainActionShortBreak => '10MIN BREAK';
 
   @override
-  String get attMainActionShortBreakSubtitle => 'Paid · 10 min';
+  String get attMainActionShortBreakSubtitle => 'Paid';
 
   @override
-  String get attMainActionLongBreak => 'LONG BREAK';
+  String get attMainActionLongBreak => 'MEAL BREAK';
 
   @override
-  String get attMainActionLongBreakSubtitle => 'Unpaid · 30 min';
+  String get attMainActionLongBreakSubtitle => 'Unpaid';
 
   @override
   String get attMainActionEndBreak => 'END BREAK';
@@ -445,10 +445,10 @@ class AppL10nEn extends AppL10n {
   }
 
   @override
-  String get attMainBreakLong => 'Long Unpaid';
+  String get attMainBreakLong => 'Meal Unpaid';
 
   @override
-  String get attMainBreakShort => 'Short Paid';
+  String get attMainBreakShort => '10min Paid';
 
   @override
   String get attMainBreakOnBreak => 'On Break';

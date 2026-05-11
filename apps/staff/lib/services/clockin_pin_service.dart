@@ -27,4 +27,13 @@ class ClockinPinService {
     final response = await _dio.post('/app/profile/clockin-pin/regenerate');
     return Map<String, dynamic>.from(response.data as Map);
   }
+
+  /// 본인 PIN 을 직접 지정 — 6자리 숫자만. 새 PIN 반환.
+  Future<Map<String, dynamic>> updatePin(String pin) async {
+    final response = await _dio.put(
+      '/app/profile/clockin-pin',
+      data: {'clockin_pin': pin},
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
 }

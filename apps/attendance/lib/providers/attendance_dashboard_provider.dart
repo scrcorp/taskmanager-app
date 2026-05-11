@@ -15,7 +15,7 @@ import '../services/attendance_device_service.dart';
 /// 현재 진행 중인 break 요약
 class TodayStaffBreak {
   final DateTime startedAt;
-  final String breakType; // 'paid_short' | 'unpaid_long'
+  final String breakType; // 'paid_10min' | 'unpaid_meal' (구: 'paid_short' | 'unpaid_long')
 
   const TodayStaffBreak({required this.startedAt, required this.breakType});
 
