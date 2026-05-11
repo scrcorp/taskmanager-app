@@ -947,6 +947,7 @@ class _FilterTabBar extends StatelessWidget {
         unselectedLabelColor: AppColors.textMuted,
         indicatorColor: AppColors.accent,
         indicatorSize: TabBarIndicatorSize.tab,
+        labelPadding: const EdgeInsets.symmetric(horizontal: 4),
         labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
         unselectedLabelStyle:
             const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
@@ -978,7 +979,13 @@ class _TabItem extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label),
+          Flexible(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
           const SizedBox(width: 4),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),

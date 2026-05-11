@@ -604,13 +604,13 @@ abstract class AppL10n {
   /// No description provided for @attSuccessShortBreak.
   ///
   /// In en, this message translates to:
-  /// **'Short Break Started'**
+  /// **'10min Break Started'**
   String get attSuccessShortBreak;
 
   /// No description provided for @attSuccessLongBreak.
   ///
   /// In en, this message translates to:
-  /// **'Long Break Started'**
+  /// **'Meal Break Started'**
   String get attSuccessLongBreak;
 
   /// No description provided for @attSuccessBreakEnded.
@@ -730,25 +730,25 @@ abstract class AppL10n {
   /// No description provided for @attMainActionShortBreak.
   ///
   /// In en, this message translates to:
-  /// **'SHORT BREAK'**
+  /// **'10MIN BREAK'**
   String get attMainActionShortBreak;
 
   /// No description provided for @attMainActionShortBreakSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Paid · 10 min'**
+  /// **'Paid'**
   String get attMainActionShortBreakSubtitle;
 
   /// No description provided for @attMainActionLongBreak.
   ///
   /// In en, this message translates to:
-  /// **'LONG BREAK'**
+  /// **'MEAL BREAK'**
   String get attMainActionLongBreak;
 
   /// No description provided for @attMainActionLongBreakSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Unpaid · 30 min'**
+  /// **'Unpaid'**
   String get attMainActionLongBreakSubtitle;
 
   /// No description provided for @attMainActionEndBreak.
@@ -886,13 +886,13 @@ abstract class AppL10n {
   /// No description provided for @attMainBreakLong.
   ///
   /// In en, this message translates to:
-  /// **'Long Unpaid'**
+  /// **'Meal Unpaid'**
   String get attMainBreakLong;
 
   /// No description provided for @attMainBreakShort.
   ///
   /// In en, this message translates to:
-  /// **'Short Paid'**
+  /// **'10min Paid'**
   String get attMainBreakShort;
 
   /// No description provided for @attMainBreakOnBreak.

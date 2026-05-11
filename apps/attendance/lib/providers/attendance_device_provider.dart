@@ -262,7 +262,7 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
   /// [action] — 'clock-in' | 'clock-out' | 'break-start' | 'break-end'
   /// [userId] — 대시보드에서 선택된 직원 ID
   /// [pin] — 6자리 숫자
-  /// [breakType] — break-start 에만 사용 ('paid_short' | 'unpaid_long')
+  /// [breakType] — break-start 에만 사용 ('paid_10min' | 'unpaid_meal')
   /// 반환: { success: bool, message: String, data: Map? }
   Future<ClockActionResult> performClockAction({
     required String action,

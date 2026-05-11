@@ -106,8 +106,8 @@
 
   "attSuccessClockIn": "Clock In Successful",
   "attSuccessClockOut": "Clock Out Successful",
-  "attSuccessShortBreak": "Short Break Started",
-  "attSuccessLongBreak": "Long Break Started",
+  "attSuccessShortBreak": "10min Break Started",
+  "attSuccessLongBreak": "Meal Break Started",
   "attSuccessBreakEnded": "Break Ended",
   "attSuccessWelcomeBack": "Welcome back",
   "attSuccessWelcomeBackName": ", {name}!",
@@ -138,10 +138,10 @@
   "attMainActionClockInSubtitle": "Start Workday",
   "attMainActionClockOut": "CLOCK OUT",
   "attMainActionClockOutSubtitle": "End Schedule",
-  "attMainActionShortBreak": "SHORT BREAK",
-  "attMainActionShortBreakSubtitle": "Paid · 10 min",
-  "attMainActionLongBreak": "LONG BREAK",
-  "attMainActionLongBreakSubtitle": "Unpaid · 30 min",
+  "attMainActionShortBreak": "10MIN BREAK",
+  "attMainActionShortBreakSubtitle": "Paid",
+  "attMainActionLongBreak": "MEAL BREAK",
+  "attMainActionLongBreakSubtitle": "Unpaid",
   "attMainActionEndBreak": "END BREAK",
   "attMainActionEndBreakSubtitle": "Resume Work",
 
@@ -200,8 +200,8 @@
       "time": { "type": "String" }
     }
   },
-  "attMainBreakLong": "Long Unpaid",
-  "attMainBreakShort": "Short Paid",
+  "attMainBreakLong": "Meal Unpaid",
+  "attMainBreakShort": "10min Paid",
   "attMainBreakOnBreak": "On Break",
   "attMainOnBreakWith": "On Break · {label}",
   "@attMainOnBreakWith": {
