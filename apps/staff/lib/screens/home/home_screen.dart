@@ -39,14 +39,17 @@ String _getGreeting(AppL10n t) {
   return t.homeGreetingEvening;
 }
 
-/// 오늘 마감인 미완료 태스크 수 계산
+/// 오늘 마감인 미완료 태스크 수 계산.
+/// 서버는 UTC DateTime 반환 — 디바이스 로컬 (= 매장 현지 시간) 으로 변환해서 비교.
+/// .toLocal() 없으면 UTC 의 year/month/day 와 로컬 now 가 섞여 미국 저녁에 다음날로 잡힘.
 int _countDueToday(List<AdditionalTask> tasks) {
   final now = DateTime.now();
   return tasks.where((t) {
     if (t.dueDate == null) return false;
-    return t.dueDate!.year == now.year &&
-        t.dueDate!.month == now.month &&
-        t.dueDate!.day == now.day &&
+    final due = t.dueDate!.toLocal();
+    return due.year == now.year &&
+        due.month == now.month &&
+        due.day == now.day &&
         t.status != 'completed';
   }).length;
 }
