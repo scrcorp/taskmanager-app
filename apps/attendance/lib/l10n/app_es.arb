@@ -123,6 +123,14 @@
       "seconds": { "type": "int" }
     }
   },
+  "attSuccessWorkedTime": "Trabajaste {hours}h {minutes}m hoy",
+  "@attSuccessWorkedTime": {
+    "placeholders": {
+      "hours": { "type": "int" },
+      "minutes": { "type": "int" }
+    }
+  },
+  "attSuccessGreatJob": "¡Buen trabajo, descansa!",
 
   "attMainWorkDateLabel": "FECHA DE TRABAJO",
   "attMainKioskUnlockedTitle": "Quiosco desbloqueado",

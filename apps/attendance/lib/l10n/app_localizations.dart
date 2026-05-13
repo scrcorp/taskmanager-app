@@ -643,6 +643,18 @@ abstract class AppL10n {
   /// **'REDIRECTING IN {seconds} SECONDS'**
   String attSuccessRedirecting(int seconds);
 
+  /// No description provided for @attSuccessWorkedTime.
+  ///
+  /// In en, this message translates to:
+  /// **'You worked {hours}h {minutes}m today'**
+  String attSuccessWorkedTime(int hours, int minutes);
+
+  /// No description provided for @attSuccessGreatJob.
+  ///
+  /// In en, this message translates to:
+  /// **'Great job — get some rest!'**
+  String get attSuccessGreatJob;
+
   /// No description provided for @attMainWorkDateLabel.
   ///
   /// In en, this message translates to:

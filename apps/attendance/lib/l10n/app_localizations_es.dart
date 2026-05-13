@@ -314,6 +314,14 @@ class AppL10nEs extends AppL10n {
   }
 
   @override
+  String attSuccessWorkedTime(int hours, int minutes) {
+    return 'Trabajaste ${hours}h ${minutes}m hoy';
+  }
+
+  @override
+  String get attSuccessGreatJob => '¡Buen trabajo, descansa!';
+
+  @override
   String get attMainWorkDateLabel => 'FECHA DE TRABAJO';
 
   @override

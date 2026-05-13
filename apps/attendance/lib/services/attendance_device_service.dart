@@ -22,6 +22,9 @@ final attendanceDeviceServiceProvider = Provider<AttendanceDeviceService>((ref) 
 /// Device 인증 전용 Dio 클라이언트
 class AttendanceDeviceService {
   late final Dio _dio;
+  /// 키오스크 관리자 모드 세션 토큰 (in-memory).
+  /// `_AdminSessionInterceptor` 가 있을 때만 `X-Admin-Session` 헤더를 추가한다.
+  String? _adminToken;
 
   AttendanceDeviceService() {
     _dio = Dio(BaseOptions(
@@ -32,6 +35,11 @@ class AttendanceDeviceService {
     ));
     // device token 자동 주입 (있을 때만)
     _dio.interceptors.add(_DeviceAuthInterceptor());
+    _dio.interceptors.add(_AdminSessionInterceptor(() => _adminToken));
+  }
+
+  void setAdminToken(String? token) {
+    _adminToken = token;
   }
 
   /// Access code로 기기 등록 — 성공 시 토큰 발급
@@ -174,6 +182,153 @@ class AttendanceDeviceService {
     final response = await _dio.post(path, data: body);
     return Map<String, dynamic>.from(response.data as Map);
   }
+
+  // ── 관리자 모드 (kiosk admin) ─────────────────────────────
+
+  /// 매장 매니저 후보 조회 (Owner + 매장 SV/GM is_manager=true, PIN 보유자만).
+  Future<List<Map<String, dynamic>>> listAdminManagers() async {
+    final response = await _dio.get('/attendance/admin/managers');
+    final data = response.data;
+    if (data is List) {
+      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    return const [];
+  }
+
+  /// 매니저 PIN 검증 + admin session 발급. 성공 시 setAdminToken 자동 호출.
+  Future<Map<String, dynamic>> openAdminSession({
+    required String userId,
+    required String pin,
+  }) async {
+    final response = await _dio.post('/attendance/admin/session', data: {
+      'user_id': userId,
+      'pin': pin,
+    });
+    final body = Map<String, dynamic>.from(response.data as Map);
+    final token = body['admin_token'] as String?;
+    if (token != null && token.isNotEmpty) {
+      setAdminToken(token);
+    }
+    return body;
+  }
+
+  /// admin session 종료 (서버 폐기 + 로컬 토큰 제거). 실패해도 로컬은 클리어.
+  Future<void> closeAdminSession() async {
+    try {
+      await _dio.delete('/attendance/admin/session');
+    } catch (_) {
+      // 서버 통신 실패해도 로컬 클리어로 안전 종료
+    }
+    setAdminToken(null);
+  }
+
+  /// 오늘 매장 스케줄 (관리자 모드 리스트).
+  Future<List<Map<String, dynamic>>> adminListSchedules() async {
+    final response = await _dio.get('/attendance/admin/schedules');
+    final data = response.data;
+    if (data is List) {
+      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    return const [];
+  }
+
+  /// 매장에 work_assignment 된 직원 목록 (스케줄 생성 select).
+  Future<List<Map<String, dynamic>>> adminListAssignableUsers() async {
+    final response = await _dio.get('/attendance/admin/assignable-users');
+    final data = response.data;
+    if (data is List) {
+      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    return const [];
+  }
+
+  /// 매장 work role 목록 (스케줄 생성 select).
+  Future<List<Map<String, dynamic>>> adminListWorkRoles() async {
+    final response = await _dio.get('/attendance/admin/work-roles');
+    final data = response.data;
+    if (data is List) {
+      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    return const [];
+  }
+
+  Future<Map<String, dynamic>> adminCreateSchedule({
+    required String userId,
+    String? workRoleId,
+    required String startHHmm,
+    required String endHHmm,
+  }) async {
+    final response = await _dio.post('/attendance/admin/schedules', data: {
+      'user_id': userId,
+      if (workRoleId != null) 'work_role_id': workRoleId,
+      'start_time': startHHmm,
+      'end_time': endHHmm,
+    });
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<Map<String, dynamic>> adminUpdateSchedule({
+    required String scheduleId,
+    String? userId,
+    String? workRoleId,
+    String? startHHmm,
+    String? endHHmm,
+  }) async {
+    final body = <String, dynamic>{
+      if (userId != null) 'user_id': userId,
+      if (workRoleId != null) 'work_role_id': workRoleId,
+      if (startHHmm != null) 'start_time': startHHmm,
+      if (endHHmm != null) 'end_time': endHHmm,
+    };
+    final response = await _dio.patch(
+      '/attendance/admin/schedules/$scheduleId',
+      data: body,
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<void> adminDeleteSchedule(String scheduleId) async {
+    await _dio.delete('/attendance/admin/schedules/$scheduleId');
+  }
+
+  /// 관리자가 임의 사용자 attendance 를 PIN 없이 처리.
+  /// actions: clock_in | clock_out | break_start | break_end | cancel_clock_in | cancel_clock_out
+  Future<Map<String, dynamic>> adminClockAction({
+    required String userId,
+    required String action,
+    String? breakType,
+    String? reason,
+  }) async {
+    final response = await _dio.post('/attendance/admin/clock', data: {
+      'user_id': userId,
+      'action': action,
+      if (breakType != null) 'break_type': breakType,
+      if (reason != null) 'reason': reason,
+    });
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  /// 관리자가 status 와 시각을 동시에 보정.
+  /// status: working | late | on_break | clocked_out | upcoming | no_show
+  Future<Map<String, dynamic>> adminChangeStatus({
+    required String userId,
+    required String status,
+    required String reason,
+    String? clockInHHmm,
+    String? clockOutHHmm,
+  }) async {
+    final response = await _dio.post(
+      '/attendance/admin/attendance/status',
+      data: {
+        'user_id': userId,
+        'status': status,
+        'reason': reason,
+        if (clockInHHmm != null) 'clock_in_hhmm': clockInHHmm,
+        if (clockOutHHmm != null) 'clock_out_hhmm': clockOutHHmm,
+      },
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
 }
 
 /// Device 토큰을 Authorization 헤더로 자동 주입
@@ -183,6 +338,21 @@ class _DeviceAuthInterceptor extends Interceptor {
     final token = await AttendanceDeviceStorage.getToken();
     if (token != null && token.isNotEmpty) {
       options.headers['Authorization'] = 'Bearer $token';
+    }
+    handler.next(options);
+  }
+}
+
+/// In-memory admin session token 을 X-Admin-Session 헤더로 자동 주입
+class _AdminSessionInterceptor extends Interceptor {
+  final String? Function() _getter;
+  _AdminSessionInterceptor(this._getter);
+
+  @override
+  void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
+    final token = _getter();
+    if (token != null && token.isNotEmpty) {
+      options.headers['X-Admin-Session'] = token;
     }
     handler.next(options);
   }

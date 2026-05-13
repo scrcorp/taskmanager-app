@@ -14,11 +14,14 @@ import 'attendance_main_screen.dart';
 class AttendanceSuccessScreen extends StatefulWidget {
   final AttendanceAction action;
   final String userName;
+  /// Clock-out 응답에서 받은 근무 분(net 우선). null 이면 표시 안 함.
+  final int? workedMinutes;
 
   const AttendanceSuccessScreen({
     super.key,
     required this.action,
     required this.userName,
+    this.workedMinutes,
   });
 
   @override
@@ -174,6 +177,45 @@ class _AttendanceSuccessScreenState extends State<AttendanceSuccessScreen>
                     ],
                   ),
                 ),
+                if (widget.action == AttendanceAction.clockOut &&
+                    widget.workedMinutes != null &&
+                    widget.workedMinutes! > 0) ...[
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 16, horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: AppColors.successBg,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          t.attSuccessWorkedTime(
+                            widget.workedMinutes! ~/ 60,
+                            widget.workedMinutes! % 60,
+                          ),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.success,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          t.attSuccessGreatJob,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.success,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 32),
                 SizedBox(
                   width: double.infinity,
