@@ -1,7 +1,7 @@
 name: attendance
 description: HTM Attendance Kiosk App (tablet APK, device-token auth)
 publish_to: 'none'
-version: 1.1.0+25
+version: 1.0.7+25
 
 environment:
   sdk: ^3.10.8
