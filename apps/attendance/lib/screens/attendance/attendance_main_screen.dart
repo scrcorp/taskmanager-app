@@ -893,7 +893,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                     gridDelegate:
                         const SliverGridDelegateWithMaxCrossAxisExtent(
                       maxCrossAxisExtent: 360,
-                      mainAxisExtent: 150,
+                      mainAxisExtent: 168,
                       crossAxisSpacing: 10,
                       mainAxisSpacing: 10,
                     ),
@@ -1069,7 +1069,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                     gridDelegate:
                         const SliverGridDelegateWithMaxCrossAxisExtent(
                       maxCrossAxisExtent: 360,
-                      mainAxisExtent: 66,
+                      mainAxisExtent: 148,
                       crossAxisSpacing: 8,
                       mainAxisSpacing: 8,
                     ),
@@ -1669,38 +1669,41 @@ class _ComingUpRow extends StatelessWidget {
                 ]
               : null,
         ),
+        // 3줄 레이아웃: 1행 배지(상단) / 2행 이름 / 3행 시간(크게).
+        // 카드 폭이 좁아 1줄 배치가 겹쳤고, 배지를 상단에 분리해 시인성 ↑.
         child: Row(
           children: [
             Icon(icon, size: 28, color: iconColor),
-            const SizedBox(width: 18),
+            const SizedBox(width: 14),
             Expanded(
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Flexible(
-                    child: Text(
-                      row.userName.isEmpty ? t.commonUnknown : row.userName,
-                      style: const TextStyle(
-                        fontSize: 21,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.text,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                  if (trailingBadge != null) ...[
+                    trailingBadge,
+                    const SizedBox(height: 6),
+                  ],
+                  Text(
+                    row.userName.isEmpty ? t.commonUnknown : row.userName,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.text,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    range,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: timeColor,
                     ),
                   ),
-                  if (trailingBadge != null) ...[
-                    const SizedBox(width: 12),
-                    trailingBadge,
-                  ],
                 ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              range,
-              style: TextStyle(
-                fontSize: 19,
-                fontWeight: FontWeight.w700,
-                color: timeColor,
               ),
             ),
           ],
