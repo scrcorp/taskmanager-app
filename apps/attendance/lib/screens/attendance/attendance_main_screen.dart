@@ -135,7 +135,21 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
   void initState() {
     super.initState();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() => _now = DateTime.now());
+      if (!mounted) return;
+      final prev = _now;
+      final next = DateTime.now();
+      setState(() => _now = next);
+      // 분 경계가 바뀔 때마다 device 정보 (work_date / tz offset) 를 server 에서
+      // 재확인 → 키오스크가 켜진 채로 자정 / business-day 경계 넘어가도 헤더가
+      // 즉시 새 work_date 로 갱신된다. (기존엔 device.workDate 가 setup 시점에
+      // 고정되어 24h 이상 켜두면 stale)
+      if (prev.minute != next.minute) {
+        // ignore: unawaited_futures
+        ref.read(attendanceDeviceProvider.notifier).softRefreshDevice();
+        // 동일 경계에서 대시보드도 즉시 한번 새로 — 60s polling 기다리지 않게.
+        // ignore: unawaited_futures
+        ref.read(attendanceDashboardProvider.notifier).refresh();
+      }
     });
     // 대시보드 데이터 폴링 시작 (build 이후)
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -411,7 +425,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                   const SizedBox(width: 24),
                   // ── 우: Current Time + Notice Board ──
                   SizedBox(
-                    width: 260,
+                    width: 300,
                     child: Column(
                       children: [
                         _buildCurrentTime(),
@@ -873,11 +887,17 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
             constraints: const BoxConstraints(minHeight: 120),
             child: rows.isEmpty
                 ? _Placeholder(text: t.attMainNoOneOnShift)
-                : ListView.separated(
+                : GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 360,
+                      mainAxisExtent: 150,
+                      crossAxisSpacing: 10,
+                      mainAxisSpacing: 10,
+                    ),
                     itemCount: rows.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
                     itemBuilder: (_, i) => _OnShiftCard(
                       row: rows[i],
                       selected: _rowKey(rows[i]) == _selectedKey,
@@ -1043,11 +1063,17 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
             constraints: const BoxConstraints(minHeight: 80),
             child: rows.isEmpty
                 ? _Placeholder(text: t.attMainNoUpcoming)
-                : ListView.separated(
+                : GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 360,
+                      mainAxisExtent: 66,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                    ),
                     itemCount: rows.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (_, i) => _ComingUpRow(
                       row: rows[i].row,
                       group: rows[i].group,
@@ -1140,11 +1166,17 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
             constraints: const BoxConstraints(minHeight: 80),
             child: rows.isEmpty
                 ? _Placeholder(text: t.attMainNoCompletedShifts)
-                : ListView.separated(
+                : GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 360,
+                      mainAxisExtent: 66,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                    ),
                     itemCount: rows.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (_, i) => _CompletedRow(
                       row: rows[i],
                       selected: _rowKey(rows[i]) == _selectedKey,
@@ -1169,7 +1201,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
         _now.toUtc().add(Duration(minutes: offsetMin));
     // storeNow 는 UTC 객체지만 필드값은 store 벽시계와 동일 (naive 로 사용)
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
       decoration: BoxDecoration(
         color: const Color(0xFF1A2332),
         borderRadius: BorderRadius.circular(16),
@@ -1179,34 +1211,48 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
           Text(
             t.attMainCurrentTimeLabel,
             style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
               color: Colors.white54,
-              letterSpacing: 1,
+              letterSpacing: 1.2,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            DateFormat('hh:mm', localeTag).format(storeNow),
-            style: const TextStyle(
-              fontSize: 48,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-              letterSpacing: -1,
+          const SizedBox(height: 12),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  DateFormat('hh:mm', localeTag).format(storeNow),
+                  style: const TextStyle(
+                    fontSize: 84,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    letterSpacing: -2,
+                    height: 1.0,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    DateFormat('a', localeTag).format(storeNow),
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white70,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          Text(
-            DateFormat('a', localeTag).format(storeNow),
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Colors.white70,
-            ),
-          ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             DateFormat('EEE, MMM d, yyyy', localeTag).format(storeNow),
-            style: const TextStyle(fontSize: 12, color: Colors.white54),
+            style: const TextStyle(fontSize: 13, color: Colors.white54),
           ),
           if (device?.storeTimezone != null) ...[
             const SizedBox(height: 4),

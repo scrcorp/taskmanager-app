@@ -123,6 +123,14 @@
       "seconds": { "type": "int" }
     }
   },
+  "attSuccessWorkedTime": "You worked {hours}h {minutes}m today",
+  "@attSuccessWorkedTime": {
+    "placeholders": {
+      "hours": { "type": "int" },
+      "minutes": { "type": "int" }
+    }
+  },
+  "attSuccessGreatJob": "Great job — get some rest!",
 
   "attMainWorkDateLabel": "WORK DATE",
   "attMainKioskUnlockedTitle": "Kiosk Unlocked",

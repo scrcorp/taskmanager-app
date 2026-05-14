@@ -257,6 +257,21 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
     state = state.copyWith(status: AttendanceDeviceStatus.needsStore, clearError: true);
   }
 
+  /// Polling 등 백그라운드에서 device.work_date / store tz offset 을 새로 받아온다.
+  /// 키오스크가 켜져있는 동안 자정/business-day 경계에서 헤더가 즉시 갱신되도록 사용.
+  /// state.status 는 그대로 유지하며 device 만 교체. 401 도 흔들지 않음 — 다른
+  /// 인터셉터/타이머가 처리.
+  Future<void> softRefreshDevice() async {
+    if (state.status != AttendanceDeviceStatus.ready) return;
+    try {
+      final data = await _service.getMe();
+      final device = DeviceInfo.fromJson(data);
+      state = state.copyWith(device: device);
+    } catch (_) {
+      // 일시 네트워크 오류는 무시 — 다음 polling tick 에서 다시 시도.
+    }
+  }
+
   /// Clock 액션 (clock-in / clock-out / break-start / break-end)
   ///
   /// [action] — 'clock-in' | 'clock-out' | 'break-start' | 'break-end'
