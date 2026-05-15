@@ -58,11 +58,21 @@ final routerProvider = Provider<GoRouter>((ref) {
   final authNotifier = _AuthNotifier(ref);
 
   return GoRouter(
-    initialLocation: '/login',
+    // initialLocation 은 '/login' 이 아니라 '/home' — 새로고침 시 토큰 검증이 끝나기 전에
+    // /login 으로 강제 점프하지 않도록. 진짜 인증 미상태이면 redirect 로직이 /login 으로 보낸다.
+    initialLocation: '/home',
     // 인증 상태 변경 시 리다이렉트 로직 재실행
     refreshListenable: authNotifier,
     redirect: (context, state) {
       final authState = ref.read(authProvider);
+      // 인증 상태가 아직 확정되지 않았으면 (앱 시작 직후 / 새로고침 직후 checkAuth 진행 중)
+      // 어떤 redirect 도 하지 않는다. 현재 URL 을 그대로 두고, 토큰 검증이 끝나면
+      // refreshListenable 이 이 함수를 다시 실행하여 그때 결정한다.
+      // 이렇게 해야 web 에서 새로고침해도 마지막 위치가 보존된다.
+      if (authState.status == AuthStatus.initial
+          || authState.status == AuthStatus.loading) {
+        return null;
+      }
       final isAuth = authState.status == AuthStatus.authenticated;
       final user = authState.user;
       final path = state.uri.path;
