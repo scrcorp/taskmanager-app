@@ -1038,6 +1038,18 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Update'**
   String get attUpdateButton;
+
+  /// No description provided for @attUpdateDownloading.
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading'**
+  String get attUpdateDownloading;
+
+  /// No description provided for @attUpdateLaunchingInstaller.
+  ///
+  /// In en, this message translates to:
+  /// **'Launching installer…'**
+  String get attUpdateLaunchingInstaller;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

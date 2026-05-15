@@ -551,4 +551,10 @@ class AppL10nEs extends AppL10n {
 
   @override
   String get attUpdateButton => 'Actualizar';
+
+  @override
+  String get attUpdateDownloading => 'Descargando';
+
+  @override
+  String get attUpdateLaunchingInstaller => 'Abriendo instalador…';
 }

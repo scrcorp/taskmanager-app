@@ -1,18 +1,20 @@
 /// App version gate — sideload APK 환경에서 강제/권장 업데이트 처리.
 ///
 /// 동작:
-///   1. 등록된 device token 으로 GET /attendance/app-version 호출
+///   1. 등록된 device token 으로 GET /attendance/app-version 호출 +
+///      응답 헤더 (X-App-Latest-Version 등) piggyback 수신
 ///   2. current < min_version → 전체화면 blocker (Update 버튼만)
 ///   3. current < latest_version → 상단 권장 배너
+///   4. Update 탭 → in-app 다운로드 + PackageInstaller intent ([AppInstaller])
 ///
 /// min_version 이 null 이거나 current >= min → 통과.
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import 'package:htm_core/htm_core.dart';
 import '../l10n/app_localizations.dart';
 import '../services/attendance_device_service.dart';
+import 'app_installer.dart';
 
 class AppVersionStatus {
   final String current;
@@ -36,9 +38,15 @@ class AppVersionStatus {
       latestVersion != null && _semverLess(current, latestVersion!);
 }
 
+/// "MAJOR.MINOR.PATCH" 또는 "MAJOR.MINOR.PATCH+BUILD" 를 비교한다.
+/// semver 가 같으면 build number 까지 비교 — 1.0.7+25 < 1.0.7+26 → true.
+/// 서버가 build number 없이 등록한 경우 (예: "1.0.8") 클라이언트의 build number 는 무시되어
+/// 1.0.7+25 < 1.0.8 → true (semver 만으로 결정).
 bool _semverLess(String a, String b) {
-  final pa = a.split('.').map((s) => int.tryParse(s) ?? 0).toList();
-  final pb = b.split('.').map((s) => int.tryParse(s) ?? 0).toList();
+  final aParts = a.split('+');
+  final bParts = b.split('+');
+  final pa = aParts[0].split('.').map((s) => int.tryParse(s) ?? 0).toList();
+  final pb = bParts[0].split('.').map((s) => int.tryParse(s) ?? 0).toList();
   final n = pa.length > pb.length ? pa.length : pb.length;
   for (int i = 0; i < n; i++) {
     final av = i < pa.length ? pa[i] : 0;
@@ -46,7 +54,18 @@ bool _semverLess(String a, String b) {
     if (av < bv) return true;
     if (av > bv) return false;
   }
-  return false;
+  // semver 동일 — 양쪽 다 build number 있을 때만 비교. 한 쪽만 있으면 비교 무시.
+  if (aParts.length < 2 || bParts.length < 2) return false;
+  final aBuild = int.tryParse(aParts[1]) ?? 0;
+  final bBuild = int.tryParse(bParts[1]) ?? 0;
+  return aBuild < bBuild;
+}
+
+/// PackageInfo 의 semver + buildNumber 를 "1.0.7+25" 형식으로 합쳐 반환.
+/// buildNumber 가 비어 있으면 semver 만 반환.
+String currentVersionString(PackageInfo pkg) {
+  final b = pkg.buildNumber;
+  return b.isEmpty ? pkg.version : '${pkg.version}+$b';
 }
 
 Future<AppVersionStatus?> fetchAppVersionStatus(
@@ -56,7 +75,7 @@ Future<AppVersionStatus?> fetchAppVersionStatus(
     final pkg = await PackageInfo.fromPlatform();
     final data = await service.getAppVersion();
     return AppVersionStatus(
-      current: pkg.version,
+      current: currentVersionString(pkg),
       minVersion: data['min_version'] as String?,
       latestVersion: data['latest_version'] as String?,
       downloadUrl: data['download_url'] as String?,
@@ -68,13 +87,28 @@ Future<AppVersionStatus?> fetchAppVersionStatus(
   }
 }
 
-class UpdateBlockerScreen extends StatelessWidget {
+/// 다운로드 + 설치 작업의 외부 노출용 상태. UI 가 disabled/progress 결정에 사용.
+class _InstallController {
+  double? progress;  // null = idle, 0.0 ~ 1.0 = downloading, 1.0 = handing off to OS
+  String? error;
+
+  bool get isRunning => progress != null && error == null;
+}
+
+class UpdateBlockerScreen extends StatefulWidget {
   final AppVersionStatus status;
   const UpdateBlockerScreen({super.key, required this.status});
 
-  Future<void> _onDownload(BuildContext context) async {
+  @override
+  State<UpdateBlockerScreen> createState() => _UpdateBlockerScreenState();
+}
+
+class _UpdateBlockerScreenState extends State<UpdateBlockerScreen> {
+  final _ctrl = _InstallController();
+
+  Future<void> _onDownload() async {
     final t = AppL10n.of(context);
-    final url = status.downloadUrl;
+    final url = widget.status.downloadUrl;
     if (url == null || url.isEmpty) {
       await AppModal.show(
         context,
@@ -84,13 +118,29 @@ class UpdateBlockerScreen extends StatelessWidget {
       );
       return;
     }
-    final uri = Uri.parse(url);
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!ok && context.mounted) {
+    setState(() {
+      _ctrl.progress = 0.0;
+      _ctrl.error = null;
+    });
+    try {
+      await AppInstaller.downloadAndInstall(
+        url,
+        onProgress: (p) {
+          if (!mounted) return;
+          setState(() => _ctrl.progress = p);
+        },
+      );
+      if (mounted) setState(() => _ctrl.progress = 1.0);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _ctrl.progress = null;
+        _ctrl.error = e.toString();
+      });
       await AppModal.show(
         context,
         title: t.attUpdateCannotOpenTitle,
-        message: t.attUpdateCannotOpenMessage,
+        message: '${t.attUpdateCannotOpenMessage}\n\n$e',
         type: ModalType.info,
       );
     }
@@ -99,6 +149,7 @@ class UpdateBlockerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppL10n.of(context);
+    final progress = _ctrl.progress;
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
@@ -129,8 +180,8 @@ class UpdateBlockerScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     t.attUpdateRequiredMessage(
-                      status.current,
-                      status.minVersion ?? '?',
+                      widget.status.current,
+                      widget.status.minVersion ?? '?',
                     ),
                     textAlign: TextAlign.center,
                     style: const TextStyle(
@@ -138,8 +189,8 @@ class UpdateBlockerScreen extends StatelessWidget {
                       color: AppColors.textMuted,
                     ),
                   ),
-                  if (status.releaseNotes != null &&
-                      status.releaseNotes!.isNotEmpty) ...[
+                  if (widget.status.releaseNotes != null &&
+                      widget.status.releaseNotes!.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -149,7 +200,7 @@ class UpdateBlockerScreen extends StatelessWidget {
                         border: Border.all(color: AppColors.border),
                       ),
                       child: Text(
-                        status.releaseNotes!,
+                        widget.status.releaseNotes!,
                         style: const TextStyle(
                           fontSize: 13,
                           color: AppColors.text,
@@ -158,16 +209,36 @@ class UpdateBlockerScreen extends StatelessWidget {
                     ),
                   ],
                   const SizedBox(height: 28),
-                  FilledButton.icon(
-                    onPressed: () => _onDownload(context),
-                    icon: const Icon(Icons.download),
-                    label: Text(
-                      t.attUpdateDownloadButton(status.latestVersion ?? '?'),
+                  if (progress != null) ...[
+                    LinearProgressIndicator(
+                      value: progress >= 1.0 ? null : progress,
+                      minHeight: 8,
+                      borderRadius: BorderRadius.circular(4),
                     ),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    const SizedBox(height: 8),
+                    Text(
+                      progress >= 1.0
+                          ? t.attUpdateLaunchingInstaller
+                          : '${(progress * 100).toStringAsFixed(0)}%',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textMuted,
+                      ),
                     ),
-                  ),
+                  ] else
+                    FilledButton.icon(
+                      onPressed: _ctrl.isRunning ? null : _onDownload,
+                      icon: const Icon(Icons.download),
+                      label: Text(
+                        t.attUpdateDownloadButton(
+                          widget.status.latestVersion ?? '?',
+                        ),
+                      ),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -178,7 +249,7 @@ class UpdateBlockerScreen extends StatelessWidget {
   }
 }
 
-class UpdateAvailableBanner extends StatelessWidget {
+class UpdateAvailableBanner extends StatefulWidget {
   final AppVersionStatus status;
   final VoidCallback onDismiss;
   const UpdateAvailableBanner({
@@ -187,15 +258,42 @@ class UpdateAvailableBanner extends StatelessWidget {
     required this.onDismiss,
   });
 
-  Future<void> _onDownload(BuildContext context) async {
-    final url = status.downloadUrl;
+  @override
+  State<UpdateAvailableBanner> createState() => _UpdateAvailableBannerState();
+}
+
+class _UpdateAvailableBannerState extends State<UpdateAvailableBanner> {
+  final _ctrl = _InstallController();
+
+  Future<void> _onDownload() async {
+    final url = widget.status.downloadUrl;
     if (url == null || url.isEmpty) return;
-    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    setState(() {
+      _ctrl.progress = 0.0;
+      _ctrl.error = null;
+    });
+    try {
+      await AppInstaller.downloadAndInstall(
+        url,
+        onProgress: (p) {
+          if (!mounted) return;
+          setState(() => _ctrl.progress = p);
+        },
+      );
+      if (mounted) setState(() => _ctrl.progress = 1.0);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _ctrl.progress = null;
+        _ctrl.error = e.toString();
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final t = AppL10n.of(context);
+    final progress = _ctrl.progress;
     return Material(
       color: AppColors.accentBg,
       child: Padding(
@@ -207,10 +305,14 @@ class UpdateAvailableBanner extends StatelessWidget {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                t.attUpdateAvailableBanner(
-                  status.latestVersion ?? '?',
-                  status.current,
-                ),
+                progress != null
+                    ? (progress >= 1.0
+                        ? t.attUpdateLaunchingInstaller
+                        : '${t.attUpdateDownloading} ${(progress * 100).toStringAsFixed(0)}%')
+                    : t.attUpdateAvailableBanner(
+                        widget.status.latestVersion ?? '?',
+                        widget.status.current,
+                      ),
                 style: const TextStyle(
                   fontSize: 13,
                   color: AppColors.text,
@@ -218,12 +320,23 @@ class UpdateAvailableBanner extends StatelessWidget {
                 ),
               ),
             ),
-            TextButton(
-              onPressed: () => _onDownload(context),
-              child: Text(t.attUpdateButton),
-            ),
+            if (progress != null && progress < 1.0)
+              SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  value: progress,
+                  strokeWidth: 2,
+                  color: AppColors.accent,
+                ),
+              )
+            else
+              TextButton(
+                onPressed: _ctrl.isRunning ? null : _onDownload,
+                child: Text(t.attUpdateButton),
+              ),
             IconButton(
-              onPressed: onDismiss,
+              onPressed: _ctrl.isRunning ? null : widget.onDismiss,
               icon: const Icon(Icons.close, size: 18),
               tooltip: t.commonDismiss,
             ),
