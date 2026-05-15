@@ -38,6 +38,11 @@ import '../screens/inventory/inventory_add_screen.dart';
 import '../screens/inventory/inventory_audit_screen.dart';
 import '../screens/work/checklist_screen.dart';
 import '../screens/work/work_screen.dart';
+import '../screens/tips/tips_home_screen.dart';
+import '../screens/tips/tip_entry_editor_screen.dart';
+import '../screens/tips/signature_screen.dart';
+import '../screens/tips/forms_landing_screen.dart';
+import '../screens/tips/view_form_screen.dart';
 import '../widgets/app_shell.dart';
 
 /// 인증 상태 변경을 GoRouter에 전달하기 위한 ChangeNotifier
@@ -111,7 +116,40 @@ final routerProvider = Provider<GoRouter>((ref) {
           )),
           GoRoute(path: '/clock', builder: (_, __) => const ClockScreen()),
           GoRoute(path: '/schedule', builder: (_, __) => const ScheduleScreen()),
+          GoRoute(path: '/tips', builder: (_, __) => const TipsHomeScreen()),
         ],
+      ),
+
+      // ── Tips 입력/수정 (bottom nav 없음 — push)
+      GoRoute(
+        path: '/tips/new',
+        builder: (_, __) => const TipEntryEditorScreen(),
+      ),
+      GoRoute(
+        path: '/tips/edit/:id',
+        builder: (_, state) {
+          final extra = state.extra;
+          return TipEntryEditorScreen(
+            initialEntry: extra is Map<String, dynamic> ? extra : null,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/tips/signature',
+        builder: (_, __) => const SignatureScreen(),
+      ),
+      GoRoute(
+        path: '/tips/forms',
+        builder: (_, __) => const FormsLandingScreen(),
+      ),
+      GoRoute(
+        path: '/tips/forms/:id',
+        builder: (_, state) => ViewFormScreen(
+          formId: state.pathParameters['id']!,
+          initialForm: state.extra is Map<String, dynamic>
+              ? state.extra as Map<String, dynamic>
+              : null,
+        ),
       ),
 
       // ── 독립 화면 (ShellRoute 바깥 = 전체 화면) ──

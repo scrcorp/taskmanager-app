@@ -180,6 +180,34 @@ class AttendanceDeviceService {
     return const [];
   }
 
+  /// 팁 입력 — clock-out 직후 매장 비치 태블릿에서 호출.
+  ///
+  /// distributions: 각 항목 {receiver_id, amount, reason?}.
+  /// 분배 합 > card_tips 면 서버가 400 반환.
+  Future<Map<String, dynamic>> submitTipEntry({
+    required String userId,
+    required String pin,
+    required String date,
+    required String cardTips,
+    required String cashTipsKept,
+    String? workRoleId,
+    List<Map<String, dynamic>> distributions = const [],
+  }) async {
+    final response = await _dio.post(
+      '/attendance/tip-entry',
+      data: {
+        'user_id': userId,
+        'pin': pin,
+        'date': date,
+        'card_tips': cardTips,
+        'cash_tips_kept': cashTipsKept,
+        if (workRoleId != null) 'work_role_id': workRoleId,
+        'distributions': distributions,
+      },
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
   /// 매장 공지 조회 (device token)
   Future<List<Map<String, dynamic>>> getNotices({int limit = 10}) async {
     final response = await _dio.get(
