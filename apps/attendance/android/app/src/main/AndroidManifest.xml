@@ -1,5 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- APK auto-install (Android 8+): PackageInstaller intent 발사용. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <application
         android:label="${appBaseName}${envSuffix}"
         android:name="${applicationName}"
@@ -33,7 +35,25 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- open_filex 가 APK 설치 intent 발사 시 FILE:// 대신 content:// URI 를
+             제공하려고 사용. cache-path / external-files-path 모두 등록. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths"/>
+        </provider>
     </application>
+    <!-- Android 11+ package visibility: open_filex 가 APK 설치 액티비티를 query 할 수 있게. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:mimeType="application/vnd.android.package-archive"/>
+        </intent>
+    </queries>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
          https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.

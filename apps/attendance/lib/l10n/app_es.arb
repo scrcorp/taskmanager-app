@@ -285,5 +285,7 @@
       "current": { "type": "String" }
     }
   },
-  "attUpdateButton": "Actualizar"
+  "attUpdateButton": "Actualizar",
+  "attUpdateDownloading": "Descargando",
+  "attUpdateLaunchingInstaller": "Abriendo instalador…"
 }

@@ -14,6 +14,7 @@ import '../../providers/attendance_dashboard_provider.dart';
 import '../../providers/attendance_device_provider.dart';
 import 'attendance_main_screen.dart';
 import 'attendance_success_screen.dart';
+import 'attendance_tip_entry_screen.dart';
 
 class AttendancePinScreen extends ConsumerStatefulWidget {
   final AttendanceAction action;
@@ -93,15 +94,30 @@ class _AttendancePinScreenState extends ConsumerState<AttendancePinScreen> {
       final netMin = data?['net_work_minutes'] as int?;
       final totalMin = data?['total_work_minutes'] as int?;
       final workedMinutes = netMin ?? totalMin;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (_) => AttendanceSuccessScreen(
-            action: widget.action,
-            userName: userName,
-            workedMinutes: workedMinutes,
+      // Clock-out 후엔 강제 tip entry 화면을 한 번 거치게 한다 (Skip 가능).
+      // 다른 액션 (clock-in, break_*) 은 바로 success.
+      if (widget.action == AttendanceAction.clockOut) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => AttendanceTipEntryScreen(
+              userId: widget.userId,
+              userName: userName,
+              pin: _pin,
+              workedMinutes: workedMinutes,
+            ),
           ),
-        ),
-      );
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (_) => AttendanceSuccessScreen(
+              action: widget.action,
+              userName: userName,
+              workedMinutes: workedMinutes,
+            ),
+          ),
+        );
+      }
     } else {
       final t = AppL10n.of(context);
       setState(() => _pin = '');
