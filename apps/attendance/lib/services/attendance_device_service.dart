@@ -10,6 +10,7 @@
 /// - DELETE /attendance/me     — 기기 해제
 /// - POST /attendance/clock-in | clock-out | break-start | break-end (body: pin)
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/constants.dart';
 import '../utils/attendance_device_storage.dart';
@@ -19,12 +20,34 @@ final attendanceDeviceServiceProvider = Provider<AttendanceDeviceService>((ref) 
   return AttendanceDeviceService();
 });
 
+/// 서버 응답 헤더로 piggyback 되는 앱 버전 정보.
+///
+/// X-App-Latest-Version / X-App-Min-Version / X-App-Download-Url
+/// 매 응답마다 갱신됨 — Shell 가 listen 해서 즉시 배너/blocker 표시.
+@immutable
+class VersionBroadcast {
+  final String? latestVersion;
+  final String? minVersion;
+  final String? downloadUrl;
+
+  const VersionBroadcast({this.latestVersion, this.minVersion, this.downloadUrl});
+
+  bool sameAs(VersionBroadcast? other) =>
+      other != null &&
+      latestVersion == other.latestVersion &&
+      minVersion == other.minVersion &&
+      downloadUrl == other.downloadUrl;
+}
+
 /// Device 인증 전용 Dio 클라이언트
 class AttendanceDeviceService {
   late final Dio _dio;
   /// 키오스크 관리자 모드 세션 토큰 (in-memory).
   /// `_AdminSessionInterceptor` 가 있을 때만 `X-Admin-Session` 헤더를 추가한다.
   String? _adminToken;
+
+  /// 최근 응답에서 추출된 서버 버전 정보. Shell 가 listen 해서 갱신.
+  final ValueNotifier<VersionBroadcast?> versionBroadcast = ValueNotifier(null);
 
   AttendanceDeviceService() {
     _dio = Dio(BaseOptions(
@@ -36,6 +59,8 @@ class AttendanceDeviceService {
     // device token 자동 주입 (있을 때만)
     _dio.interceptors.add(_DeviceAuthInterceptor());
     _dio.interceptors.add(_AdminSessionInterceptor(() => _adminToken));
+    // 응답 헤더에서 X-App-* 추출 → versionBroadcast 갱신
+    _dio.interceptors.add(_VersionBroadcastInterceptor(versionBroadcast));
   }
 
   void setAdminToken(String? token) {
@@ -153,6 +178,34 @@ class AttendanceDeviceService {
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
     }
     return const [];
+  }
+
+  /// 팁 입력 — clock-out 직후 매장 비치 태블릿에서 호출.
+  ///
+  /// distributions: 각 항목 {receiver_id, amount, reason?}.
+  /// 분배 합 > card_tips 면 서버가 400 반환.
+  Future<Map<String, dynamic>> submitTipEntry({
+    required String userId,
+    required String pin,
+    required String date,
+    required String cardTips,
+    required String cashTipsKept,
+    String? workRoleId,
+    List<Map<String, dynamic>> distributions = const [],
+  }) async {
+    final response = await _dio.post(
+      '/attendance/tip-entry',
+      data: {
+        'user_id': userId,
+        'pin': pin,
+        'date': date,
+        'card_tips': cardTips,
+        'cash_tips_kept': cashTipsKept,
+        if (workRoleId != null) 'work_role_id': workRoleId,
+        'distributions': distributions,
+      },
+    );
+    return Map<String, dynamic>.from(response.data as Map);
   }
 
   /// 매장 공지 조회 (device token)
@@ -355,5 +408,41 @@ class _AdminSessionInterceptor extends Interceptor {
       options.headers['X-Admin-Session'] = token;
     }
     handler.next(options);
+  }
+}
+
+/// 응답 헤더 X-App-Latest-Version / X-App-Min-Version / X-App-Download-Url
+/// 을 읽어 versionBroadcast 를 갱신. 같은 값이면 notify 생략 (rebuild 최소화).
+/// 401 등 에러 응답에도 헤더는 박혀오므로 onError 에서도 동일 처리.
+class _VersionBroadcastInterceptor extends Interceptor {
+  final ValueNotifier<VersionBroadcast?> _notifier;
+  _VersionBroadcastInterceptor(this._notifier);
+
+  void _extract(Headers? h) {
+    if (h == null) return;
+    final latest = h.value('x-app-latest-version');
+    final min = h.value('x-app-min-version');
+    final url = h.value('x-app-download-url');
+    if (latest == null && min == null && url == null) return;
+    final next = VersionBroadcast(
+      latestVersion: latest,
+      minVersion: min,
+      downloadUrl: url,
+    );
+    if (!next.sameAs(_notifier.value)) {
+      _notifier.value = next;
+    }
+  }
+
+  @override
+  void onResponse(Response response, ResponseInterceptorHandler handler) {
+    _extract(response.headers);
+    handler.next(response);
+  }
+
+  @override
+  void onError(DioException err, ErrorInterceptorHandler handler) {
+    _extract(err.response?.headers);
+    handler.next(err);
   }
 }

@@ -35,12 +35,29 @@ android {
     // env flavor 만 (mode 차원 없음 — attendance 전용 앱).
     // 같은 단말에 dev/staging/production .apk 동시 설치 가능 (applicationId 분리).
     // workflow release-attendance.yml 의 --flavor attendance{env} 와 일치하도록 합쳐진 이름 사용.
+    //
+    // worktree 격리: gradle property `-Pworktree=<브랜치>` 가 주어지면 dev flavor 에 한해
+    // applicationId 와 라벨 suffix 를 추가해서 같은 에뮬레이터에 worktree 별로 독립 설치 가능.
+    // 예: -Pworktree=feat/tips → com.tigersplus.taskmanager.attendance.dev.feattips,
+    //                            라벨 "HTMA [DEV·feat-tips]"
+    // staging/prod 빌드는 영향 받지 않음.
+    val rawWorktree = (project.findProperty("worktree") as String?)?.trim()
+    val wtId = rawWorktree
+        ?.lowercase()
+        ?.replace(Regex("[^a-z0-9]"), "")
+        ?.takeIf { it.isNotBlank() }
+    val wtLabel = rawWorktree
+        ?.replace("/", "-")
+        ?.takeIf { it.isNotBlank() }
+
     flavorDimensions += listOf("env")
     productFlavors {
         create("attendancedev") {
             dimension = "env"
-            applicationId = "com.tigersplus.taskmanager.attendance.dev"
-            manifestPlaceholders["envSuffix"] = " [DEV]"
+            applicationId = "com.tigersplus.taskmanager.attendance.dev" +
+                (wtId?.let { ".$it" } ?: "")
+            manifestPlaceholders["envSuffix"] =
+                " [DEV" + (wtLabel?.let { "·$it" } ?: "") + "]"
         }
         create("attendancestaging") {
             dimension = "env"

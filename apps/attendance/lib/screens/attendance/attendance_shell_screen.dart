@@ -7,9 +7,12 @@
 /// - loading/init  → 로딩 스피너
 ///
 /// 기존 auth guard(JWT) 영향을 받지 않는 독립 shell.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../providers/attendance_device_provider.dart';
 import '../../services/attendance_device_service.dart';
 import '../../utils/app_version_gate.dart';
@@ -28,14 +31,57 @@ class AttendanceShellScreen extends ConsumerStatefulWidget {
 class _AttendanceShellScreenState extends ConsumerState<AttendanceShellScreen> {
   AppVersionStatus? _versionStatus;
   bool _bannerDismissed = false;
+  String? _currentAppVersion;  // PackageInfo cache
+  Timer? _versionPollTimer;
+  AttendanceDeviceService? _watchedService;
 
   @override
   void initState() {
     super.initState();
     // 첫 프레임 후 상태 체크 (build 사이클과 겹치지 않도록)
     Future.microtask(() async {
+      // PackageInfo 한 번만 불러서 캐시 (semver+build → "1.0.7+25")
+      final pkg = await PackageInfo.fromPlatform();
+      if (mounted) _currentAppVersion = currentVersionString(pkg);
       await ref.read(attendanceDeviceProvider.notifier).checkStatus();
       _refreshVersionStatus();
+      _attachVersionBroadcastListener();
+    });
+    // 1시간 폴백 폴링 — idle kiosk catch-up.
+    // 응답 헤더 piggyback 이 주 메커니즘이라 보조용.
+    _versionPollTimer = Timer.periodic(
+      const Duration(hours: 1),
+      (_) => _refreshVersionStatus(),
+    );
+  }
+
+  void _attachVersionBroadcastListener() {
+    final svc = ref.read(attendanceDeviceServiceProvider);
+    if (identical(_watchedService, svc)) return;
+    _watchedService?.versionBroadcast.removeListener(_onVersionBroadcast);
+    _watchedService = svc;
+    svc.versionBroadcast.addListener(_onVersionBroadcast);
+  }
+
+  void _onVersionBroadcast() {
+    if (!mounted) return;
+    final b = _watchedService?.versionBroadcast.value;
+    if (b == null) return;
+    final current = _currentAppVersion;
+    if (current == null) return;
+    setState(() {
+      _versionStatus = AppVersionStatus(
+        current: current,
+        minVersion: b.minVersion,
+        latestVersion: b.latestVersion,
+        downloadUrl: b.downloadUrl,
+        releaseNotes: _versionStatus?.releaseNotes,  // 헤더엔 release notes 없음 — 직전 fetch 값 유지
+      );
+      // 새 latestVersion 이 떴으면 dismiss 리셋해서 배너 다시 표시
+      if (b.latestVersion != null &&
+          _versionStatus!.hasUpdate) {
+        _bannerDismissed = false;
+      }
     });
   }
 
@@ -47,6 +93,13 @@ class _AttendanceShellScreenState extends ConsumerState<AttendanceShellScreen> {
     final status = await fetchAppVersionStatus(svc);
     if (!mounted) return;
     setState(() => _versionStatus = status);
+  }
+
+  @override
+  void dispose() {
+    _versionPollTimer?.cancel();
+    _watchedService?.versionBroadcast.removeListener(_onVersionBroadcast);
+    super.dispose();
   }
 
   @override

@@ -38,6 +38,11 @@ import '../screens/inventory/inventory_add_screen.dart';
 import '../screens/inventory/inventory_audit_screen.dart';
 import '../screens/work/checklist_screen.dart';
 import '../screens/work/work_screen.dart';
+import '../screens/tips/tips_home_screen.dart';
+import '../screens/tips/tip_entry_editor_screen.dart';
+import '../screens/tips/signature_screen.dart';
+import '../screens/tips/forms_landing_screen.dart';
+import '../screens/tips/view_form_screen.dart';
 import '../widgets/app_shell.dart';
 
 /// 인증 상태 변경을 GoRouter에 전달하기 위한 ChangeNotifier
@@ -58,11 +63,21 @@ final routerProvider = Provider<GoRouter>((ref) {
   final authNotifier = _AuthNotifier(ref);
 
   return GoRouter(
-    initialLocation: '/login',
+    // initialLocation 은 '/login' 이 아니라 '/home' — 새로고침 시 토큰 검증이 끝나기 전에
+    // /login 으로 강제 점프하지 않도록. 진짜 인증 미상태이면 redirect 로직이 /login 으로 보낸다.
+    initialLocation: '/home',
     // 인증 상태 변경 시 리다이렉트 로직 재실행
     refreshListenable: authNotifier,
     redirect: (context, state) {
       final authState = ref.read(authProvider);
+      // 인증 상태가 아직 확정되지 않았으면 (앱 시작 직후 / 새로고침 직후 checkAuth 진행 중)
+      // 어떤 redirect 도 하지 않는다. 현재 URL 을 그대로 두고, 토큰 검증이 끝나면
+      // refreshListenable 이 이 함수를 다시 실행하여 그때 결정한다.
+      // 이렇게 해야 web 에서 새로고침해도 마지막 위치가 보존된다.
+      if (authState.status == AuthStatus.initial
+          || authState.status == AuthStatus.loading) {
+        return null;
+      }
       final isAuth = authState.status == AuthStatus.authenticated;
       final user = authState.user;
       final path = state.uri.path;
@@ -101,7 +116,40 @@ final routerProvider = Provider<GoRouter>((ref) {
           )),
           GoRoute(path: '/clock', builder: (_, __) => const ClockScreen()),
           GoRoute(path: '/schedule', builder: (_, __) => const ScheduleScreen()),
+          GoRoute(path: '/tips', builder: (_, __) => const TipsHomeScreen()),
         ],
+      ),
+
+      // ── Tips 입력/수정 (bottom nav 없음 — push)
+      GoRoute(
+        path: '/tips/new',
+        builder: (_, __) => const TipEntryEditorScreen(),
+      ),
+      GoRoute(
+        path: '/tips/edit/:id',
+        builder: (_, state) {
+          final extra = state.extra;
+          return TipEntryEditorScreen(
+            initialEntry: extra is Map<String, dynamic> ? extra : null,
+          );
+        },
+      ),
+      GoRoute(
+        path: '/tips/signature',
+        builder: (_, __) => const SignatureScreen(),
+      ),
+      GoRoute(
+        path: '/tips/forms',
+        builder: (_, __) => const FormsLandingScreen(),
+      ),
+      GoRoute(
+        path: '/tips/forms/:id',
+        builder: (_, state) => ViewFormScreen(
+          formId: state.pathParameters['id']!,
+          initialForm: state.extra is Map<String, dynamic>
+              ? state.extra as Map<String, dynamic>
+              : null,
+        ),
       ),
 
       // ── 독립 화면 (ShellRoute 바깥 = 전체 화면) ──

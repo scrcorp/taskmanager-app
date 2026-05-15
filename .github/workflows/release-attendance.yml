@@ -1,13 +1,19 @@
 name: Release Attendance APK
 
+# ⚠️ 현재 이 workflow는 비활성 (CI 빌드 너무 느려서 사용 안 함).
+# 실제 릴리스는 `scripts/release-attendance.sh` 로컬 실행으로 진행.
+# 파일 유지 이유: 파일명/경로 규칙을 release-attendance.sh 와 동기화된 상태로 보존
+# (다음에 누군가 이 yml 참고해서 카피해도 옛 이름 안 박히게).
+#
 # Tag 형식:
-#   attendance-staging-vX.Y.Z   → staging 빌드 + 업로드
-#   attendance-vX.Y.Z           → production 빌드 + 업로드
+#   attendance-staging-vX.Y.Z+N → staging 빌드 + 업로드
+#   attendance-vX.Y.Z+N         → production 빌드 + 업로드
+#   (pubspec.yaml 의 X.Y.Z+N 와 동일하게 — 빌드번호 포함)
 #
 # Required GitHub Secrets:
 #   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY  (S3 PutObject — 기존 web 배포용 키 재활용)
 #
-# 서버 POST /admin/app-versions 는 임시로 인증 없이 공개 (TODO: service 계정 도입 후 잠금)
+# 서버 POST /api/v1/console/app-versions 는 임시로 인증 없이 공개 (TODO: service 계정 도입 후 잠금)
 
 on:
   push:
@@ -28,6 +34,7 @@ jobs:
         id: env
         run: |
           TAG="${GITHUB_REF#refs/tags/}"
+          PREFIX=""
           if [[ "$TAG" == attendance-staging-v* ]]; then
             VERSION="${TAG#attendance-staging-v}"
             echo "channel=attendance_staging" >> $GITHUB_OUTPUT
@@ -37,6 +44,7 @@ jobs:
             echo "app_env=staging" >> $GITHUB_OUTPUT
             echo "app_flavor=STAGING" >> $GITHUB_OUTPUT
             echo "s3_bucket=taskmanager-storage-staging" >> $GITHUB_OUTPUT
+            PREFIX="htma_test"
           elif [[ "$TAG" == attendance-v* ]]; then
             VERSION="${TAG#attendance-v}"
             echo "channel=attendance_production" >> $GITHUB_OUTPUT
@@ -46,11 +54,14 @@ jobs:
             echo "app_env=production" >> $GITHUB_OUTPUT
             echo "app_flavor=" >> $GITHUB_OUTPUT
             echo "s3_bucket=taskmanager-storage-prod" >> $GITHUB_OUTPUT
+            PREFIX="htma"
           else
             echo "Unknown tag pattern: $TAG"
             exit 1
           fi
-          echo "s3_key=app-releases/attendance/v$VERSION/tma.apk" >> $GITHUB_OUTPUT
+          # 디렉토리는 marketing version (X.Y.Z), 파일명은 full version (X.Y.Z+N) 포함
+          MARKETING="${VERSION%+*}"
+          echo "s3_key=app-releases/attendance/v${MARKETING}/${PREFIX}_${VERSION}.apk" >> $GITHUB_OUTPUT
 
       - uses: subosito/flutter-action@v2
         with:
@@ -76,14 +87,14 @@ jobs:
 
       - name: Upload APK to S3
         run: |
-          aws s3 cp \
+          aws s3 cp --acl public-read \
             build/app/outputs/flutter-apk/app-${{ steps.env.outputs.flavor }}-release.apk \
             s3://${{ steps.env.outputs.s3_bucket }}/${{ steps.env.outputs.s3_key }}
 
       - name: Register release with server
         run: |
           curl -sS -X POST \
-            "${{ steps.env.outputs.api_base }}/admin/app-versions" \
+            "${{ steps.env.outputs.api_base }}/console/app-versions" \
             -H "Content-Type: application/json" \
             -d "{
               \"channel\": \"${{ steps.env.outputs.channel }}\",
