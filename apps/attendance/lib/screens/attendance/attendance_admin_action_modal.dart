@@ -137,9 +137,21 @@ class AttendanceAdminActionModal extends ConsumerStatefulWidget {
       _AttendanceAdminActionModalState();
 }
 
+/// Console 의 correctionPresets.ts 와 동일한 preset 목록. 양쪽 history 일관성용.
+const _kReasonPresets = <String>[
+  'Forgot to clock in',
+  'Forgot to clock out',
+  'Wrong time recorded',
+  'Device / network issue',
+  'Schedule change',
+  'Break correction',
+];
+
 class _AttendanceAdminActionModalState
     extends ConsumerState<AttendanceAdminActionModal> {
   TimeOfDay? _time;
+  /// preset 선택 (null = 미선택 / "Other" = 직접 입력).
+  String? _reasonPreset;
   final _reasonCtrl = TextEditingController();
   bool _saving = false;
 
@@ -168,11 +180,18 @@ class _AttendanceAdminActionModalState
     if (picked != null) setState(() => _time = picked);
   }
 
+  /// 최종 reason — preset 선택했으면 그 라벨, Other 면 free-text, 아니면 "".
+  /// 빈 문자열이면 서버가 "(no reason)" 으로 기록.
+  String get _effectiveReason {
+    if (_reasonPreset == null) return _reasonCtrl.text.trim();
+    if (_reasonPreset == 'Other') return _reasonCtrl.text.trim();
+    return _reasonPreset!;
+  }
+
   Future<void> _apply() async {
     if (_saving) return;
-    // reason 은 선택. 비워두면 서버가 placeholder 로 기록하고 매니저가 나중에
-    // console 에서 수정 가능.
-    final reason = _reasonCtrl.text.trim();
+    // reason 은 선택 — preset 또는 Other 의 free-text, 둘 다 안 채우면 "".
+    final reason = _effectiveReason;
     if (widget.action.needsTime && _time == null) {
       AppModal.show(
         context,
@@ -343,28 +362,53 @@ class _AttendanceAdminActionModalState
               const _SectionLabel('REASON (OPTIONAL)'),
               const SizedBox(height: 6),
               const Text(
-                'You can skip and add it later from the Console.',
+                'Tap a preset, pick Other to type, or skip and add later from the Console.',
                 style: TextStyle(fontSize: 12, color: AppColors.textMuted),
               ),
-              const SizedBox(height: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.border),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: TextField(
-                  controller: _reasonCtrl,
-                  maxLines: 4,
-                  textInputAction: TextInputAction.done,
-                  decoration: const InputDecoration(
-                    border: InputBorder.none,
-                    hintText:
-                        'e.g. Forgot to clock in, late arrival, system glitch',
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final p in _kReasonPresets)
+                    _ReasonChip(
+                      label: p,
+                      selected: _reasonPreset == p,
+                      onTap: () => setState(() {
+                        _reasonPreset = _reasonPreset == p ? null : p;
+                        if (_reasonPreset != 'Other') _reasonCtrl.clear();
+                      }),
+                    ),
+                  _ReasonChip(
+                    label: 'Other',
+                    selected: _reasonPreset == 'Other',
+                    onTap: () => setState(() {
+                      _reasonPreset = _reasonPreset == 'Other' ? null : 'Other';
+                    }),
+                  ),
+                ],
+              ),
+              if (_reasonPreset == 'Other') ...[
+                const SizedBox(height: 10),
+                Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: TextField(
+                    controller: _reasonCtrl,
+                    maxLines: 3,
+                    autofocus: true,
+                    textInputAction: TextInputAction.done,
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      hintText: 'Describe the reason',
+                    ),
                   ),
                 ),
-              ),
+              ],
               const Spacer(),
               SizedBox(
                 height: 60,
@@ -464,4 +508,47 @@ class _SectionLabel extends StatelessWidget {
           letterSpacing: 1.2,
         ),
       );
+}
+
+class _ReasonChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  const _ReasonChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected
+          ? AppColors.accent.withValues(alpha: 0.15)
+          : AppColors.white,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected ? AppColors.accent : AppColors.border,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: selected ? AppColors.accent : AppColors.text,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
