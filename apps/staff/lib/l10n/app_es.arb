@@ -254,9 +254,6 @@
   "commonComingSoon": "Próximamente",
   "commonUnknown": "Desconocido",
 
-  "clockTitle": "Entrada / Salida",
-  "clockSubtitle": "Marca tu entrada y salida para registrar tus horas.",
-
   "ojtTitle": "Capacitación OJT",
   "ojtSubtitle": "Aquí estarán disponibles los módulos de capacitación.",
 
@@ -396,7 +393,6 @@
   "commonComingSoonTitle": "Próximamente",
 
   "myPageHeader": "Mi cuenta",
-  "myPinPrefix": "PIN: ",
   "myTakePhoto": "Tomar foto",
   "myChooseGallery": "Elegir de la galería",
   "myRemovePhoto": "Quitar foto",

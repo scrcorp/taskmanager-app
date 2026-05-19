@@ -627,13 +627,6 @@ class AppL10nEs extends AppL10n {
   String get commonUnknown => 'Desconocido';
 
   @override
-  String get clockTitle => 'Entrada / Salida';
-
-  @override
-  String get clockSubtitle =>
-      'Marca tu entrada y salida para registrar tus horas.';
-
-  @override
   String get ojtTitle => 'Capacitación OJT';
 
   @override
@@ -992,9 +985,6 @@ class AppL10nEs extends AppL10n {
 
   @override
   String get myPageHeader => 'Mi cuenta';
-
-  @override
-  String get myPinPrefix => 'PIN: ';
 
   @override
   String get myTakePhoto => 'Tomar foto';

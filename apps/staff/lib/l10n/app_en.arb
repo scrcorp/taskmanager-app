@@ -257,9 +257,6 @@
   "commonComingSoon": "Coming soon",
   "commonUnknown": "Unknown",
 
-  "clockTitle": "Clock In / Out",
-  "clockSubtitle": "Clock in and out to track your work hours.",
-
   "ojtTitle": "OJT Training",
   "ojtSubtitle": "On-the-job training modules will be available here.",
 
@@ -399,7 +396,6 @@
   "commonComingSoonTitle": "Coming Soon",
 
   "myPageHeader": "My Page",
-  "myPinPrefix": "PIN: ",
   "myTakePhoto": "Take Photo",
   "myChooseGallery": "Choose from Gallery",
   "myRemovePhoto": "Remove Photo",
