@@ -1177,18 +1177,6 @@ abstract class AppL10n {
   /// **'Unknown'**
   String get commonUnknown;
 
-  /// No description provided for @clockTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Clock In / Out'**
-  String get clockTitle;
-
-  /// No description provided for @clockSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Clock in and out to track your work hours.'**
-  String get clockSubtitle;
-
   /// No description provided for @ojtTitle.
   ///
   /// In en, this message translates to:
@@ -1824,12 +1812,6 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'My Page'**
   String get myPageHeader;
-
-  /// No description provided for @myPinPrefix.
-  ///
-  /// In en, this message translates to:
-  /// **'PIN: '**
-  String get myPinPrefix;
 
   /// No description provided for @myTakePhoto.
   ///

@@ -51,10 +51,6 @@ class _AlertScreenState extends ConsumerState<AlertScreen> {
         context.push('/daily-reports/$id');
       case 'issue_report':
         context.push('/issue-reports/$id');
-      case 'attendance':
-        // attendance correction 알림은 보통 GM/SV 대상.
-        // app 내 attendance 상세 화면이 아직 없어 clock 화면으로 fallback.
-        context.push('/clock');
     }
   }
 

@@ -359,7 +359,7 @@ class _TipsHomeScreenState extends ConsumerState<TipsHomeScreen> {
                 border: Border.all(color: AppColors.border),
               ),
               child: const Text(
-                'No tip entries yet this cycle.\nUse the attendance station after clock-out or tap "+ Add entry" below to enter manually.',
+                'No tip entries yet this cycle.\nUse the attendance station or tap "+ Add entry" below to enter manually.',
                 style: TextStyle(
                   fontSize: 13,
                   color: AppColors.textSecondary,
