@@ -180,6 +180,19 @@ class AttendanceDeviceService {
     return const [];
   }
 
+  /// 팁 분배 대상 후보 — PIN 인증 후 같은 매장/날/시간 겹친 staff 목록.
+  Future<List<Map<String, dynamic>>> getTipEligibleReceivers({
+    required String userId,
+    required String pin,
+  }) async {
+    final response = await _dio.post(
+      '/attendance/tip-entry/eligible-receivers',
+      data: {'user_id': userId, 'pin': pin},
+    );
+    final list = response.data as List;
+    return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
   /// 팁 입력 — clock-out 직후 매장 비치 태블릿에서 호출.
   ///
   /// distributions: 각 항목 {receiver_id, amount, reason?}.
