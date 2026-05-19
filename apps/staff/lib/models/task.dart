@@ -1,11 +1,9 @@
-/// 추가 업무(Additional Task) 데이터 모델
+/// Task (work item) 데이터 모델 — staff app 용.
 ///
-/// 체크리스트와 별도로 관리자가 직원에게 배정하는 개별 업무.
-/// DB 테이블명: additional_tasks (코드에서 'tasks'로 약칭)
-/// 우선순위(urgent/high/normal/low)와 상태(pending/in_progress/completed)를 지원.
+/// 명명 변경 이력: additional_tasks → issues → tasks. 클래스 이름은 기존
+/// 호출처 호환 위해 `AdditionalTask` 그대로 유지 (alias 성격).
 import 'store.dart';
 
-/// 추가 업무 본체
 class AdditionalTask {
   final String id;
   final String? storeId;
@@ -13,22 +11,38 @@ class AdditionalTask {
   final Store? store;
   final String title;
   final String? description;
-  /// 우선순위: 'urgent', 'high', 'normal', 'low'
+
+  /// 우선순위: 'urgent' / 'normal' (신규 task 시스템은 두 단계만).
   final String priority;
-  /// 상태: 'pending', 'in_progress', 'completed'
+
+  /// 상태: 'pending' / 'in_progress' / 'completed'.
   final String status;
-  final DateTime? startDate;
+
+  final String? severity;
+  final String? category;
   final DateTime? dueDate;
   final String? createdByName;
-  /// 담당자 이름 목록 (간략 버전)
-  final List<String> assigneeNames;
-  /// 담당자 상세 정보 목록 (완료 여부 포함)
+
+  /// 담당자 목록 — { user_id, user_name }.
   final List<TaskAssignee> assignees;
-  /// 라벨 태그 목록
-  final List<String> labels;
+
+  /// 관리자가 task 설명용으로 첨부한 사진/영상/파일.
+  final List<TaskAttachmentItem> attachments;
+
+  /// store scope (multi-store / org-wide 지원).
+  final List<String> storeIds;
+  final List<String> storeNames;
+
+  /// review 시점 정보.
+  final DateTime? submittedAt;
+  final String? submittedByName;
+  final DateTime? reviewedAt;
+  final String? reviewedByName;
+
+  final String? sourceReportId;
+
   final DateTime? createdAt;
-  final DateTime? completedAt;
-  final String? completedByName;
+  final DateTime? updatedAt;
 
   const AdditionalTask({
     required this.id,
@@ -39,40 +53,42 @@ class AdditionalTask {
     this.description,
     this.priority = 'normal',
     this.status = 'pending',
-    this.startDate,
+    this.severity,
+    this.category,
     this.dueDate,
     this.createdByName,
-    this.assigneeNames = const [],
     this.assignees = const [],
-    this.labels = const [],
+    this.attachments = const [],
+    this.storeIds = const [],
+    this.storeNames = const [],
+    this.submittedAt,
+    this.submittedByName,
+    this.reviewedAt,
+    this.reviewedByName,
+    this.sourceReportId,
     this.createdAt,
-    this.completedAt,
-    this.completedByName,
+    this.updatedAt,
   });
 
-  /// 우선순위를 사용자에게 표시할 라벨로 변환
   String get priorityLabel {
     switch (priority) {
       case 'urgent':
         return 'Urgent';
-      case 'high':
-        return 'High';
       case 'normal':
         return 'Normal';
-      case 'low':
-        return 'Low';
       default:
         return priority;
     }
   }
 
-  /// 상태를 사용자에게 표시할 라벨로 변환
   String get statusLabel {
     switch (status) {
       case 'pending':
         return 'Pending';
       case 'in_progress':
         return 'In Progress';
+      case 'under_review':
+        return 'Under review';
       case 'completed':
         return 'Completed';
       default:
@@ -80,7 +96,23 @@ class AdditionalTask {
     }
   }
 
-  /// 서버 JSON → AdditionalTask 객체 변환
+  /// 호환용 alias — 기존 UI 가 `assigneeNames` 으로 라벨 렌더링하던 코드 보존.
+  List<String> get assigneeNames =>
+      assignees.map((a) => a.fullName ?? '').where((s) => s.isNotEmpty).toList();
+
+  // ── 신규 task 시스템에 없는 옛 필드들 — UI 호환 위해 null/empty 기본값 ──
+  /// 신규 시스템엔 없음.
+  List<String> get labels => const [];
+
+  /// 신규 시스템엔 task-level completedAt 없음. (per-assignee 도 사라짐.)
+  DateTime? get completedAt => null;
+
+  /// 신규 시스템엔 없음.
+  String? get completedByName => null;
+
+  /// 신규 시스템엔 없음 (start_date 컬럼 자체가 없음).
+  DateTime? get startDate => null;
+
   factory AdditionalTask.fromJson(Map<String, dynamic> json) {
     return AdditionalTask(
       id: json['id'],
@@ -91,48 +123,132 @@ class AdditionalTask {
       description: json['description'],
       priority: json['priority'] ?? 'normal',
       status: json['status'] ?? 'pending',
-      startDate: json['start_date'] != null ? DateTime.parse(json['start_date']) : null,
+      severity: json['severity'],
+      category: json['category'],
       dueDate: json['due_date'] != null ? DateTime.parse(json['due_date']) : null,
       createdByName: json['created_by_name'],
-      assigneeNames: (json['assignee_names'] as List<dynamic>?)?.cast<String>() ?? [],
       assignees: (json['assignees'] as List<dynamic>?)
               ?.map((e) => TaskAssignee.fromJson(e))
               .toList() ??
           [],
-      labels: (json['labels'] as List<dynamic>?)?.cast<String>() ?? [],
-      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
-      completedAt: json['completed_at'] != null ? DateTime.parse(json['completed_at']) : null,
-      completedByName: json['completed_by_name'],
+      attachments: ((json['attachments'] as List?) ?? [])
+          .map((e) => TaskAttachmentItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      storeIds: ((json['store_ids'] as List?) ?? []).cast<String>(),
+      storeNames: ((json['store_names'] as List?) ?? []).cast<String>(),
+      submittedAt: json['submitted_at'] != null
+          ? DateTime.tryParse(json['submitted_at'] as String)
+          : null,
+      submittedByName: json['submitted_by_name'] as String?,
+      reviewedAt: json['reviewed_at'] != null
+          ? DateTime.tryParse(json['reviewed_at'] as String)
+          : null,
+      reviewedByName: json['reviewed_by_name'] as String?,
+      sourceReportId: json['source_report_id'] as String?,
+      createdAt:
+          json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
+      updatedAt:
+          json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
     );
   }
 }
 
-/// 업무 담당자 정보
-///
-/// 개별 담당자의 완료 여부를 추적하여
-/// 다중 담당자 업무의 진행 상태를 파악할 수 있다.
-class TaskAssignee {
-  final String userId;
-  final String? fullName;
-  final bool isCompleted;
-  final DateTime? completedAt;
+/// Task attachment — server 가 resolve_url 처리한 url 포함.
+class TaskAttachmentItem {
+  final String key;
+  final String? url;
+  final String? mimeType;
+  final String? kind; // 'image' | 'video' | 'file'
+  final String? name;
+  final int? size;
 
-  const TaskAssignee({
-    required this.userId,
-    this.fullName,
-    this.isCompleted = false,
-    this.completedAt,
+  const TaskAttachmentItem({
+    required this.key,
+    this.url,
+    this.mimeType,
+    this.kind,
+    this.name,
+    this.size,
   });
 
-  /// 서버 JSON → TaskAssignee 객체 변환
-  factory TaskAssignee.fromJson(Map<String, dynamic> json) {
-    return TaskAssignee(
-      userId: json['user_id'],
-      fullName: json['full_name'],
-      isCompleted: json['is_completed'] ?? false,
-      completedAt: json['completed_at'] != null
-          ? DateTime.parse(json['completed_at'])
+  factory TaskAttachmentItem.fromJson(Map<String, dynamic> json) {
+    return TaskAttachmentItem(
+      key: json['key'] as String? ?? '',
+      url: json['url'] as String?,
+      mimeType: json['mime_type'] as String?,
+      kind: json['kind'] as String?,
+      name: json['name'] as String?,
+      size: json['size'] as int?,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'key': key,
+        if (mimeType != null) 'mime_type': mimeType,
+        if (kind != null) 'kind': kind,
+        if (name != null) 'name': name,
+        if (size != null) 'size': size,
+      };
+}
+
+/// Task comment — system audit 또는 user comment (+ optional 첨부).
+class TaskCommentItem {
+  final String id;
+  final String taskId;
+  final String? userId;
+  final String? userName;
+  final String content;
+  final String kind; // 'comment' | 'system'
+  final List<TaskAttachmentItem> attachments;
+  final DateTime? createdAt;
+
+  const TaskCommentItem({
+    required this.id,
+    required this.taskId,
+    this.userId,
+    this.userName,
+    required this.content,
+    this.kind = 'comment',
+    this.attachments = const [],
+    this.createdAt,
+  });
+
+  factory TaskCommentItem.fromJson(Map<String, dynamic> json) {
+    return TaskCommentItem(
+      id: json['id'] as String,
+      taskId: json['task_id'] as String,
+      userId: json['user_id'] as String?,
+      userName: json['user_name'] as String?,
+      content: (json['content'] as String?) ?? '',
+      kind: (json['kind'] as String?) ?? 'comment',
+      attachments: ((json['attachments'] as List?) ?? [])
+          .map((e) => TaskAttachmentItem.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      createdAt: json['created_at'] != null
+          ? DateTime.tryParse(json['created_at'] as String)
           : null,
     );
   }
+}
+
+/// Task 담당자 — { user_id, user_name }.
+///
+/// 신규 task 시스템엔 per-assignee 완료 추적이 없음. isCompleted/completedAt
+/// 은 UI 호환 위해 항상 false/null 로 반환 (task-level status 만 의미).
+class TaskAssignee {
+  final String? userId;
+  final String? fullName;
+
+  const TaskAssignee({this.userId, this.fullName});
+
+  factory TaskAssignee.fromJson(Map<String, dynamic> json) {
+    return TaskAssignee(
+      userId: json['user_id'],
+      fullName: json['user_name'] ?? json['full_name'],
+    );
+  }
+
+  /// 호환 alias — 신규 시스템엔 per-assignee 완료 트래킹 없음.
+  bool get isCompleted => false;
+  DateTime? get completedAt => null;
 }

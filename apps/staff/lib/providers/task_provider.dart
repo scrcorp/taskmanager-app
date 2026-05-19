@@ -41,6 +41,13 @@ final taskProvider = StateNotifierProvider<TaskNotifier, TaskState>((ref) {
   return TaskNotifier(ref.read(taskServiceProvider));
 });
 
+/// task 댓글 list — family by taskId.
+final taskCommentsProvider =
+    FutureProvider.family<List<TaskCommentItem>, String>((ref, taskId) async {
+  final service = ref.read(taskServiceProvider);
+  return service.listComments(taskId);
+});
+
 /// 추가 업무 상태 관리 Notifier
 class TaskNotifier extends StateNotifier<TaskState> {
   final TaskService _service;
@@ -69,7 +76,7 @@ class TaskNotifier extends StateNotifier<TaskState> {
     }
   }
 
-  /// 업무 완료 처리 후 상태 리로드
+  /// 업무 완료 처리 후 상태 리로드 (legacy 호환).
   Future<void> completeTask(String id) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
@@ -77,6 +84,28 @@ class TaskNotifier extends StateNotifier<TaskState> {
       await _reloadTask(id);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  /// status 전이 (text/첨부 첨부 가능).
+  Future<void> transition(
+    String id, {
+    required String status,
+    String? comment,
+    List<Map<String, dynamic>>? attachments,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      await _service.transition(
+        id,
+        status: status,
+        comment: comment,
+        attachments: attachments,
+      );
+      await _reloadTask(id);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      rethrow;
     }
   }
 

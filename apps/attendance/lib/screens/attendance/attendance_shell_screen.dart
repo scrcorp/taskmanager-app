@@ -34,6 +34,10 @@ class _AttendanceShellScreenState extends ConsumerState<AttendanceShellScreen> {
   String? _currentAppVersion;  // PackageInfo cache
   Timer? _versionPollTimer;
   AttendanceDeviceService? _watchedService;
+  /// 401/네트워크 실패 → fetchAppVersionStatus 가 null 반환할 때, 매 build 마다
+  /// 자동 재시도 폭주 방지용. 1시간 폴링 타이머가 다시 시도하도록 둔다.
+  bool _versionCheckInFlight = false;
+  bool _versionCheckTriedSinceTick = false;
 
   @override
   void initState() {
@@ -51,7 +55,10 @@ class _AttendanceShellScreenState extends ConsumerState<AttendanceShellScreen> {
     // 응답 헤더 piggyback 이 주 메커니즘이라 보조용.
     _versionPollTimer = Timer.periodic(
       const Duration(hours: 1),
-      (_) => _refreshVersionStatus(),
+      (_) {
+        _versionCheckTriedSinceTick = false; // 새 tick — 한 번 더 시도 허용
+        _refreshVersionStatus();
+      },
     );
   }
 
@@ -89,10 +96,18 @@ class _AttendanceShellScreenState extends ConsumerState<AttendanceShellScreen> {
     // device token 이 있어야 endpoint 호출 가능. 없으면 skip.
     final state = ref.read(attendanceDeviceProvider);
     if (state.device == null) return;
-    final svc = ref.read(attendanceDeviceServiceProvider);
-    final status = await fetchAppVersionStatus(svc);
-    if (!mounted) return;
-    setState(() => _versionStatus = status);
+    // 이번 tick 안에서는 한 번만 시도 — 401 무한 폭주 방지.
+    if (_versionCheckInFlight || _versionCheckTriedSinceTick) return;
+    _versionCheckInFlight = true;
+    try {
+      final svc = ref.read(attendanceDeviceServiceProvider);
+      final status = await fetchAppVersionStatus(svc);
+      if (!mounted) return;
+      setState(() => _versionStatus = status);
+    } finally {
+      _versionCheckInFlight = false;
+      _versionCheckTriedSinceTick = true;
+    }
   }
 
   @override
@@ -104,6 +119,15 @@ class _AttendanceShellScreenState extends ConsumerState<AttendanceShellScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // device 가 null → non-null 로 전이될 때 (등록/store 선택 직후) 버전 체크
+    // 한 번 더 허용. 1시간 기다리지 않고 즉시 새로 시도.
+    ref.listen(attendanceDeviceProvider, (prev, next) {
+      final hadDevice = prev?.device != null;
+      final hasDevice = next.device != null;
+      if (!hadDevice && hasDevice) {
+        _versionCheckTriedSinceTick = false;
+      }
+    });
     final state = ref.watch(attendanceDeviceProvider);
 
     // 등록된 기기인데 강제 업데이트 필요 → 모든 화면을 가리는 blocker

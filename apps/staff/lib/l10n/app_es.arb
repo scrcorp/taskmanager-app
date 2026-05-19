@@ -17,9 +17,9 @@
   "actionSearch": "Buscar",
   "actionContinue": "Continuar",
 
-  "loginEmailOrUsernameHint": "Correo o usuario",
+  "loginEmailOrUsernameHint": "ID",
   "loginPasswordHint": "Contraseña",
-  "loginFindUsername": "Buscar usuario",
+  "loginFindUsername": "Buscar ID",
   "loginForgotPassword": "¿Olvidaste tu contraseña?",
   "loginNoAccountPrompt": "¿No tienes cuenta? ",
   "loginRegisterAction": "Regístrate",
@@ -74,7 +74,7 @@
   "actionResetPassword": "Restablecer contraseña",
   "codeNotReceivedPrompt": "¿No recibiste el código?",
 
-  "findUsernameHeader": "Buscar usuario",
+  "findUsernameHeader": "Buscar ID",
   "findUsernameHeading": "Encuentra tu usuario",
   "findUsernameSubheading": "Ingresa el correo asociado a tu cuenta.",
   "findUsernameHelp": "Buscaremos tu cuenta y te mostraremos una versión enmascarada de tu usuario para verificar.",
