@@ -45,6 +45,7 @@ class WorkScreen extends ConsumerStatefulWidget {
 class _WorkScreenState extends ConsumerState<WorkScreen> {
   int _selectedTab = 0; // 0 = Today, 1 = Past
   bool _pastLoaded = false;
+  bool _appliedDueFilter = false; // home 의 "Due today" 진입 시 한 번만 적용
   final _scrollController = ScrollController();
   final _checklistKey = GlobalKey();
   final _taskKey = GlobalKey();
@@ -118,9 +119,17 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
     final tasks = ref.watch(taskProvider);
 
     // Handle scrollTo query parameter
-    final scrollTo = GoRouterState.of(context).uri.queryParameters['scrollTo'];
+    final uriParams = GoRouterState.of(context).uri.queryParameters;
+    final scrollTo = uriParams['scrollTo'];
     if (scrollTo != null) {
       _scrollToSection(scrollTo);
+    }
+    // "due=today" → task section 초기 필터로 오늘 날짜 적용 (한 번만).
+    DateTime? initialDue;
+    if (uriParams['due'] == 'today' && !_appliedDueFilter) {
+      final now = DateTime.now();
+      initialDue = DateTime(now.year, now.month, now.day);
+      _appliedDueFilter = true;
     }
 
     final tags = <String>{};
@@ -246,7 +255,7 @@ class _WorkScreenState extends ConsumerState<WorkScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                _TodayTaskContent(tasks: tasks),
+                _TodayTaskContent(tasks: tasks, initialDueDate: initialDue),
               ],
             ),
           ),
@@ -708,9 +717,11 @@ class _ProfileCard extends StatelessWidget {
 enum _TaskSortOption { dueDate, priority, recent, name }
 
 class _TodayTaskContent extends StatefulWidget {
+  /// 진입 시 미리 적용할 due-date 필터 (예: home 의 "Due today" 진입).
+  final DateTime? initialDueDate;
   final TaskState tasks;
 
-  const _TodayTaskContent({required this.tasks});
+  const _TodayTaskContent({required this.tasks, this.initialDueDate});
 
   @override
   State<_TodayTaskContent> createState() => _TodayTaskContentState();
@@ -721,6 +732,12 @@ class _TodayTaskContentState extends State<_TodayTaskContent> {
   DateTime? _selectedDate;
   _TaskSortOption _sortOption = _TaskSortOption.dueDate;
   final _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = widget.initialDueDate;
+  }
 
   @override
   void dispose() {

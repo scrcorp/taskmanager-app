@@ -4,7 +4,7 @@
 /// 미읽음 알림은 파란 점 + 강조 배경으로 구분.
 /// 상단에 "Mark all read" 버튼으로 일괄 읽음 처리.
 /// 탭 시 referenceType에 따라 해당 상세 화면으로 네비게이션
-/// (work_assignment → 근무배정, additional_task → 업무, notice → 공지).
+/// (work_assignment → 근무배정, task/issue/additional_task → 업무, notice → 공지).
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -37,7 +37,9 @@ class _AlertScreenState extends ConsumerState<AlertScreen> {
       case 'schedule':
       case 'work_assignment': // backward compat
         context.push('/work/$id');
-      case 'additional_task':
+      case 'task':
+      case 'issue': // legacy: issues 시절 알림
+      case 'additional_task': // legacy: additional_tasks 시절 알림
         context.push('/tasks/$id');
       case 'notice':
         context.push('/notices/$id');
@@ -47,6 +49,8 @@ class _AlertScreenState extends ConsumerState<AlertScreen> {
         context.push('/work/$id');
       case 'daily_report':
         context.push('/daily-reports/$id');
+      case 'issue_report':
+        context.push('/issue-reports/$id');
       case 'attendance':
         // attendance correction 알림은 보통 GM/SV 대상.
         // app 내 attendance 상세 화면이 아직 없어 clock 화면으로 fallback.

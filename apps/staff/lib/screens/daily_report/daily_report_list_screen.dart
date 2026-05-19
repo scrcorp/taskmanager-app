@@ -15,8 +15,12 @@ import '../../utils/date_utils.dart';
 import '../../widgets/app_header.dart';
 
 /// 일일 리포트 목록 화면 위젯
+///
+/// [embedded] true 면 자체 Scaffold/AppHeader/FAB 없이 body 만 반환.
+/// 통합 Reports 화면 안에 탭 컨텐츠로 임베드 될 때 사용.
 class DailyReportListScreen extends ConsumerStatefulWidget {
-  const DailyReportListScreen({super.key});
+  final bool embedded;
+  const DailyReportListScreen({super.key, this.embedded = false});
   @override
   ConsumerState<DailyReportListScreen> createState() =>
       _DailyReportListScreenState();

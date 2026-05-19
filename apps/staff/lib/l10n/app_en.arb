@@ -20,9 +20,9 @@
   "actionSearch": "Search",
   "actionContinue": "Continue",
 
-  "loginEmailOrUsernameHint": "Email or Username",
+  "loginEmailOrUsernameHint": "ID",
   "loginPasswordHint": "Password",
-  "loginFindUsername": "Find Username",
+  "loginFindUsername": "Find ID",
   "loginForgotPassword": "Forgot Password?",
   "loginNoAccountPrompt": "Don't have an account? ",
   "loginRegisterAction": "Register",
@@ -77,7 +77,7 @@
   "actionResetPassword": "Reset Password",
   "codeNotReceivedPrompt": "Didn't receive the code?",
 
-  "findUsernameHeader": "Find Username",
+  "findUsernameHeader": "Find ID",
   "findUsernameHeading": "Find Your Username",
   "findUsernameSubheading": "Enter the email address associated with your account.",
   "findUsernameHelp": "We'll look up your account and show a masked version of your username for verification.",

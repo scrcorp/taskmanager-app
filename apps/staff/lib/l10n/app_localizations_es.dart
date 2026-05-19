@@ -54,13 +54,13 @@ class AppL10nEs extends AppL10n {
   String get actionContinue => 'Continuar';
 
   @override
-  String get loginEmailOrUsernameHint => 'Correo o usuario';
+  String get loginEmailOrUsernameHint => 'ID';
 
   @override
   String get loginPasswordHint => 'Contraseña';
 
   @override
-  String get loginFindUsername => 'Buscar usuario';
+  String get loginFindUsername => 'Buscar ID';
 
   @override
   String get loginForgotPassword => '¿Olvidaste tu contraseña?';
@@ -199,7 +199,7 @@ class AppL10nEs extends AppL10n {
   String get codeNotReceivedPrompt => '¿No recibiste el código?';
 
   @override
-  String get findUsernameHeader => 'Buscar usuario';
+  String get findUsernameHeader => 'Buscar ID';
 
   @override
   String get findUsernameHeading => 'Encuentra tu usuario';

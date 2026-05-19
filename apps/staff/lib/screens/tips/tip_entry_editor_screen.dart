@@ -253,11 +253,19 @@ class _TipEntryEditorScreenState
       '${d.day.toString().padLeft(2, '0')}';
 
   Future<void> _loadStaff() async {
-    final storeId = _storeId;
-    if (storeId == null) return;
+    // 분배 대상은 "선택된 schedule 의 같은 매장 + 같은 날 + 시간 overlap" 인 동료로
+    // 거른다. eligible-receivers 가 본인을 제외하고 [{id, full_name}] 반환.
+    final scheduleId = _scheduleId;
+    if (scheduleId == null) {
+      setState(() => _staff = const []);
+      return;
+    }
     try {
       final dio = ref.read(dioProvider);
-      final res = await dio.get('/app/my/stores/$storeId/staff');
+      final res = await dio.get(
+        '/app/my/tips/entries/eligible-receivers',
+        queryParameters: {'schedule_id': scheduleId},
+      );
       setState(() {
         _staff = (res.data as List)
             .map((e) => Map<String, dynamic>.from(e as Map))
@@ -512,12 +520,12 @@ class _TipEntryEditorScreenState
               final picked = _scheduledOptions
                   .firstWhere((o) => o.scheduleId == v);
               if (picked.alreadySubmitted) return;
-              final storeChanged = picked.storeId != _storeId;
               setState(() {
                 _scheduleId = picked.scheduleId;
                 _storeId = picked.storeId;
               });
-              if (storeChanged) await _loadStaff();
+              // schedule 이 바뀌면 항상 후보 재조회 — 시간/매장 둘 다 영향.
+              await _loadStaff();
             },
             decoration: const InputDecoration(
               border: OutlineInputBorder(),
@@ -639,6 +647,10 @@ class _TipEntryEditorScreenState
             ..._dists.map((row) => _DistRowWidget(
                   row: row,
                   staff: _staff,
+                  takenByOthers: _dists
+                      .where((r) => r.key != row.key && r.receiverId.isNotEmpty)
+                      .map((r) => r.receiverId)
+                      .toSet(),
                   onChanged: () => setState(() {}),
                   onRemove: () => _removeDist(row),
                 )),
@@ -789,17 +801,26 @@ class _MoneyField extends StatelessWidget {
 class _DistRowWidget extends StatelessWidget {
   final _DistRow row;
   final List<Map<String, dynamic>> staff;
+  /// 다른 row 들이 이미 선택한 receiver_id 들 — 이 row 의 dropdown 에서 제외.
+  final Set<String> takenByOthers;
   final VoidCallback onChanged;
   final VoidCallback onRemove;
   const _DistRowWidget({
     required this.row,
     required this.staff,
+    required this.takenByOthers,
     required this.onChanged,
     required this.onRemove,
   });
 
   @override
   Widget build(BuildContext context) {
+    // 본 row 의 현재 selection 은 유지하되, 다른 row 가 점유한 것만 빼고 노출.
+    final available = staff
+        .where((s) =>
+            !takenByOthers.contains(s['id'] as String) ||
+            (s['id'] as String) == row.receiverId)
+        .toList();
     return Container(
       margin: const EdgeInsets.only(top: 6),
       padding: const EdgeInsets.all(10),
@@ -815,7 +836,7 @@ class _DistRowWidget extends StatelessWidget {
               Expanded(
                 child: DropdownButtonFormField<String>(
                   value: row.receiverId.isEmpty ? null : row.receiverId,
-                  items: staff
+                  items: available
                       .map((s) => DropdownMenuItem(
                             value: s['id'] as String,
                             child: Text(s['full_name'] as String),
@@ -825,10 +846,12 @@ class _DistRowWidget extends StatelessWidget {
                     row.receiverId = v ?? '';
                     onChanged();
                   },
-                  decoration: const InputDecoration(
-                    hintText: 'Select coworker',
+                  decoration: InputDecoration(
+                    hintText: available.isEmpty
+                        ? 'No eligible coworker'
+                        : 'Select coworker',
                     isDense: true,
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                   ),
                 ),
               ),
