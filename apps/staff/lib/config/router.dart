@@ -27,6 +27,9 @@ import '../screens/ojt/ojt_screen.dart';
 import '../screens/schedule/schedule_screen.dart';
 import '../screens/daily_report/daily_report_detail_screen.dart';
 import '../screens/daily_report/daily_report_list_screen.dart';
+import '../screens/issue_report/issue_report_create_screen.dart';
+import '../screens/issue_report/issue_report_detail_screen.dart';
+import '../screens/issue_report/issue_report_list_screen.dart';
 import '../screens/tasks/task_detail_screen.dart';
 import '../screens/tasks/task_list_screen.dart';
 import '../screens/inventory/store_select_screen.dart';
@@ -162,6 +165,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/daily-reports', builder: (_, __) => const DailyReportListScreen()),
       GoRoute(path: '/daily-reports/create', builder: (_, __) => const DailyReportDetailScreen()),
       GoRoute(path: '/daily-reports/:id', builder: (_, state) => DailyReportDetailScreen(id: state.pathParameters['id']!)),
+      GoRoute(path: '/issue-reports', builder: (_, __) => const IssueReportListScreen()),
+      GoRoute(path: '/issue-reports/create', builder: (_, __) => const IssueReportCreateScreen()),
+      GoRoute(path: '/issue-reports/:id', builder: (_, state) => IssueReportDetailScreen(id: state.pathParameters['id']!)),
       GoRoute(path: '/my', builder: (_, state) => MyPageScreen(returnTo: state.extra as String?)),
       GoRoute(path: '/my/change-password', builder: (_, __) => const ChangePasswordScreen()),
       GoRoute(path: '/my/alert-settings', builder: (_, __) => const AlertSettingsScreen()),

@@ -190,7 +190,7 @@ abstract class AppL10n {
   /// No description provided for @loginEmailOrUsernameHint.
   ///
   /// In en, this message translates to:
-  /// **'Email or Username'**
+  /// **'ID'**
   String get loginEmailOrUsernameHint;
 
   /// No description provided for @loginPasswordHint.
@@ -202,7 +202,7 @@ abstract class AppL10n {
   /// No description provided for @loginFindUsername.
   ///
   /// In en, this message translates to:
-  /// **'Find Username'**
+  /// **'Find ID'**
   String get loginFindUsername;
 
   /// No description provided for @loginForgotPassword.
@@ -460,7 +460,7 @@ abstract class AppL10n {
   /// No description provided for @findUsernameHeader.
   ///
   /// In en, this message translates to:
-  /// **'Find Username'**
+  /// **'Find ID'**
   String get findUsernameHeader;
 
   /// No description provided for @findUsernameHeading.

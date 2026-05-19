@@ -287,12 +287,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         color: totalTasks > 0 && completedTasks == totalTasks
                             ? AppColors.success
                             : AppColors.accent,
+                        onTap: () => context.go('/work?scrollTo=task'),
                       ),
                       _statDivider(),
                       _StatItem(
                         label: t.homeStatDueToday,
                         value: tasks.isLoading ? '-' : '$dueTodayCount',
                         color: dueTodayCount > 0 ? AppColors.danger : AppColors.success,
+                        onTap: () => context.go('/work?scrollTo=task&due=today'),
                       ),
                     ],
                   ),
@@ -344,6 +346,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 icon: Icons.summarize_rounded,
                 label: t.homeQuickDailyReports,
                 onTap: () => context.push('/daily-reports'),
+              ),
+            ),
+          ],
+          if (user?.hasPermission('reports:read') ?? false) ...[
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: _QuickActionCard(
+                icon: Icons.warning_amber_rounded,
+                label: 'Issue Reports',
+                onTap: () => context.push('/issue-reports'),
               ),
             ),
           ],
