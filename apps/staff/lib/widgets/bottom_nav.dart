@@ -1,4 +1,4 @@
-/// 하단 네비게이션 바 — 5개 탭 (Home, mytask, Clock, Tips, Schedule)
+/// 하단 네비게이션 바 — 4개 탭 (Home, mytask, Tips, Schedule)
 ///
 /// GoRouter의 현재 경로에 따라 활성 탭을 자동 결정.
 /// 각 탭은 context.go()로 라우트 전환 (push가 아닌 교체).
@@ -15,7 +15,6 @@ class BottomNav extends StatelessWidget {
   static const _tabs = [
     _Tab('/home', Icons.home_outlined, Icons.home, 'Home'),
     _Tab('/work', Icons.assignment_outlined, Icons.assignment, 'mytask'),
-    _Tab('/clock', Icons.access_time_outlined, Icons.access_time, 'Clock'),
     _Tab('/tips', Icons.payments_outlined, Icons.payments, 'Tips'),
     _Tab('/schedule', Icons.calendar_today_outlined, Icons.calendar_today, 'Schedule'),
   ];

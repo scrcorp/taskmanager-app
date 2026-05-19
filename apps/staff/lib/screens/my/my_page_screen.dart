@@ -3,8 +3,8 @@
 /// 프로필 정보 표시 (이름, 역할, 이메일) + 프로필 사진 변경.
 /// 서류 업로드 섹션 (Food Handler, SSN, ID 등) — 현재 "Coming Soon" 상태.
 /// 메뉴: 알림 (미읽음 배지) + 로그아웃.
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -12,7 +12,6 @@ import 'package:htm_core/htm_core.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/alert_provider.dart';
-import '../../services/clockin_pin_service.dart';
 
 /// 서류 유형 정의 — title/subtitle은 ARB에서 동적으로 가져옴
 class _DocumentType {
@@ -310,8 +309,6 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
                         const SizedBox(height: 2),
                         Text(user.email!, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
                       ],
-                      const SizedBox(height: 2),
-                      const _ProfilePinRow(),
                     ],
                   ),
                 ),
@@ -425,185 +422,6 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
           const SizedBox(height: 20),
         ],
       ),
-    );
-  }
-}
-
-/// Profile 정보 한 줄 PIN row.
-///
-/// 표시: "PIN: ●●●●●● [eye] [pencil]". 눈 = reveal/hide 토글. 연필 = 인라인 편집.
-/// 편집 모드에서 6자리 입력 후 체크 누르면 서버에 저장.
-class _ProfilePinRow extends ConsumerStatefulWidget {
-  const _ProfilePinRow();
-
-  @override
-  ConsumerState<_ProfilePinRow> createState() => _ProfilePinRowState();
-}
-
-class _ProfilePinRowState extends ConsumerState<_ProfilePinRow> {
-  String? _pin;
-  bool _loading = true;
-  bool _revealed = false;
-  bool _editing = false;
-  bool _saving = false;
-  final TextEditingController _editCtrl = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  @override
-  void dispose() {
-    _editCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _load() async {
-    try {
-      final data = await ref.read(clockinPinServiceProvider).getPin();
-      if (!mounted) return;
-      setState(() {
-        _pin = data['clockin_pin']?.toString();
-        _loading = false;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() => _loading = false);
-    }
-  }
-
-  void _startEdit() {
-    setState(() {
-      _editing = true;
-      _editCtrl.text = _pin ?? '';
-    });
-  }
-
-  void _cancelEdit() {
-    setState(() {
-      _editing = false;
-      _editCtrl.clear();
-    });
-  }
-
-  Future<void> _saveEdit() async {
-    final value = _editCtrl.text;
-    if (!RegExp(r'^\d{6}$').hasMatch(value)) return;
-    setState(() => _saving = true);
-    try {
-      final data = await ref.read(clockinPinServiceProvider).updatePin(value);
-      if (!mounted) return;
-      setState(() {
-        _pin = data['clockin_pin']?.toString() ?? value;
-        _editing = false;
-        _saving = false;
-        _editCtrl.clear();
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _saving = false);
-      await AppModal.show(
-        context,
-        title: 'Couldn\'t update PIN',
-        message: e.toString(),
-        type: ModalType.error,
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppL10n.of(context);
-    final masked = '●●●●●●';
-    final display = _loading
-        ? '…'
-        : (_pin == null ? '—' : (_revealed ? _pin! : masked));
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(t.myPinPrefix,
-            style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppColors.text)),
-        if (_editing) ...[
-          SizedBox(
-            width: 88,
-            height: 24,
-            child: TextField(
-              controller: _editCtrl,
-              autofocus: true,
-              keyboardType: TextInputType.number,
-              maxLength: 6,
-              enabled: !_saving,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-              decoration: const InputDecoration(
-                isDense: true,
-                counterText: '',
-                contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 0),
-                border: OutlineInputBorder(),
-              ),
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.text,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 2,
-                fontFeatures: [FontFeature.tabularFigures()],
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          InkWell(
-            onTap: _saving ? null : _saveEdit,
-            child: const Padding(
-              padding: EdgeInsets.all(2),
-              child: Icon(Icons.check, size: 16, color: AppColors.success),
-            ),
-          ),
-          InkWell(
-            onTap: _saving ? null : _cancelEdit,
-            child: const Padding(
-              padding: EdgeInsets.all(2),
-              child: Icon(Icons.close, size: 16, color: AppColors.textMuted),
-            ),
-          ),
-        ] else ...[
-          Text(
-            display,
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.text,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 2,
-              fontFeatures: [FontFeature.tabularFigures()],
-            ),
-          ),
-          if (_pin != null) ...[
-            const SizedBox(width: 6),
-            InkWell(
-              onTap: () => setState(() => _revealed = !_revealed),
-              child: Padding(
-                padding: const EdgeInsets.all(2),
-                child: Icon(
-                  _revealed ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                  size: 16,
-                  color: AppColors.textMuted,
-                ),
-              ),
-            ),
-            InkWell(
-              onTap: _startEdit,
-              child: const Padding(
-                padding: EdgeInsets.all(2),
-                child: Icon(Icons.edit_outlined, size: 16, color: AppColors.textMuted),
-              ),
-            ),
-          ],
-        ],
-      ],
     );
   }
 }

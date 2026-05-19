@@ -17,7 +17,6 @@ import '../screens/auth/reset_password_screen.dart';
 import '../screens/my/change_password_screen.dart';
 import '../screens/my/alert_settings_screen.dart';
 import '../screens/my/settings_screen.dart';
-import '../screens/clock/clock_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/my/my_page_screen.dart';
 import '../screens/notices/notice_detail_screen.dart';
@@ -117,7 +116,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             initialTab: state.uri.queryParameters['tab'],
             scheduleId: state.uri.queryParameters['scheduleId'],
           )),
-          GoRoute(path: '/clock', builder: (_, __) => const ClockScreen()),
           GoRoute(path: '/schedule', builder: (_, __) => const ScheduleScreen()),
           GoRoute(path: '/tips', builder: (_, __) => const TipsHomeScreen()),
         ],

@@ -2,7 +2,7 @@
 ///
 /// GoRouter의 ShellRoute에서 사용하는 레이아웃 위젯.
 /// 구조: AppHeader (상단) + child (본문) + BottomNav (하단)
-/// 하단 네비게이션이 있는 모든 탭 화면(Home, Work, Clock, Schedule)에 적용.
+/// 하단 네비게이션이 있는 모든 탭 화면(Home, Work, Tips, Schedule)에 적용.
 import 'package:flutter/material.dart';
 import 'package:htm_core/htm_core.dart';
 import 'app_header.dart';

@@ -615,12 +615,6 @@ class AppL10nEn extends AppL10n {
   String get commonUnknown => 'Unknown';
 
   @override
-  String get clockTitle => 'Clock In / Out';
-
-  @override
-  String get clockSubtitle => 'Clock in and out to track your work hours.';
-
-  @override
   String get ojtTitle => 'OJT Training';
 
   @override
@@ -977,9 +971,6 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get myPageHeader => 'My Page';
-
-  @override
-  String get myPinPrefix => 'PIN: ';
 
   @override
   String get myTakePhoto => 'Take Photo';
