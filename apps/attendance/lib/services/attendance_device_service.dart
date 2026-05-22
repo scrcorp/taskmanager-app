@@ -168,6 +168,26 @@ class AttendanceDeviceService {
     return _postAction('/attendance/break-end', userId: userId, pin: pin);
   }
 
+  /// PIN 단독으로 본인 식별 + 오늘 attendance status (Phase 3, PIN-first kiosk entry).
+  ///
+  /// Phase 5 의 본인 확인 다이얼로그에서 사용 예정. 현재는 dormant (호출하는 UI 없음).
+  ///
+  /// [pin] — 6자리 숫자
+  ///
+  /// 응답: { user_id, user_name, today_status }
+  ///   - today_status: 오늘 스케줄 있으면 'working'/'upcoming'/'late'/'no_show'/'soon'/
+  ///                   'on_break'/'clocked_out', 없으면 null
+  ///
+  /// Throws DioException — 매치 없음/비활성 user → 400 'Invalid PIN',
+  ///                       PIN 형식 위반 → 422.
+  Future<Map<String, dynamic>> identifyByPin({required String pin}) async {
+    final response = await _dio.post(
+      '/attendance/identify-by-pin',
+      data: {'pin': pin},
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
   /// 오늘 매장 근무자 상태 조회 (device token)
   ///
   /// 응답: 각 유저의 schedule + attendance 요약 리스트
