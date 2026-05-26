@@ -8,35 +8,35 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
 
-import '../../providers/attendance_admin_provider.dart';
+import '../../providers/attendance_manage_provider.dart';
 import '../../services/attendance_device_service.dart';
-import 'attendance_admin_action_modal.dart';
-import 'attendance_admin_home_screen.dart' show extractApiError;
-import 'attendance_admin_schedule_edit_screen.dart';
+import 'attendance_manage_action_modal.dart';
+import 'attendance_manage_home_screen.dart' show extractApiError;
+import 'attendance_manage_schedule_edit_screen.dart';
 
-class AttendanceAdminActionSheet extends ConsumerStatefulWidget {
+class AttendanceManageActionSheet extends ConsumerStatefulWidget {
   final AdminScheduleRow row;
 
   /// 시트 내부 작업이 끝날 때마다 외부 목록 새로고침 콜백.
   final Future<void> Function() onChanged;
 
-  const AttendanceAdminActionSheet({
+  const AttendanceManageActionSheet({
     super.key,
     required this.row,
     required this.onChanged,
   });
 
   @override
-  ConsumerState<AttendanceAdminActionSheet> createState() =>
-      _AttendanceAdminActionSheetState();
+  ConsumerState<AttendanceManageActionSheet> createState() =>
+      _AttendanceManageActionSheetState();
 }
 
-class _AttendanceAdminActionSheetState
-    extends ConsumerState<AttendanceAdminActionSheet> {
+class _AttendanceManageActionSheetState
+    extends ConsumerState<AttendanceManageActionSheet> {
   bool _busy = false;
 
   Future<void> _runAction(AdminAction action) async {
-    final applied = await AttendanceAdminActionModal.show(
+    final applied = await AttendanceManageActionModal.show(
       context,
       action: action,
       row: widget.row,
@@ -54,7 +54,7 @@ class _AttendanceAdminActionSheetState
     await Navigator.of(context, rootNavigator: true).push(
       MaterialPageRoute(
         builder: (_) =>
-            AttendanceAdminScheduleEditScreen(existing: widget.row),
+            AttendanceManageScheduleEditScreen(existing: widget.row),
       ),
     );
     await widget.onChanged();
@@ -74,7 +74,7 @@ class _AttendanceAdminActionSheetState
     setState(() => _busy = true);
     try {
       final service = ref.read(attendanceDeviceServiceProvider);
-      await service.adminDeleteSchedule(widget.row.scheduleId);
+      await service.manageDeleteSchedule(widget.row.scheduleId);
       await widget.onChanged();
       if (!mounted) return;
       Navigator.of(context).pop();

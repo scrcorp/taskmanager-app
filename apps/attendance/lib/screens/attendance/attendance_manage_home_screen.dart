@@ -6,21 +6,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
 
-import '../../providers/attendance_admin_provider.dart';
+import '../../providers/attendance_manage_provider.dart';
 import '../../services/attendance_device_service.dart';
-import 'attendance_admin_action_sheet.dart';
-import 'attendance_admin_schedule_edit_screen.dart';
+import 'attendance_manage_action_sheet.dart';
+import 'attendance_manage_schedule_edit_screen.dart';
 
-class AttendanceAdminHomeScreen extends ConsumerStatefulWidget {
-  const AttendanceAdminHomeScreen({super.key});
+class AttendanceManageHomeScreen extends ConsumerStatefulWidget {
+  const AttendanceManageHomeScreen({super.key});
 
   @override
-  ConsumerState<AttendanceAdminHomeScreen> createState() =>
-      _AttendanceAdminHomeScreenState();
+  ConsumerState<AttendanceManageHomeScreen> createState() =>
+      _AttendanceManageHomeScreenState();
 }
 
-class _AttendanceAdminHomeScreenState
-    extends ConsumerState<AttendanceAdminHomeScreen> {
+class _AttendanceManageHomeScreenState
+    extends ConsumerState<AttendanceManageHomeScreen> {
   bool _loading = true;
   List<AdminScheduleRow> _schedules = const [];
   String? _error;
@@ -38,7 +38,7 @@ class _AttendanceAdminHomeScreenState
     });
     try {
       final service = ref.read(attendanceDeviceServiceProvider);
-      final rows = await service.adminListSchedules();
+      final rows = await service.manageListSchedules();
       if (!mounted) return;
       setState(() {
         _schedules = rows.map(AdminScheduleRow.fromJson).toList();
@@ -58,13 +58,13 @@ class _AttendanceAdminHomeScreenState
   }
 
   Future<void> _exitAdminMode({bool silent = false}) async {
-    await ref.read(attendanceAdminSessionProvider.notifier).close();
+    await ref.read(attendanceManageSessionProvider.notifier).close();
     if (!mounted) return;
     Navigator.of(context).popUntil((r) => r.isFirst);
     if (!silent) {
       AppModal.show(
         context,
-        title: 'Exited Manager Mode',
+        title: 'Exited Manage Mode',
         message: 'Admin session ended.',
         type: ModalType.info,
       );
@@ -74,7 +74,7 @@ class _AttendanceAdminHomeScreenState
   Future<void> _openCreate() async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => const AttendanceAdminScheduleEditScreen(),
+        builder: (_) => const AttendanceManageScheduleEditScreen(),
       ),
     );
     if (!mounted) return;
@@ -86,7 +86,7 @@ class _AttendanceAdminHomeScreenState
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (_) => AttendanceAdminActionSheet(
+      builder: (_) => AttendanceManageActionSheet(
         row: row,
         onChanged: _refresh,
       ),
@@ -98,7 +98,7 @@ class _AttendanceAdminHomeScreenState
 
   @override
   Widget build(BuildContext context) {
-    final session = ref.watch(attendanceAdminSessionProvider);
+    final session = ref.watch(attendanceManageSessionProvider);
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
@@ -139,7 +139,7 @@ class _AttendanceAdminHomeScreenState
                   size: 18, color: AppColors.warning),
               SizedBox(width: 8),
               Text(
-                'MANAGER MODE',
+                'MANAGE MODE',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w800,

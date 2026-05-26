@@ -98,43 +98,16 @@ class TodayStaffRow {
   }
 }
 
-/// 공지 1건
-class AttendanceNotice {
-  final String id;
-  final String title;
-  final String? body;
-  final DateTime createdAt;
-
-  const AttendanceNotice({
-    required this.id,
-    required this.title,
-    required this.body,
-    required this.createdAt,
-  });
-
-  factory AttendanceNotice.fromJson(Map<String, dynamic> json) {
-    return AttendanceNotice(
-      id: json['id']?.toString() ?? '',
-      title: json['title']?.toString() ?? '',
-      body: json['body']?.toString(),
-      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ??
-          DateTime.now(),
-    );
-  }
-}
-
-/// 대시보드 state
+/// 대시보드 state (today-staff)
 class AttendanceDashboardState {
   final bool loading;
   final List<TodayStaffRow> staff;
-  final List<AttendanceNotice> notices;
   final String? error;
   final DateTime? lastRefreshedAt;
 
   const AttendanceDashboardState({
     this.loading = false,
     this.staff = const [],
-    this.notices = const [],
     this.error,
     this.lastRefreshedAt,
   });
@@ -142,7 +115,6 @@ class AttendanceDashboardState {
   AttendanceDashboardState copyWith({
     bool? loading,
     List<TodayStaffRow>? staff,
-    List<AttendanceNotice>? notices,
     String? error,
     DateTime? lastRefreshedAt,
     bool clearError = false,
@@ -150,14 +122,13 @@ class AttendanceDashboardState {
     return AttendanceDashboardState(
       loading: loading ?? this.loading,
       staff: staff ?? this.staff,
-      notices: notices ?? this.notices,
       error: clearError ? null : (error ?? this.error),
       lastRefreshedAt: lastRefreshedAt ?? this.lastRefreshedAt,
     );
   }
 }
 
-/// Dashboard data Provider (today-staff + notices, 60s 폴링)
+/// Dashboard data Provider (today-staff, 60s 폴링)
 final attendanceDashboardProvider = StateNotifierProvider<
     AttendanceDashboardNotifier, AttendanceDashboardState>((ref) {
   final notifier = AttendanceDashboardNotifier(
@@ -188,20 +159,14 @@ class AttendanceDashboardNotifier
     _pollTimer = null;
   }
 
-  /// 수동 refresh — 두 API 병렬 호출
+  /// 수동 refresh — today-staff 1 API.
   Future<void> refresh() async {
     state = state.copyWith(loading: true, clearError: true);
     try {
-      final results = await Future.wait([
-        _service.getTodayStaff(),
-        _service.getNotices(limit: 10),
-      ]);
-      final staffJson = results[0];
-      final noticesJson = results[1];
+      final staffJson = await _service.getTodayStaff();
       state = state.copyWith(
         loading: false,
         staff: staffJson.map(TodayStaffRow.fromJson).toList(),
-        notices: noticesJson.map(AttendanceNotice.fromJson).toList(),
         lastRefreshedAt: DateTime.now(),
       );
     } on DioException catch (e) {

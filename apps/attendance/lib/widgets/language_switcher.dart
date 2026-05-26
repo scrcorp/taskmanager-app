@@ -15,7 +15,9 @@ const _nameFor = <String, String>{
 };
 
 class LanguageSwitcher extends ConsumerWidget {
-  const LanguageSwitcher({super.key});
+  /// 크기 (지름). 기본 36 — access code 등 작은 위치용. main 헤더는 80.
+  final double size;
+  const LanguageSwitcher({super.key, this.size = 36});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -30,16 +32,16 @@ class LanguageSwitcher extends ConsumerWidget {
         for (final c in ['en', 'es'])
           PopupMenuItem<String>(
             value: c,
-            height: 40,
+            height: 48,
             child: Row(
               children: [
-                Text(_flagFor[c]!, style: const TextStyle(fontSize: 18)),
+                Text(_flagFor[c]!, style: const TextStyle(fontSize: 22)),
                 const SizedBox(width: 12),
                 Text(_nameFor[c]!,
-                    style: const TextStyle(fontSize: 14, color: AppColors.text)),
+                    style: const TextStyle(fontSize: 16, color: AppColors.text)),
                 if (c == code) ...[
                   const SizedBox(width: 12),
-                  const Icon(Icons.check, size: 16, color: AppColors.accent),
+                  const Icon(Icons.check, size: 18, color: AppColors.accent),
                 ],
               ],
             ),
@@ -47,15 +49,18 @@ class LanguageSwitcher extends ConsumerWidget {
       ],
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Container(
-        width: 36,
-        height: 36,
+        width: size,
+        height: size,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: AppColors.bg,
           shape: BoxShape.circle,
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: AppColors.border, width: size >= 60 ? 2 : 1),
         ),
-        child: Text(_flagFor[code]!, style: const TextStyle(fontSize: 18)),
+        child: Text(
+          _flagFor[code]!,
+          style: TextStyle(fontSize: size * 0.5),
+        ),
       ),
     );
   }

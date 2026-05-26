@@ -871,18 +871,6 @@ abstract class AppL10n {
   /// **'CURRENT TIME'**
   String get attMainCurrentTimeLabel;
 
-  /// No description provided for @attMainNoticeBoard.
-  ///
-  /// In en, this message translates to:
-  /// **'Notice Board'**
-  String get attMainNoticeBoard;
-
-  /// No description provided for @attMainNoNotices.
-  ///
-  /// In en, this message translates to:
-  /// **'No notices'**
-  String get attMainNoNotices;
-
   /// No description provided for @attMainNoSchedule.
   ///
   /// In en, this message translates to:
@@ -1050,6 +1038,600 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Launching installer…'**
   String get attUpdateLaunchingInstaller;
+
+  /// No description provided for @pfStoreFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Store'**
+  String get pfStoreFallback;
+
+  /// No description provided for @pfHeaderSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule'**
+  String get pfHeaderSchedule;
+
+  /// No description provided for @pfHeaderSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get pfHeaderSettings;
+
+  /// No description provided for @pfPinHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter {min}~{max} digits, then tap Verify'**
+  String pfPinHint(int min, int max);
+
+  /// No description provided for @pfPinShow.
+  ///
+  /// In en, this message translates to:
+  /// **'Show PIN'**
+  String get pfPinShow;
+
+  /// No description provided for @pfPinHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide PIN'**
+  String get pfPinHide;
+
+  /// No description provided for @pfPinClear.
+  ///
+  /// In en, this message translates to:
+  /// **'CLEAR'**
+  String get pfPinClear;
+
+  /// No description provided for @pfPinVerify.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify Identity'**
+  String get pfPinVerify;
+
+  /// No description provided for @pfKioskUnlockedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Kiosk lock released for 5 minutes'**
+  String get pfKioskUnlockedToast;
+
+  /// No description provided for @pfMainWorkingHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'WORKING'**
+  String get pfMainWorkingHeader;
+
+  /// No description provided for @pfMainWorkingEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody is currently working.'**
+  String get pfMainWorkingEmpty;
+
+  /// No description provided for @pfMainWorkingDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Working {duration}'**
+  String pfMainWorkingDuration(String duration);
+
+  /// No description provided for @pfMainBreakDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Break {duration} · {type}'**
+  String pfMainBreakDuration(String duration, String type);
+
+  /// No description provided for @pfMainBreakTypeShort.
+  ///
+  /// In en, this message translates to:
+  /// **'10m'**
+  String get pfMainBreakTypeShort;
+
+  /// No description provided for @pfMainBreakTypeMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'meal'**
+  String get pfMainBreakTypeMeal;
+
+  /// No description provided for @pfKioskUnlockedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Kiosk Unlocked'**
+  String get pfKioskUnlockedTitle;
+
+  /// No description provided for @pfKioskUnlockedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You have 5 minutes to use the device freely.\nThe kiosk will re-lock automatically.'**
+  String get pfKioskUnlockedBody;
+
+  /// No description provided for @pfIdHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'IS THIS YOU?'**
+  String get pfIdHeader;
+
+  /// No description provided for @pfIdYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes, it\'s me'**
+  String get pfIdYes;
+
+  /// No description provided for @pfIdClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get pfIdClose;
+
+  /// No description provided for @pfIdNoShiftTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'NO SHIFT TODAY'**
+  String get pfIdNoShiftTitle;
+
+  /// No description provided for @pfIdNoShiftBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have a schedule today. Clock actions disabled.'**
+  String get pfIdNoShiftBody;
+
+  /// No description provided for @pfStatusWorking.
+  ///
+  /// In en, this message translates to:
+  /// **'Currently working'**
+  String get pfStatusWorking;
+
+  /// No description provided for @pfStatusOnBreak.
+  ///
+  /// In en, this message translates to:
+  /// **'On break'**
+  String get pfStatusOnBreak;
+
+  /// No description provided for @pfStatusUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Shift upcoming'**
+  String get pfStatusUpcoming;
+
+  /// No description provided for @pfStatusSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Shift starting soon'**
+  String get pfStatusSoon;
+
+  /// No description provided for @pfStatusLate.
+  ///
+  /// In en, this message translates to:
+  /// **'Running late'**
+  String get pfStatusLate;
+
+  /// No description provided for @pfStatusNoShow.
+  ///
+  /// In en, this message translates to:
+  /// **'No-show'**
+  String get pfStatusNoShow;
+
+  /// No description provided for @pfStatusClockedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Shift completed'**
+  String get pfStatusClockedOut;
+
+  /// No description provided for @pfBreakOnBreakTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'ON BREAK · {breakLabel}'**
+  String pfBreakOnBreakTitle(String breakLabel);
+
+  /// No description provided for @pfBreakElapsed.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes}m elapsed'**
+  String pfBreakElapsed(int minutes);
+
+  /// No description provided for @pfBreakLabelPaid10Min.
+  ///
+  /// In en, this message translates to:
+  /// **'10-min Break (paid)'**
+  String get pfBreakLabelPaid10Min;
+
+  /// No description provided for @pfBreakLabelMealUnpaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal Break (unpaid)'**
+  String get pfBreakLabelMealUnpaid;
+
+  /// No description provided for @pfBreakLabelOnBreak.
+  ///
+  /// In en, this message translates to:
+  /// **'On Break'**
+  String get pfBreakLabelOnBreak;
+
+  /// No description provided for @pfBreakHintPaidTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'End Break available after {minutes}m more (10m minimum).'**
+  String pfBreakHintPaidTooShort(int minutes);
+
+  /// No description provided for @pfBreakHintPaidWithin.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid up to 10m. You can end break now.'**
+  String get pfBreakHintPaidWithin;
+
+  /// No description provided for @pfBreakHintPaidOver.
+  ///
+  /// In en, this message translates to:
+  /// **'Excess {minutes}m will be unpaid.'**
+  String pfBreakHintPaidOver(int minutes);
+
+  /// No description provided for @pfBreakHintMealTooShort.
+  ///
+  /// In en, this message translates to:
+  /// **'End Break available after {minutes}m more (30m minimum).'**
+  String pfBreakHintMealTooShort(int minutes);
+
+  /// No description provided for @pfBreakHintMealWithin.
+  ///
+  /// In en, this message translates to:
+  /// **'Within allowance (30~35m). You can end break now.'**
+  String get pfBreakHintMealWithin;
+
+  /// No description provided for @pfBreakHintMealRequiresReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Over 35m — reason required to end break.'**
+  String get pfBreakHintMealRequiresReason;
+
+  /// No description provided for @pfActionHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'CHOOSE ACTION'**
+  String get pfActionHeader;
+
+  /// No description provided for @pfActionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Only actions valid for your current status are enabled.'**
+  String get pfActionHint;
+
+  /// No description provided for @pfActionClockIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Clock In'**
+  String get pfActionClockIn;
+
+  /// No description provided for @pfActionClockInSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Start your shift'**
+  String get pfActionClockInSub;
+
+  /// No description provided for @pfActionClockOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Clock Out'**
+  String get pfActionClockOut;
+
+  /// No description provided for @pfActionClockOutSub.
+  ///
+  /// In en, this message translates to:
+  /// **'End your shift'**
+  String get pfActionClockOutSub;
+
+  /// No description provided for @pfActionBreakShort.
+  ///
+  /// In en, this message translates to:
+  /// **'10-min Break'**
+  String get pfActionBreakShort;
+
+  /// No description provided for @pfActionBreakShortSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid short break'**
+  String get pfActionBreakShortSub;
+
+  /// No description provided for @pfActionBreakLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal Break'**
+  String get pfActionBreakLong;
+
+  /// No description provided for @pfActionBreakLongSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpaid meal'**
+  String get pfActionBreakLongSub;
+
+  /// No description provided for @pfActionBreakEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End Break'**
+  String get pfActionBreakEnd;
+
+  /// No description provided for @pfActionBreakEndSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Return to work'**
+  String get pfActionBreakEndSub;
+
+  /// No description provided for @pfActionWaitMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Wait {minutes}m more'**
+  String pfActionWaitMore(int minutes);
+
+  /// No description provided for @pfEarlyHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'EARLY CLOCK OUT'**
+  String get pfEarlyHeader;
+
+  /// No description provided for @pfEarlyRemainingLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{remaining} remaining until scheduled end ({end})'**
+  String pfEarlyRemainingLine(String remaining, String end);
+
+  /// No description provided for @pfEarlyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}, why are you leaving early?'**
+  String pfEarlyTitle(String name);
+
+  /// No description provided for @pfEarlyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A reason is required for early clock-out. Your manager will see this.'**
+  String get pfEarlyBody;
+
+  /// No description provided for @pfEarlyReasonUnwell.
+  ///
+  /// In en, this message translates to:
+  /// **'Feeling unwell'**
+  String get pfEarlyReasonUnwell;
+
+  /// No description provided for @pfEarlyReasonFamily.
+  ///
+  /// In en, this message translates to:
+  /// **'Family emergency'**
+  String get pfEarlyReasonFamily;
+
+  /// No description provided for @pfEarlyReasonManager.
+  ///
+  /// In en, this message translates to:
+  /// **'Manager approved'**
+  String get pfEarlyReasonManager;
+
+  /// No description provided for @pfEarlyReasonPersonal.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal reason'**
+  String get pfEarlyReasonPersonal;
+
+  /// No description provided for @pfEarlyReasonOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other (please specify)'**
+  String get pfEarlyReasonOther;
+
+  /// No description provided for @pfEarlyDetailHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Please describe...'**
+  String get pfEarlyDetailHint;
+
+  /// No description provided for @pfEarlyCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get pfEarlyCancel;
+
+  /// No description provided for @pfEarlySubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit & Clock Out'**
+  String get pfEarlySubmit;
+
+  /// No description provided for @pfTipHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'TIP ENTRY'**
+  String get pfTipHeader;
+
+  /// No description provided for @pfTipTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}\'s tips today'**
+  String pfTipTitle(String name);
+
+  /// No description provided for @pfTipBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Record your tips and distribute to teammates who worked with you.'**
+  String get pfTipBody;
+
+  /// No description provided for @pfTipCardLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Card Tips'**
+  String get pfTipCardLabel;
+
+  /// No description provided for @pfTipCardSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Total from POS'**
+  String get pfTipCardSub;
+
+  /// No description provided for @pfTipCashLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash Tips Kept'**
+  String get pfTipCashLabel;
+
+  /// No description provided for @pfTipCashSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash you took home'**
+  String get pfTipCashSub;
+
+  /// No description provided for @pfTipDistributeHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'DISTRIBUTE CARD TIPS'**
+  String get pfTipDistributeHeader;
+
+  /// No description provided for @pfTipDistributeSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick teammates and split — total can\'t exceed card tips'**
+  String get pfTipDistributeSub;
+
+  /// No description provided for @pfTipSplitEvenly.
+  ///
+  /// In en, this message translates to:
+  /// **'Split evenly'**
+  String get pfTipSplitEvenly;
+
+  /// No description provided for @pfTipNoTeammates.
+  ///
+  /// In en, this message translates to:
+  /// **'No teammates worked with you today.'**
+  String get pfTipNoTeammates;
+
+  /// No description provided for @pfTipWorked.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h worked'**
+  String pfTipWorked(String hours);
+
+  /// No description provided for @pfTipDistributedLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Distributed: \${dist} / \${card}'**
+  String pfTipDistributedLine(String dist, String card);
+
+  /// No description provided for @pfTipOverBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Over by \${amount}'**
+  String pfTipOverBy(String amount);
+
+  /// No description provided for @pfTipAddTeammateButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add teammate (not in list)'**
+  String get pfTipAddTeammateButton;
+
+  /// No description provided for @pfTipAddTeammateHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'ADD TEAMMATE'**
+  String get pfTipAddTeammateHeader;
+
+  /// No description provided for @pfTipAddSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by name…'**
+  String get pfTipAddSearchHint;
+
+  /// No description provided for @pfTipAddNoMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'No match.'**
+  String get pfTipAddNoMatch;
+
+  /// No description provided for @pfTipSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip — enter later'**
+  String get pfTipSkip;
+
+  /// No description provided for @pfTipSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit Tips'**
+  String get pfTipSubmit;
+
+  /// No description provided for @pfSuccessClockedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'CLOCKED IN'**
+  String get pfSuccessClockedIn;
+
+  /// No description provided for @pfSuccessClockedInMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Have a great shift, {name}!'**
+  String pfSuccessClockedInMsg(String name);
+
+  /// No description provided for @pfSuccessClockedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'CLOCKED OUT'**
+  String get pfSuccessClockedOut;
+
+  /// No description provided for @pfSuccessClockedOutMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Great work today, {name}!'**
+  String pfSuccessClockedOutMsg(String name);
+
+  /// No description provided for @pfSuccessOn10MinBreak.
+  ///
+  /// In en, this message translates to:
+  /// **'ON 10-MIN BREAK'**
+  String get pfSuccessOn10MinBreak;
+
+  /// No description provided for @pfSuccessOn10MinBreakMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'See you in 10, {name}!'**
+  String pfSuccessOn10MinBreakMsg(String name);
+
+  /// No description provided for @pfSuccessMealBreak.
+  ///
+  /// In en, this message translates to:
+  /// **'MEAL BREAK'**
+  String get pfSuccessMealBreak;
+
+  /// No description provided for @pfSuccessMealBreakMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Enjoy your meal, {name}!'**
+  String pfSuccessMealBreakMsg(String name);
+
+  /// No description provided for @pfSuccessBackToWork.
+  ///
+  /// In en, this message translates to:
+  /// **'BACK TO WORK'**
+  String get pfSuccessBackToWork;
+
+  /// No description provided for @pfSuccessBackToWorkMsg.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome back, {name}!'**
+  String pfSuccessBackToWorkMsg(String name);
+
+  /// No description provided for @pfSuccessOk.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get pfSuccessOk;
+
+  /// No description provided for @pfSuccessAutoClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Closes automatically in 5 seconds'**
+  String get pfSuccessAutoClose;
+
+  /// No description provided for @pfErrorFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong'**
+  String get pfErrorFallback;
+
+  /// No description provided for @pfErrorOk.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get pfErrorOk;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {
