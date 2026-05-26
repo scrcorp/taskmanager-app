@@ -1,37 +1,37 @@
-/// 관리자 모드 진입 2단계 — 매니저 PIN 입력.
+/// Manage 모드 진입 — PIN 만 입력 (직원 선택 X).
 ///
-/// 일반 staff PIN 화면(`attendance_pin_screen.dart`)과 동일한 3-column 태블릿
-/// 레이아웃 + LayoutBuilder 기반 반응형 사이즈를 그대로 따라간다. 동작만 다르다:
-///   - verify: /admin/session 호출 → admin token 발급
-///   - 성공 시 AttendanceAdminHomeScreen 으로 pushReplacement
+/// Phase 6: 매니저 list 화면 제거. 사용자가 PIN 만 입력하면 server 가
+/// (1) PIN 으로 user 식별 + (2) 매장 manager 자격 검증 후 진입.
+/// 자격 없으면 거절 (Invalid PIN / Not authorized).
+///
+/// UI 세부 재설계는 Phase 7.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
 
-import '../../providers/attendance_admin_provider.dart';
+import '../../providers/attendance_manage_provider.dart';
 import '../../providers/attendance_device_provider.dart';
-import 'attendance_admin_home_screen.dart';
+import 'attendance_manage_home_screen.dart';
 
-class AttendanceAdminPinScreen extends ConsumerStatefulWidget {
-  final AdminManager manager;
-
-  const AttendanceAdminPinScreen({super.key, required this.manager});
+class AttendanceManagePinScreen extends ConsumerStatefulWidget {
+  const AttendanceManagePinScreen({super.key});
 
   @override
-  ConsumerState<AttendanceAdminPinScreen> createState() =>
-      _AttendanceAdminPinScreenState();
+  ConsumerState<AttendanceManagePinScreen> createState() =>
+      _AttendanceManagePinScreenState();
 }
 
-class _AttendanceAdminPinScreenState
-    extends ConsumerState<AttendanceAdminPinScreen> {
+class _AttendanceManagePinScreenState
+    extends ConsumerState<AttendanceManagePinScreen> {
   String _pin = '';
   bool _loading = false;
   bool _revealPin = false;
-  static const int _pinLength = 6;
+  static const int _pinMin = 4;
+  static const int _pinMax = 6;
 
   void _onNumberTap(String digit) {
     if (_loading) return;
-    if (_pin.length < _pinLength) {
+    if (_pin.length < _pinMax) {
       setState(() => _pin += digit);
     }
   }
@@ -49,20 +49,20 @@ class _AttendanceAdminPinScreenState
   }
 
   Future<void> _verify() async {
-    if (_pin.length != _pinLength || _loading) return;
+    if (_pin.length < _pinMin || _loading) return;
     setState(() => _loading = true);
     final ok = await ref
-        .read(attendanceAdminSessionProvider.notifier)
-        .openWithPin(userId: widget.manager.userId, pin: _pin);
+        .read(attendanceManageSessionProvider.notifier)
+        .openWithPin(pin: _pin);
     if (!mounted) return;
     setState(() => _loading = false);
     if (ok) {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const AttendanceAdminHomeScreen()),
+        MaterialPageRoute(builder: (_) => const AttendanceManageHomeScreen()),
       );
     } else {
       final err =
-          ref.read(attendanceAdminSessionProvider).error ?? 'Invalid PIN';
+          ref.read(attendanceManageSessionProvider).error ?? 'Invalid PIN';
       setState(() => _pin = '');
       AppModal.show(
         context,
@@ -73,14 +73,6 @@ class _AttendanceAdminPinScreenState
     }
   }
 
-  String _roleLabel() {
-    final m = widget.manager;
-    if (m.rolePriority <= 10) return 'Owner';
-    if (m.rolePriority <= 20) return 'General Manager';
-    if (m.rolePriority <= 30) return 'Supervisor';
-    return m.roleName;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -89,12 +81,11 @@ class _AttendanceAdminPinScreenState
     );
   }
 
-  /// 태블릿 3-column 레이아웃 — 좌 사이드바 + 중앙 PIN + 우 정보 패널
   Widget _buildTabletLayout() {
     final device = ref.watch(attendanceDeviceProvider).device;
     return Row(
       children: [
-        // ── 좌: 사이드바 ──
+        // ── 좌: 사이드바 (store + Manage Mode 배지만) ──
         Container(
           width: 220,
           padding: const EdgeInsets.all(24),
@@ -157,56 +148,13 @@ class _AttendanceAdminPinScreenState
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'Manager Mode',
+                        'Manage Mode',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: AppColors.accent,
                         ),
                         overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AppColors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'MANAGER',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textMuted,
-                        letterSpacing: 0.8,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.manager.fullName,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.text,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      _roleLabel(),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary,
                       ),
                     ),
                   ],
@@ -221,17 +169,17 @@ class _AttendanceAdminPinScreenState
         Container(
           width: 260,
           padding: const EdgeInsets.all(24),
-          child: Column(
+          child: const Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _InfoCard(
                 icon: Icons.shield_outlined,
                 title: 'Manager Privileges',
                 description:
-                    'PIN verification grants edit access to today\'s schedule and attendance for 30 minutes.',
+                    'Only store managers can enter Manage Mode. The session grants edit access for 30 minutes.',
                 color: AppColors.accent,
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               _InfoCard(
                 icon: Icons.history_toggle_off_rounded,
                 title: 'Session Limit',
@@ -249,10 +197,9 @@ class _AttendanceAdminPinScreenState
   Widget _buildPinContent() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // staff PIN 화면과 동일한 사이즈 계산식 사용 — 일관성 유지.
         final w = constraints.maxWidth;
         final h = constraints.maxHeight;
-        final pinBoxW = ((w * 0.72) / _pinLength - 14).clamp(48.0, 90.0);
+        final pinBoxW = ((w * 0.72) / _pinMax - 14).clamp(48.0, 90.0);
         final pinBoxH = (pinBoxW * 1.15).clamp(56.0, h * 0.16);
         final pinFontSize = (pinBoxH * 0.45).clamp(24.0, 48.0);
         final padW = (w * 0.78).clamp(320.0, 640.0);
@@ -264,15 +211,25 @@ class _AttendanceAdminPinScreenState
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                'Hi, ${widget.manager.fullName}',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.accent,
+              // Manage Mode 임을 식별 — 메인 PIN 화면과 구분.
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.accentBg,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'MANAGE MODE',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.accent,
+                    letterSpacing: 1.2,
+                  ),
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 12),
               const Text(
                 'Enter Manager PIN',
                 style: TextStyle(
@@ -282,9 +239,9 @@ class _AttendanceAdminPinScreenState
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                'Enter the $_pinLength-digit PIN of this manager to enter Manager Mode',
-                style: const TextStyle(
+              const Text(
+                'Enter your PIN to enter Manage Mode.\nManager privileges required.',
+                style: TextStyle(
                   fontSize: 15,
                   color: AppColors.textSecondary,
                 ),
@@ -324,7 +281,7 @@ class _AttendanceAdminPinScreenState
                   SizedBox(
                     height: 56,
                     child: ElevatedButton(
-                      onPressed: (_pin.length == _pinLength && !_loading)
+                      onPressed: (_pin.length >= _pinMin && !_loading)
                           ? _verify
                           : null,
                       style: ElevatedButton.styleFrom(
@@ -344,7 +301,7 @@ class _AttendanceAdminPinScreenState
                                   strokeWidth: 2, color: Colors.white),
                             )
                           : const Text(
-                              'Enter Manager Mode',
+                              'Enter Manage Mode',
                               style: TextStyle(
                                 fontSize: 17,
                                 fontWeight: FontWeight.w700,
@@ -367,7 +324,7 @@ class _AttendanceAdminPinScreenState
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        ...List.generate(_pinLength, (i) {
+        ...List.generate(_pinMax, (i) {
           final filled = i < _pin.length;
           return Container(
             width: boxW,
@@ -489,8 +446,6 @@ class _AttendanceAdminPinScreenState
   }
 }
 
-// ─── Info Card (staff PIN screen 과 동일 모양) ──────────────────────
-
 class _InfoCard extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -541,8 +496,6 @@ class _InfoCard extends StatelessWidget {
     );
   }
 }
-
-// ─── Number Pad Key (staff PIN screen 과 동일) ───────────────────────
 
 class _PadKey extends StatelessWidget {
   final Widget child;

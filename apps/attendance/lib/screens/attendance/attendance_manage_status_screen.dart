@@ -6,18 +6,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
 
-import '../../providers/attendance_admin_provider.dart';
+import '../../providers/attendance_manage_provider.dart';
 import '../../services/attendance_device_service.dart';
-import 'attendance_admin_home_screen.dart' show extractApiError;
+import 'attendance_manage_home_screen.dart' show extractApiError;
 
-class AttendanceAdminStatusScreen extends ConsumerStatefulWidget {
+class AttendanceManageStatusScreen extends ConsumerStatefulWidget {
   final AdminScheduleRow row;
 
-  const AttendanceAdminStatusScreen({super.key, required this.row});
+  const AttendanceManageStatusScreen({super.key, required this.row});
 
   @override
-  ConsumerState<AttendanceAdminStatusScreen> createState() =>
-      _AttendanceAdminStatusScreenState();
+  ConsumerState<AttendanceManageStatusScreen> createState() =>
+      _AttendanceManageStatusScreenState();
 }
 
 enum _StatusOption {
@@ -109,8 +109,8 @@ extension _StatusOptionX on _StatusOption {
   bool get needsClockOut => this == _StatusOption.clockedOut;
 }
 
-class _AttendanceAdminStatusScreenState
-    extends ConsumerState<AttendanceAdminStatusScreen> {
+class _AttendanceManageStatusScreenState
+    extends ConsumerState<AttendanceManageStatusScreen> {
   _StatusOption? _selected;
   TimeOfDay? _clockIn;
   TimeOfDay? _clockOut;
@@ -199,7 +199,7 @@ class _AttendanceAdminStatusScreenState
     setState(() => _saving = true);
     try {
       final service = ref.read(attendanceDeviceServiceProvider);
-      await service.adminChangeStatus(
+      await service.manageChangeStatus(
         userId: widget.row.userId,
         status: selected.apiValue,
         reason: _reasonCtrl.text.trim(),

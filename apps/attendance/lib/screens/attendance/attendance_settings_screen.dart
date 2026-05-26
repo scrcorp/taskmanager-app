@@ -13,7 +13,7 @@ import '../../providers/attendance_device_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../utils/attendance_device_storage.dart';
 import 'attendance_access_code_screen.dart';
-import 'attendance_admin_select_screen.dart';
+import 'attendance_manage_pin_screen.dart';
 
 /// 기기 설정 화면
 class AttendanceSettingsScreen extends ConsumerStatefulWidget {
@@ -191,12 +191,12 @@ class _AttendanceSettingsScreenState
               child: Column(
                 children: [
                   _MenuItem(
-                    label: 'Manager Mode',
+                    label: 'Manage Mode',
                     icon: Icons.admin_panel_settings_rounded,
                     onTap: () async {
                       await Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => const AttendanceAdminSelectScreen(),
+                          builder: (_) => const AttendanceManagePinScreen(),
                         ),
                       );
                     },
