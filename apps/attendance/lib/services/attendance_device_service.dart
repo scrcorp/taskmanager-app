@@ -213,6 +213,17 @@ class AttendanceDeviceService {
     return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
+  /// 매장 전체 active 직원 — manual tip receiver 추가용 (L5).
+  /// 한 번에 받아 client-side 검색 필터. payload ~5KB 수준이라 paging 없음.
+  Future<List<Map<String, dynamic>>> getStoreEmployees() async {
+    final response = await _dio.get('/attendance/store-employees');
+    final data = response.data;
+    if (data is List) {
+      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    return const [];
+  }
+
   /// 팁 입력 — clock-out 직후 매장 비치 태블릿에서 호출.
   ///
   /// distributions: 각 항목 {receiver_id, amount, reason?}.
@@ -239,19 +250,6 @@ class AttendanceDeviceService {
       },
     );
     return Map<String, dynamic>.from(response.data as Map);
-  }
-
-  /// 매장 공지 조회 (device token)
-  Future<List<Map<String, dynamic>>> getNotices({int limit = 10}) async {
-    final response = await _dio.get(
-      '/attendance/notices',
-      queryParameters: {'limit': limit},
-    );
-    final data = response.data;
-    if (data is List) {
-      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-    }
-    return const [];
   }
 
   Future<Map<String, dynamic>> _postAction(

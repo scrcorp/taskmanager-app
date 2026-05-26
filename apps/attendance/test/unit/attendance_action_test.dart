@@ -9,7 +9,7 @@
 /// [작성 필요] — 추후
 /// - localizedLabel (AppL10n 의존, mock 또는 fake l10n 필요)
 
-import 'package:attendance/screens/attendance/attendance_main_screen.dart';
+import 'package:attendance/models/attendance_action.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
