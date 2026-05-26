@@ -8,6 +8,8 @@
 /// Actions: register, assignStore, unregister, clockAction, refresh.
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/identify_response.dart';
+import '../models/tip_models.dart';
 import '../services/attendance_device_service.dart';
 import '../utils/attendance_device_storage.dart';
 import 'package:htm_core/htm_core.dart';
@@ -335,6 +337,64 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
       );
     } catch (e) {
       return ClockActionResult(success: false, message: 'Action failed');
+    }
+  }
+
+  /// PIN-first kiosk identify — POST /attendance/identify-by-pin.
+  ///
+  /// 성공 시 typed [IdentifyResponse] 반환.
+  /// 실패 (400 Invalid PIN / 422 형식 위반 / 401 device expired / 네트워크) 시 throws.
+  /// 호출 측은 try/catch 로 메시지 변환.
+  Future<IdentifyResponse> identifyUserByPin(String pin) async {
+    final raw = await _service.identifyByPin(pin: pin);
+    return IdentifyResponse.fromJson(raw);
+  }
+
+  /// 팁 분배 대상 후보 — PIN 인증 후 같은 매장/날/시간 겹친 staff.
+  Future<List<TipReceiver>> getTipEligibleReceivers({
+    required String userId,
+    required String pin,
+  }) async {
+    final raw = await _service.getTipEligibleReceivers(userId: userId, pin: pin);
+    return raw.map(TipReceiver.fromJson).toList();
+  }
+
+  /// 매장 전체 active 직원 — manual receiver 추가 검색용 (L5).
+  Future<List<TipReceiver>> getStoreEmployees() async {
+    final raw = await _service.getStoreEmployees();
+    return raw.map(TipReceiver.fromJson).toList();
+  }
+
+  /// 팁 입력 제출. work_date 는 device.workDate 사용 (없으면 IllegalState).
+  Future<ClockActionResult> submitTipEntry({
+    required String userId,
+    required String pin,
+    required TipPayload payload,
+  }) async {
+    final workDate = state.device?.workDate;
+    if (workDate == null || workDate.isEmpty) {
+      return const ClockActionResult(
+        success: false,
+        message: 'No work date — device not ready',
+      );
+    }
+    try {
+      final raw = await _service.submitTipEntry(
+        userId: userId,
+        pin: pin,
+        date: workDate,
+        cardTips: payload.cardTips.toStringAsFixed(2),
+        cashTipsKept: payload.cashTipsKept.toStringAsFixed(2),
+        distributions: payload.distributions.map((d) => d.toJson()).toList(),
+      );
+      return ClockActionResult(success: true, message: 'Tip recorded', data: raw);
+    } on DioException catch (e) {
+      return ClockActionResult(
+        success: false,
+        message: _parseError(e, 'Tip submission failed'),
+      );
+    } catch (_) {
+      return const ClockActionResult(success: false, message: 'Tip submission failed');
     }
   }
 

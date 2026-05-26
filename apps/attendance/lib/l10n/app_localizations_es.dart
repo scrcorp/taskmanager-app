@@ -443,12 +443,6 @@ class AppL10nEs extends AppL10n {
   String get attMainCurrentTimeLabel => 'HORA ACTUAL';
 
   @override
-  String get attMainNoticeBoard => 'Tablero de avisos';
-
-  @override
-  String get attMainNoNotices => 'Sin avisos';
-
-  @override
   String get attMainNoSchedule => 'Sin horario';
 
   @override
@@ -557,4 +551,351 @@ class AppL10nEs extends AppL10n {
 
   @override
   String get attUpdateLaunchingInstaller => 'Abriendo instalador…';
+
+  @override
+  String get pfStoreFallback => 'Tienda';
+
+  @override
+  String get pfHeaderSchedule => 'Horario';
+
+  @override
+  String get pfHeaderSettings => 'Ajustes';
+
+  @override
+  String pfPinHint(int min, int max) {
+    return 'Ingresa $min~$max dígitos y toca Verificar';
+  }
+
+  @override
+  String get pfPinShow => 'Mostrar PIN';
+
+  @override
+  String get pfPinHide => 'Ocultar PIN';
+
+  @override
+  String get pfPinClear => 'BORRAR';
+
+  @override
+  String get pfPinVerify => 'Verificar identidad';
+
+  @override
+  String get pfKioskUnlockedToast =>
+      'Bloqueo de quiosco liberado por 5 minutos';
+
+  @override
+  String get pfMainWorkingHeader => 'TRABAJANDO';
+
+  @override
+  String get pfMainWorkingEmpty => 'Nadie está trabajando ahora.';
+
+  @override
+  String pfMainWorkingDuration(String duration) {
+    return 'Trabajando $duration';
+  }
+
+  @override
+  String pfMainBreakDuration(String duration, String type) {
+    return 'Descanso $duration · $type';
+  }
+
+  @override
+  String get pfMainBreakTypeShort => '10m';
+
+  @override
+  String get pfMainBreakTypeMeal => 'comida';
+
+  @override
+  String get pfKioskUnlockedTitle => 'Quiosco desbloqueado';
+
+  @override
+  String get pfKioskUnlockedBody =>
+      'Tienes 5 minutos para usar el dispositivo libremente.\nEl quiosco se bloqueará automáticamente.';
+
+  @override
+  String get pfIdHeader => '¿ERES TÚ?';
+
+  @override
+  String get pfIdYes => 'Sí, soy yo';
+
+  @override
+  String get pfIdClose => 'Cerrar';
+
+  @override
+  String get pfIdNoShiftTitle => 'SIN TURNO HOY';
+
+  @override
+  String get pfIdNoShiftBody =>
+      'No tienes turno hoy. Acciones de reloj desactivadas.';
+
+  @override
+  String get pfStatusWorking => 'Trabajando';
+
+  @override
+  String get pfStatusOnBreak => 'En descanso';
+
+  @override
+  String get pfStatusUpcoming => 'Turno próximo';
+
+  @override
+  String get pfStatusSoon => 'Turno por comenzar';
+
+  @override
+  String get pfStatusLate => 'Llegada tarde';
+
+  @override
+  String get pfStatusNoShow => 'No se presentó';
+
+  @override
+  String get pfStatusClockedOut => 'Turno completado';
+
+  @override
+  String pfBreakOnBreakTitle(String breakLabel) {
+    return 'EN DESCANSO · $breakLabel';
+  }
+
+  @override
+  String pfBreakElapsed(int minutes) {
+    return '$minutes m transcurridos';
+  }
+
+  @override
+  String get pfBreakLabelPaid10Min => 'Descanso 10 min (pagado)';
+
+  @override
+  String get pfBreakLabelMealUnpaid => 'Comida (no pagado)';
+
+  @override
+  String get pfBreakLabelOnBreak => 'En descanso';
+
+  @override
+  String pfBreakHintPaidTooShort(int minutes) {
+    return 'Disponible terminar en $minutes m más (10 m mínimo).';
+  }
+
+  @override
+  String get pfBreakHintPaidWithin =>
+      'Pagado hasta 10 m. Puedes terminar el descanso.';
+
+  @override
+  String pfBreakHintPaidOver(int minutes) {
+    return 'El exceso de $minutes m no se pagará.';
+  }
+
+  @override
+  String pfBreakHintMealTooShort(int minutes) {
+    return 'Disponible terminar en $minutes m más (30 m mínimo).';
+  }
+
+  @override
+  String get pfBreakHintMealWithin =>
+      'Dentro del rango (30~35 m). Puedes terminar.';
+
+  @override
+  String get pfBreakHintMealRequiresReason =>
+      'Más de 35 m — se requiere motivo para terminar.';
+
+  @override
+  String get pfActionHeader => 'ELEGIR ACCIÓN';
+
+  @override
+  String get pfActionHint =>
+      'Solo se habilitan acciones válidas para tu estado actual.';
+
+  @override
+  String get pfActionClockIn => 'Marcar entrada';
+
+  @override
+  String get pfActionClockInSub => 'Comenzar tu turno';
+
+  @override
+  String get pfActionClockOut => 'Marcar salida';
+
+  @override
+  String get pfActionClockOutSub => 'Terminar tu turno';
+
+  @override
+  String get pfActionBreakShort => 'Descanso 10 min';
+
+  @override
+  String get pfActionBreakShortSub => 'Descanso corto pagado';
+
+  @override
+  String get pfActionBreakLong => 'Comida';
+
+  @override
+  String get pfActionBreakLongSub => 'Comida no pagada';
+
+  @override
+  String get pfActionBreakEnd => 'Terminar descanso';
+
+  @override
+  String get pfActionBreakEndSub => 'Volver al trabajo';
+
+  @override
+  String pfActionWaitMore(int minutes) {
+    return 'Espera $minutes m más';
+  }
+
+  @override
+  String get pfEarlyHeader => 'SALIDA TEMPRANA';
+
+  @override
+  String pfEarlyRemainingLine(String remaining, String end) {
+    return 'Faltan $remaining para el fin programado ($end)';
+  }
+
+  @override
+  String pfEarlyTitle(String name) {
+    return '$name, ¿por qué te vas temprano?';
+  }
+
+  @override
+  String get pfEarlyBody =>
+      'Se requiere motivo para salir temprano. Tu gerente lo verá.';
+
+  @override
+  String get pfEarlyReasonUnwell => 'Me siento mal';
+
+  @override
+  String get pfEarlyReasonFamily => 'Emergencia familiar';
+
+  @override
+  String get pfEarlyReasonManager => 'Aprobado por gerente';
+
+  @override
+  String get pfEarlyReasonPersonal => 'Motivo personal';
+
+  @override
+  String get pfEarlyReasonOther => 'Otro (especificar)';
+
+  @override
+  String get pfEarlyDetailHint => 'Describe...';
+
+  @override
+  String get pfEarlyCancel => 'Cancelar';
+
+  @override
+  String get pfEarlySubmit => 'Enviar y salir';
+
+  @override
+  String get pfTipHeader => 'PROPINAS';
+
+  @override
+  String pfTipTitle(String name) {
+    return 'Propinas de $name hoy';
+  }
+
+  @override
+  String get pfTipBody =>
+      'Registra tus propinas y distribúyelas a tus compañeros.';
+
+  @override
+  String get pfTipCardLabel => 'Propinas en tarjeta';
+
+  @override
+  String get pfTipCardSub => 'Total del POS';
+
+  @override
+  String get pfTipCashLabel => 'Propinas en efectivo';
+
+  @override
+  String get pfTipCashSub => 'Efectivo que te llevas';
+
+  @override
+  String get pfTipDistributeHeader => 'DISTRIBUIR PROPINAS DE TARJETA';
+
+  @override
+  String get pfTipDistributeSub =>
+      'Elige compañeros y divide — el total no puede exceder';
+
+  @override
+  String get pfTipSplitEvenly => 'Dividir igual';
+
+  @override
+  String get pfTipNoTeammates => 'Ningún compañero trabajó contigo hoy.';
+
+  @override
+  String pfTipWorked(String hours) {
+    return '$hours h trabajadas';
+  }
+
+  @override
+  String pfTipDistributedLine(String dist, String card) {
+    return 'Distribuido: \$$dist / \$$card';
+  }
+
+  @override
+  String pfTipOverBy(String amount) {
+    return 'Excede por \$$amount';
+  }
+
+  @override
+  String get pfTipAddTeammateButton => 'Agregar compañero (no en la lista)';
+
+  @override
+  String get pfTipAddTeammateHeader => 'AGREGAR COMPAÑERO';
+
+  @override
+  String get pfTipAddSearchHint => 'Buscar por nombre…';
+
+  @override
+  String get pfTipAddNoMatch => 'Sin resultados.';
+
+  @override
+  String get pfTipSkip => 'Saltar — ingresar después';
+
+  @override
+  String get pfTipSubmit => 'Enviar propinas';
+
+  @override
+  String get pfSuccessClockedIn => 'ENTRADA REGISTRADA';
+
+  @override
+  String pfSuccessClockedInMsg(String name) {
+    return '¡Que tengas un buen turno, $name!';
+  }
+
+  @override
+  String get pfSuccessClockedOut => 'SALIDA REGISTRADA';
+
+  @override
+  String pfSuccessClockedOutMsg(String name) {
+    return '¡Buen trabajo hoy, $name!';
+  }
+
+  @override
+  String get pfSuccessOn10MinBreak => 'EN DESCANSO DE 10 MIN';
+
+  @override
+  String pfSuccessOn10MinBreakMsg(String name) {
+    return '¡Nos vemos en 10, $name!';
+  }
+
+  @override
+  String get pfSuccessMealBreak => 'COMIDA';
+
+  @override
+  String pfSuccessMealBreakMsg(String name) {
+    return '¡Disfruta tu comida, $name!';
+  }
+
+  @override
+  String get pfSuccessBackToWork => 'VOLVISTE AL TRABAJO';
+
+  @override
+  String pfSuccessBackToWorkMsg(String name) {
+    return '¡Bienvenido de vuelta, $name!';
+  }
+
+  @override
+  String get pfSuccessOk => 'OK';
+
+  @override
+  String get pfSuccessAutoClose => 'Se cierra automáticamente en 5 segundos';
+
+  @override
+  String get pfErrorFallback => 'Algo salió mal';
+
+  @override
+  String get pfErrorOk => 'OK';
 }

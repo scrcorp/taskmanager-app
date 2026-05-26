@@ -5,22 +5,22 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
 
-import '../../providers/attendance_admin_provider.dart';
+import '../../providers/attendance_manage_provider.dart';
 import '../../services/attendance_device_service.dart';
 
-class AttendanceAdminScheduleEditScreen extends ConsumerStatefulWidget {
+class AttendanceManageScheduleEditScreen extends ConsumerStatefulWidget {
   /// null 이면 새 스케줄 생성, 아니면 기존 스케줄 수정.
   final AdminScheduleRow? existing;
 
-  const AttendanceAdminScheduleEditScreen({super.key, this.existing});
+  const AttendanceManageScheduleEditScreen({super.key, this.existing});
 
   @override
-  ConsumerState<AttendanceAdminScheduleEditScreen> createState() =>
-      _AttendanceAdminScheduleEditScreenState();
+  ConsumerState<AttendanceManageScheduleEditScreen> createState() =>
+      _AttendanceManageScheduleEditScreenState();
 }
 
-class _AttendanceAdminScheduleEditScreenState
-    extends ConsumerState<AttendanceAdminScheduleEditScreen> {
+class _AttendanceManageScheduleEditScreenState
+    extends ConsumerState<AttendanceManageScheduleEditScreen> {
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -67,8 +67,8 @@ class _AttendanceAdminScheduleEditScreenState
     try {
       final service = ref.read(attendanceDeviceServiceProvider);
       final results = await Future.wait([
-        service.adminListAssignableUsers(),
-        service.adminListWorkRoles(),
+        service.manageListAssignableUsers(),
+        service.manageListWorkRoles(),
       ]);
       if (!mounted) return;
       setState(() {
@@ -132,7 +132,7 @@ class _AttendanceAdminScheduleEditScreenState
     try {
       final service = ref.read(attendanceDeviceServiceProvider);
       if (_isEdit) {
-        await service.adminUpdateSchedule(
+        await service.manageUpdateSchedule(
           scheduleId: widget.existing!.scheduleId,
           userId: _selectedUserId,
           workRoleId: _selectedWorkRoleId,
@@ -140,7 +140,7 @@ class _AttendanceAdminScheduleEditScreenState
           endHHmm: _formatHHmm(_end!),
         );
       } else {
-        await service.adminCreateSchedule(
+        await service.manageCreateSchedule(
           userId: _selectedUserId!,
           workRoleId: _selectedWorkRoleId,
           startHHmm: _formatHHmm(_start!),

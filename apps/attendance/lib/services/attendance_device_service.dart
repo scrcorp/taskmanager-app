@@ -43,8 +43,8 @@ class VersionBroadcast {
 class AttendanceDeviceService {
   late final Dio _dio;
   /// 키오스크 관리자 모드 세션 토큰 (in-memory).
-  /// `_AdminSessionInterceptor` 가 있을 때만 `X-Admin-Session` 헤더를 추가한다.
-  String? _adminToken;
+  /// `_ManageSessionInterceptor` 가 있을 때만 `X-Manage-Session` 헤더를 추가한다.
+  String? _manageToken;
 
   /// 최근 응답에서 추출된 서버 버전 정보. Shell 가 listen 해서 갱신.
   final ValueNotifier<VersionBroadcast?> versionBroadcast = ValueNotifier(null);
@@ -58,13 +58,13 @@ class AttendanceDeviceService {
     ));
     // device token 자동 주입 (있을 때만)
     _dio.interceptors.add(_DeviceAuthInterceptor());
-    _dio.interceptors.add(_AdminSessionInterceptor(() => _adminToken));
+    _dio.interceptors.add(_ManageSessionInterceptor(() => _manageToken));
     // 응답 헤더에서 X-App-* 추출 → versionBroadcast 갱신
     _dio.interceptors.add(_VersionBroadcastInterceptor(versionBroadcast));
   }
 
-  void setAdminToken(String? token) {
-    _adminToken = token;
+  void setManageToken(String? token) {
+    _manageToken = token;
   }
 
   /// Access code로 기기 등록 — 성공 시 토큰 발급
@@ -168,6 +168,26 @@ class AttendanceDeviceService {
     return _postAction('/attendance/break-end', userId: userId, pin: pin);
   }
 
+  /// PIN 단독으로 본인 식별 + 오늘 attendance status (Phase 3, PIN-first kiosk entry).
+  ///
+  /// Phase 5 의 본인 확인 다이얼로그에서 사용 예정. 현재는 dormant (호출하는 UI 없음).
+  ///
+  /// [pin] — 6자리 숫자
+  ///
+  /// 응답: { user_id, user_name, today_status }
+  ///   - today_status: 오늘 스케줄 있으면 'working'/'upcoming'/'late'/'no_show'/'soon'/
+  ///                   'on_break'/'clocked_out', 없으면 null
+  ///
+  /// Throws DioException — 매치 없음/비활성 user → 400 'Invalid PIN',
+  ///                       PIN 형식 위반 → 422.
+  Future<Map<String, dynamic>> identifyByPin({required String pin}) async {
+    final response = await _dio.post(
+      '/attendance/identify-by-pin',
+      data: {'pin': pin},
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
   /// 오늘 매장 근무자 상태 조회 (device token)
   ///
   /// 응답: 각 유저의 schedule + attendance 요약 리스트
@@ -191,6 +211,17 @@ class AttendanceDeviceService {
     );
     final list = response.data as List;
     return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  /// 매장 전체 active 직원 — manual tip receiver 추가용 (L5).
+  /// 한 번에 받아 client-side 검색 필터. payload ~5KB 수준이라 paging 없음.
+  Future<List<Map<String, dynamic>>> getStoreEmployees() async {
+    final response = await _dio.get('/attendance/store-employees');
+    final data = response.data;
+    if (data is List) {
+      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    return const [];
   }
 
   /// 팁 입력 — clock-out 직후 매장 비치 태블릿에서 호출.
@@ -221,19 +252,6 @@ class AttendanceDeviceService {
     return Map<String, dynamic>.from(response.data as Map);
   }
 
-  /// 매장 공지 조회 (device token)
-  Future<List<Map<String, dynamic>>> getNotices({int limit = 10}) async {
-    final response = await _dio.get(
-      '/attendance/notices',
-      queryParameters: {'limit': limit},
-    );
-    final data = response.data;
-    if (data is List) {
-      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-    }
-    return const [];
-  }
-
   Future<Map<String, dynamic>> _postAction(
     String path, {
     required String userId,
@@ -249,48 +267,37 @@ class AttendanceDeviceService {
     return Map<String, dynamic>.from(response.data as Map);
   }
 
-  // ── 관리자 모드 (kiosk admin) ─────────────────────────────
+  // ── Manage 모드 (kiosk manage) ─────────────────────────────
 
-  /// 매장 매니저 후보 조회 (Owner + 매장 SV/GM is_manager=true, PIN 보유자만).
-  Future<List<Map<String, dynamic>>> listAdminManagers() async {
-    final response = await _dio.get('/attendance/admin/managers');
-    final data = response.data;
-    if (data is List) {
-      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-    }
-    return const [];
-  }
-
-  /// 매니저 PIN 검증 + admin session 발급. 성공 시 setAdminToken 자동 호출.
-  Future<Map<String, dynamic>> openAdminSession({
-    required String userId,
+  /// 매니저 PIN 검증 + manage session 발급. 성공 시 setManageToken 자동 호출.
+  /// Phase 6: user_id 없이 PIN 하나로 user 식별 + 자격 검증 (서버에서).
+  Future<Map<String, dynamic>> openManageSession({
     required String pin,
   }) async {
-    final response = await _dio.post('/attendance/admin/session', data: {
-      'user_id': userId,
+    final response = await _dio.post('/attendance/manage/session', data: {
       'pin': pin,
     });
     final body = Map<String, dynamic>.from(response.data as Map);
-    final token = body['admin_token'] as String?;
+    final token = body['manage_token'] as String?;
     if (token != null && token.isNotEmpty) {
-      setAdminToken(token);
+      setManageToken(token);
     }
     return body;
   }
 
   /// admin session 종료 (서버 폐기 + 로컬 토큰 제거). 실패해도 로컬은 클리어.
-  Future<void> closeAdminSession() async {
+  Future<void> closeManageSession() async {
     try {
-      await _dio.delete('/attendance/admin/session');
+      await _dio.delete('/attendance/manage/session');
     } catch (_) {
       // 서버 통신 실패해도 로컬 클리어로 안전 종료
     }
-    setAdminToken(null);
+    setManageToken(null);
   }
 
   /// 오늘 매장 스케줄 (관리자 모드 리스트).
-  Future<List<Map<String, dynamic>>> adminListSchedules() async {
-    final response = await _dio.get('/attendance/admin/schedules');
+  Future<List<Map<String, dynamic>>> manageListSchedules() async {
+    final response = await _dio.get('/attendance/manage/schedules');
     final data = response.data;
     if (data is List) {
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
@@ -299,8 +306,8 @@ class AttendanceDeviceService {
   }
 
   /// 매장에 work_assignment 된 직원 목록 (스케줄 생성 select).
-  Future<List<Map<String, dynamic>>> adminListAssignableUsers() async {
-    final response = await _dio.get('/attendance/admin/assignable-users');
+  Future<List<Map<String, dynamic>>> manageListAssignableUsers() async {
+    final response = await _dio.get('/attendance/manage/assignable-users');
     final data = response.data;
     if (data is List) {
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
@@ -309,8 +316,8 @@ class AttendanceDeviceService {
   }
 
   /// 매장 work role 목록 (스케줄 생성 select).
-  Future<List<Map<String, dynamic>>> adminListWorkRoles() async {
-    final response = await _dio.get('/attendance/admin/work-roles');
+  Future<List<Map<String, dynamic>>> manageListWorkRoles() async {
+    final response = await _dio.get('/attendance/manage/work-roles');
     final data = response.data;
     if (data is List) {
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
@@ -318,13 +325,13 @@ class AttendanceDeviceService {
     return const [];
   }
 
-  Future<Map<String, dynamic>> adminCreateSchedule({
+  Future<Map<String, dynamic>> manageCreateSchedule({
     required String userId,
     String? workRoleId,
     required String startHHmm,
     required String endHHmm,
   }) async {
-    final response = await _dio.post('/attendance/admin/schedules', data: {
+    final response = await _dio.post('/attendance/manage/schedules', data: {
       'user_id': userId,
       if (workRoleId != null) 'work_role_id': workRoleId,
       'start_time': startHHmm,
@@ -333,7 +340,7 @@ class AttendanceDeviceService {
     return Map<String, dynamic>.from(response.data as Map);
   }
 
-  Future<Map<String, dynamic>> adminUpdateSchedule({
+  Future<Map<String, dynamic>> manageUpdateSchedule({
     required String scheduleId,
     String? userId,
     String? workRoleId,
@@ -347,25 +354,25 @@ class AttendanceDeviceService {
       if (endHHmm != null) 'end_time': endHHmm,
     };
     final response = await _dio.patch(
-      '/attendance/admin/schedules/$scheduleId',
+      '/attendance/manage/schedules/$scheduleId',
       data: body,
     );
     return Map<String, dynamic>.from(response.data as Map);
   }
 
-  Future<void> adminDeleteSchedule(String scheduleId) async {
-    await _dio.delete('/attendance/admin/schedules/$scheduleId');
+  Future<void> manageDeleteSchedule(String scheduleId) async {
+    await _dio.delete('/attendance/manage/schedules/$scheduleId');
   }
 
   /// 관리자가 임의 사용자 attendance 를 PIN 없이 처리.
   /// actions: clock_in | clock_out | break_start | break_end | cancel_clock_in | cancel_clock_out
-  Future<Map<String, dynamic>> adminClockAction({
+  Future<Map<String, dynamic>> manageClockAction({
     required String userId,
     required String action,
     String? breakType,
     String? reason,
   }) async {
-    final response = await _dio.post('/attendance/admin/clock', data: {
+    final response = await _dio.post('/attendance/manage/clock', data: {
       'user_id': userId,
       'action': action,
       if (breakType != null) 'break_type': breakType,
@@ -376,7 +383,7 @@ class AttendanceDeviceService {
 
   /// 관리자가 status 와 시각을 동시에 보정.
   /// status: working | late | on_break | clocked_out | upcoming | no_show
-  Future<Map<String, dynamic>> adminChangeStatus({
+  Future<Map<String, dynamic>> manageChangeStatus({
     required String userId,
     required String status,
     required String reason,
@@ -384,7 +391,7 @@ class AttendanceDeviceService {
     String? clockOutHHmm,
   }) async {
     final response = await _dio.post(
-      '/attendance/admin/attendance/status',
+      '/attendance/manage/attendance/status',
       data: {
         'user_id': userId,
         'status': status,
@@ -409,16 +416,16 @@ class _DeviceAuthInterceptor extends Interceptor {
   }
 }
 
-/// In-memory admin session token 을 X-Admin-Session 헤더로 자동 주입
-class _AdminSessionInterceptor extends Interceptor {
+/// In-memory admin session token 을 X-Manage-Session 헤더로 자동 주입
+class _ManageSessionInterceptor extends Interceptor {
   final String? Function() _getter;
-  _AdminSessionInterceptor(this._getter);
+  _ManageSessionInterceptor(this._getter);
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
     final token = _getter();
     if (token != null && token.isNotEmpty) {
-      options.headers['X-Admin-Session'] = token;
+      options.headers['X-Manage-Session'] = token;
     }
     handler.next(options);
   }
