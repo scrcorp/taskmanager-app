@@ -11,9 +11,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
 
-import '../../providers/attendance_admin_provider.dart';
+import '../../providers/attendance_manage_provider.dart';
 import '../../services/attendance_device_service.dart';
-import 'attendance_admin_home_screen.dart' show extractApiError;
+import 'attendance_manage_home_screen.dart' show extractApiError;
 
 enum AdminAction {
   clockIn,
@@ -107,11 +107,11 @@ extension AdminActionX on AdminAction {
       this == AdminAction.clockIn ? 'Clock In' : 'Clock Out';
 }
 
-class AttendanceAdminActionModal extends ConsumerStatefulWidget {
+class AttendanceManageActionModal extends ConsumerStatefulWidget {
   final AdminAction action;
   final AdminScheduleRow row;
 
-  const AttendanceAdminActionModal({
+  const AttendanceManageActionModal({
     super.key,
     required this.action,
     required this.row,
@@ -126,15 +126,15 @@ class AttendanceAdminActionModal extends ConsumerStatefulWidget {
     final result = await Navigator.of(context, rootNavigator: true).push<bool>(
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (_) => AttendanceAdminActionModal(action: action, row: row),
+        builder: (_) => AttendanceManageActionModal(action: action, row: row),
       ),
     );
     return result == true;
   }
 
   @override
-  ConsumerState<AttendanceAdminActionModal> createState() =>
-      _AttendanceAdminActionModalState();
+  ConsumerState<AttendanceManageActionModal> createState() =>
+      _AttendanceManageActionModalState();
 }
 
 /// Console 의 correctionPresets.ts 와 동일한 preset 목록. 양쪽 history 일관성용.
@@ -147,8 +147,8 @@ const _kReasonPresets = <String>[
   'Break correction',
 ];
 
-class _AttendanceAdminActionModalState
-    extends ConsumerState<AttendanceAdminActionModal> {
+class _AttendanceManageActionModalState
+    extends ConsumerState<AttendanceManageActionModal> {
   TimeOfDay? _time;
   /// preset 선택 (null = 미선택 / "Other" = 직접 입력).
   String? _reasonPreset;
@@ -207,7 +207,7 @@ class _AttendanceAdminActionModalState
       final service = ref.read(attendanceDeviceServiceProvider);
       switch (widget.action) {
         case AdminAction.clockIn:
-          await service.adminChangeStatus(
+          await service.manageChangeStatus(
             userId: widget.row.userId,
             status: 'working',
             reason: reason,
@@ -215,7 +215,7 @@ class _AttendanceAdminActionModalState
           );
           break;
         case AdminAction.clockOut:
-          await service.adminChangeStatus(
+          await service.manageChangeStatus(
             userId: widget.row.userId,
             status: 'clocked_out',
             reason: reason,
@@ -225,7 +225,7 @@ class _AttendanceAdminActionModalState
           );
           break;
         case AdminAction.break10min:
-          await service.adminClockAction(
+          await service.manageClockAction(
             userId: widget.row.userId,
             action: 'break_start',
             breakType: 'paid_10min',
@@ -233,7 +233,7 @@ class _AttendanceAdminActionModalState
           );
           break;
         case AdminAction.breakMeal:
-          await service.adminClockAction(
+          await service.manageClockAction(
             userId: widget.row.userId,
             action: 'break_start',
             breakType: 'unpaid_meal',
@@ -241,21 +241,21 @@ class _AttendanceAdminActionModalState
           );
           break;
         case AdminAction.endBreak:
-          await service.adminClockAction(
+          await service.manageClockAction(
             userId: widget.row.userId,
             action: 'break_end',
             reason: reason,
           );
           break;
         case AdminAction.undoClockIn:
-          await service.adminClockAction(
+          await service.manageClockAction(
             userId: widget.row.userId,
             action: 'cancel_clock_in',
             reason: reason,
           );
           break;
         case AdminAction.reopenShift:
-          await service.adminClockAction(
+          await service.manageClockAction(
             userId: widget.row.userId,
             action: 'cancel_clock_out',
             reason: reason,

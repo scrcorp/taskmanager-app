@@ -7,27 +7,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/attendance_device_service.dart';
 
-class AdminManager {
-  final String userId;
-  final String fullName;
-  final String roleName;
-  final int rolePriority;
-
-  const AdminManager({
-    required this.userId,
-    required this.fullName,
-    required this.roleName,
-    required this.rolePriority,
-  });
-
-  factory AdminManager.fromJson(Map<String, dynamic> json) => AdminManager(
-        userId: json['user_id']?.toString() ?? '',
-        fullName: json['full_name']?.toString() ?? '',
-        roleName: json['role_name']?.toString() ?? '',
-        rolePriority: (json['role_priority'] as num?)?.toInt() ?? 99,
-      );
-}
-
 class AdminAssignableUser {
   final String userId;
   final String fullName;
@@ -155,14 +134,14 @@ class AdminScheduleRow {
 }
 
 /// 관리자 모드 세션 상태.
-class AdminSessionState {
+class ManageSessionState {
   final bool active;
   final String? managerUserId;
   final String? managerName;
   final DateTime? expiresAt;
   final String? error;
 
-  const AdminSessionState({
+  const ManageSessionState({
     this.active = false,
     this.managerUserId,
     this.managerName,
@@ -170,7 +149,7 @@ class AdminSessionState {
     this.error,
   });
 
-  AdminSessionState copyWith({
+  ManageSessionState copyWith({
     bool? active,
     String? managerUserId,
     String? managerName,
@@ -178,7 +157,7 @@ class AdminSessionState {
     String? error,
     bool clearError = false,
   }) {
-    return AdminSessionState(
+    return ManageSessionState(
       active: active ?? this.active,
       managerUserId: managerUserId ?? this.managerUserId,
       managerName: managerName ?? this.managerName,
@@ -188,25 +167,25 @@ class AdminSessionState {
   }
 }
 
-final attendanceAdminSessionProvider =
-    StateNotifierProvider<AttendanceAdminSessionNotifier, AdminSessionState>(
+final attendanceManageSessionProvider =
+    StateNotifierProvider<AttendanceManageSessionNotifier, ManageSessionState>(
         (ref) {
-  return AttendanceAdminSessionNotifier(
+  return AttendanceManageSessionNotifier(
     ref.read(attendanceDeviceServiceProvider),
   );
 });
 
-class AttendanceAdminSessionNotifier extends StateNotifier<AdminSessionState> {
+class AttendanceManageSessionNotifier extends StateNotifier<ManageSessionState> {
   final AttendanceDeviceService _service;
 
-  AttendanceAdminSessionNotifier(this._service)
-      : super(const AdminSessionState());
+  AttendanceManageSessionNotifier(this._service)
+      : super(const ManageSessionState());
 
-  Future<bool> openWithPin({required String userId, required String pin}) async {
+  Future<bool> openWithPin({required String pin}) async {
     state = state.copyWith(clearError: true);
     try {
-      final body = await _service.openAdminSession(userId: userId, pin: pin);
-      state = AdminSessionState(
+      final body = await _service.openManageSession(pin: pin);
+      state = ManageSessionState(
         active: true,
         managerUserId: body['manager_user_id']?.toString(),
         managerName: body['manager_name']?.toString(),
@@ -223,14 +202,14 @@ class AttendanceAdminSessionNotifier extends StateNotifier<AdminSessionState> {
   }
 
   Future<void> close() async {
-    await _service.closeAdminSession();
-    state = const AdminSessionState();
+    await _service.closeManageSession();
+    state = const ManageSessionState();
   }
 
   /// 401/403 발생 시 외부에서 강제 무효화.
   void invalidate({String? error}) {
-    _service.setAdminToken(null);
-    state = AdminSessionState(error: error);
+    _service.setManageToken(null);
+    state = ManageSessionState(error: error);
   }
 
   String _parseError(Object e, String fallback) {
