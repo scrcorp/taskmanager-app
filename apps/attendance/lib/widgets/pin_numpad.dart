@@ -261,9 +261,14 @@ class _Key extends StatelessWidget {
         color: bg,
         borderRadius: BorderRadius.circular(16),
         elevation: variant == _KeyVariant.number && !disabled ? 2 : 0,
-        child: InkWell(
-          onTap: onTap,
+        // Issue 5 fix: 빠른 연속 tap 누락 방지 — onTap (tap-up 대기) 대신
+        // onTapDown 으로 즉시 반응. Material ripple/splash 는 비활성화.
+        child: InkResponse(
+          onTapDown: disabled ? null : (_) => onTap?.call(),
+          containedInkWell: true,
+          highlightShape: BoxShape.rectangle,
           borderRadius: BorderRadius.circular(16),
+          splashFactory: NoSplash.splashFactory,
           child: Container(
             height: height,
             alignment: Alignment.center,

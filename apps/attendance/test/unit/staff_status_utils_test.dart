@@ -39,9 +39,9 @@ TodayStaffRow _row({
 
 void main() {
   group('classifySection', () {
-    test('working / on_break → onShift', () {
-      expect(classifySection('working'), StaffSection.onShift);
-      expect(classifySection('on_break'), StaffSection.onShift);
+    test('working / on_break → clockedIn', () {
+      expect(classifySection('working'), StaffSection.clockedIn);
+      expect(classifySection('on_break'), StaffSection.clockedIn);
     });
 
     test('upcoming / soon / late / no_show → notClockedIn', () {

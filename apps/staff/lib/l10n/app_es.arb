@@ -897,5 +897,9 @@
     "placeholders": { "name": { "type": "String" } }
   },
   "invAddCreateProductFailedTitle": "No se pudo crear el producto",
-  "invAddCreateProductFailedMessage": "No se pudo crear el producto"
+  "invAddCreateProductFailedMessage": "No se pudo crear el producto",
+  "myPinLabel": "PIN de registro",
+  "myPinEdit": "Editar PIN",
+  "myPinNotAvailable": "No disponible",
+  "myPinSaveFailed": "No se pudo guardar el PIN"
 }

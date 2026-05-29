@@ -119,12 +119,19 @@ class AttendanceDeviceService {
     await _dio.delete('/attendance/me');
   }
 
-  /// Clock In — user_id + 6자리 PIN으로 출근 기록
+  /// Clock In — user_id + PIN(4~6) 으로 출근 기록.
+  /// (Issue 8) scheduleId 지정 시 그 schedule 에 출근 (다중 schedule picker).
   Future<Map<String, dynamic>> clockIn({
     required String userId,
     required String pin,
+    String? scheduleId,
   }) async {
-    return _postAction('/attendance/clock-in', userId: userId, pin: pin);
+    return _postAction(
+      '/attendance/clock-in',
+      userId: userId,
+      pin: pin,
+      extra: scheduleId != null ? {'schedule_id': scheduleId} : null,
+    );
   }
 
   /// Clock Out — user_id + 6자리 PIN으로 퇴근 기록.

@@ -150,6 +150,17 @@ fi
 NAMED_APK="$ATTENDANCE_DIR/build/app/outputs/flutter-apk/${FILENAME}"
 cp "$APK_PATH" "$NAMED_APK"
 
+# 로컬 bucket 에 S3 와 같은 버전별 경로로 보관 (release/attendance/v{marketing}/{filename})
+# 프로젝트 루트(bucket 폴더 포함) 를 위로 탐색 — worktree/일반 checkout 모두 대응
+ROOT="$APP_REPO"
+while [ "$ROOT" != "/" ] && [ ! -d "$ROOT/bucket" ]; do ROOT="$(dirname "$ROOT")"; done
+if [ -d "$ROOT/bucket" ]; then
+  LOCAL_RELEASE_DIR="$ROOT/bucket/release/attendance/v${MARKETING_VERSION}"
+  mkdir -p "$LOCAL_RELEASE_DIR"
+  cp "$NAMED_APK" "$LOCAL_RELEASE_DIR/${FILENAME}"
+  echo "  Bucket:    $LOCAL_RELEASE_DIR/${FILENAME}"
+fi
+
 echo
 echo "✓ Built $FULL_VERSION"
 echo "  APK:       $NAMED_APK"

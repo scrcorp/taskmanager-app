@@ -11,12 +11,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
 import 'package:intl/intl.dart';
 
+import '../../l10n/app_localizations.dart';
+import '../../models/schedule_staff_view.dart';
 import '../../providers/attendance_dashboard_provider.dart';
 import '../../providers/attendance_device_provider.dart';
 import '../../utils/staff_status_utils.dart';
 import '../../utils/store_time.dart';
-import '../../widgets/staff_block.dart';
-import '../../widgets/staff_detail_panel.dart';
+import '../../widgets/schedule_staff_card.dart';
+import '../../widgets/schedule_staff_detail_panel.dart';
 
 class AttendanceScheduleScreen extends ConsumerStatefulWidget {
   const AttendanceScheduleScreen({super.key});
@@ -48,8 +50,9 @@ class _AttendanceScheduleScreenState extends ConsumerState<AttendanceScheduleScr
   @override
   void dispose() {
     _clockTimer.cancel();
-    // 화면 떠날 때 polling 정지 — main 으로 돌아가면 더 이상 필요 없음.
-    ref.read(attendanceDashboardProvider.notifier).stopPolling();
+    // polling 은 main 의 WORKING 사이드바도 사용하므로 schedule dispose 에서
+    // stopPolling 호출하지 않는다 (Issue 3 H1 fix: 기존엔 여기서 stopPolling →
+    // main 으로 돌아가도 initState 가 다시 안 불려 polling 영원히 멈추는 버그).
     super.dispose();
   }
 
@@ -60,7 +63,7 @@ class _AttendanceScheduleScreenState extends ConsumerState<AttendanceScheduleScr
     final staff = dashboard.staff;
 
     // 섹션별 분류
-    final onShift = staff.where((r) => classifySection(r.status) == StaffSection.onShift).toList();
+    final clockedIn = staff.where((r) => classifySection(r.status) == StaffSection.clockedIn).toList();
     final notClockedIn =
         staff.where((r) => classifySection(r.status) == StaffSection.notClockedIn).toList();
     final completed =
@@ -95,36 +98,36 @@ class _AttendanceScheduleScreenState extends ConsumerState<AttendanceScheduleScr
                         children: [
                           Expanded(
                             child: _Section(
-                              title: 'On Shift',
+                              title: AppL10n.of(context).scheduleSectionWorking,
                               accent: AppColors.success,
-                              staff: onShift,
+                              staff: clockedIn,
                               selectedUserId: _selectedUserId,
                               onSelect: (id) => setState(() => _selectedUserId = id),
-                              emptyText: 'Nobody is currently on shift.',
+                              emptyText: AppL10n.of(context).scheduleSectionWorkingEmpty,
                               now: _now,
                             ),
                           ),
                           const SizedBox(height: 12),
                           Expanded(
                             child: _Section(
-                              title: 'Not Clocked In',
+                              title: AppL10n.of(context).scheduleSectionUpcoming,
                               accent: AppColors.warning,
                               staff: notClockedIn,
                               selectedUserId: _selectedUserId,
                               onSelect: (id) => setState(() => _selectedUserId = id),
-                              emptyText: 'Everyone is clocked in.',
+                              emptyText: AppL10n.of(context).scheduleSectionUpcomingEmpty,
                               now: _now,
                             ),
                           ),
                           const SizedBox(height: 12),
                           Expanded(
                             child: _Section(
-                              title: 'Completed Today',
+                              title: AppL10n.of(context).scheduleSectionDone,
                               accent: AppColors.textSecondary,
                               staff: completed,
                               selectedUserId: _selectedUserId,
                               onSelect: (id) => setState(() => _selectedUserId = id),
-                              emptyText: 'No completed shifts yet.',
+                              emptyText: AppL10n.of(context).scheduleSectionDoneEmpty,
                               now: _now,
                             ),
                           ),
@@ -148,7 +151,7 @@ class _AttendanceScheduleScreenState extends ConsumerState<AttendanceScheduleScr
                             ),
                           ],
                         ),
-                        child: StaffDetailPanel(row: selected, now: _now),
+                        child: ScheduleStaffDetailPanel(view: selected?.toView(), now: _now),
                       ),
                     ),
                   ],
@@ -330,15 +333,16 @@ class _Section extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 2),
                     physics: const AlwaysScrollableScrollPhysics(),
                     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 180,
-                      mainAxisExtent: 60,
+                      maxCrossAxisExtent: 300,
+                      mainAxisExtent: 88,
                       crossAxisSpacing: 8,
                       mainAxisSpacing: 8,
                     ),
                     itemCount: staff.length,
-                    itemBuilder: (_, i) => StaffBlock(
-                      row: staff[i],
+                    itemBuilder: (_, i) => ScheduleStaffCard(
+                      view: staff[i].toView(),
                       selected: selectedUserId == staff[i].userId,
+                      now: now,
                       onTap: () => onSelect(staff[i].userId),
                     ),
                   ),

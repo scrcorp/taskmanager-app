@@ -13,6 +13,8 @@ import 'package:htm_core/htm_core.dart';
 
 import '../../providers/attendance_manage_provider.dart';
 import '../../services/attendance_device_service.dart';
+import '../../utils/staff_status_utils.dart' show breakProgress, BreakState;
+import '../../widgets/time_wheel.dart';
 import 'attendance_manage_home_screen.dart' show extractApiError;
 
 enum AdminAction {
@@ -105,6 +107,30 @@ extension AdminActionX on AdminAction {
       this == AdminAction.clockIn || this == AdminAction.clockOut;
   String get timeLabel =>
       this == AdminAction.clockIn ? 'Clock In' : 'Clock Out';
+
+  /// 데이터 클리어/되돌림 액션 — 사유 필수.
+  bool get reasonRequired =>
+      this == AdminAction.undoClockIn || this == AdminAction.reopenShift;
+}
+
+/// state(upcoming/working/breaking/done) → 가능한 clock 액션 (anomaly/soon 무관).
+List<AdminAction> adminActionsForState(String state) {
+  switch (state) {
+    case 'working':
+      return const [
+        AdminAction.clockOut,
+        AdminAction.break10min,
+        AdminAction.breakMeal,
+        AdminAction.undoClockIn,
+      ];
+    case 'breaking':
+      return const [AdminAction.endBreak, AdminAction.clockOut, AdminAction.undoClockIn];
+    case 'done':
+      return const [AdminAction.reopenShift];
+    case 'upcoming':
+    default:
+      return const [AdminAction.clockIn];
+  }
 }
 
 class AttendanceManageActionModal extends ConsumerStatefulWidget {
@@ -117,17 +143,16 @@ class AttendanceManageActionModal extends ConsumerStatefulWidget {
     required this.row,
   });
 
-  /// `Navigator.push` 헬퍼 — 성공 시 true 반환.
+  /// 중앙 모달 헬퍼 — 적용 성공 시 true 반환.
   static Future<bool> show(
     BuildContext context, {
     required AdminAction action,
     required AdminScheduleRow row,
   }) async {
-    final result = await Navigator.of(context, rootNavigator: true).push<bool>(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => AttendanceManageActionModal(action: action, row: row),
-      ),
+    final result = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.4),
+      builder: (_) => AttendanceManageActionModal(action: action, row: row),
     );
     return result == true;
   }
@@ -149,7 +174,8 @@ const _kReasonPresets = <String>[
 
 class _AttendanceManageActionModalState
     extends ConsumerState<AttendanceManageActionModal> {
-  TimeOfDay? _time;
+  int _minutes = 0; // needsTime 일 때 hh*60+mm
+  late final int _nowMinutes;
   /// preset 선택 (null = 미선택 / "Other" = 직접 입력).
   String? _reasonPreset;
   final _reasonCtrl = TextEditingController();
@@ -158,9 +184,9 @@ class _AttendanceManageActionModalState
   @override
   void initState() {
     super.initState();
-    if (widget.action.needsTime) {
-      _time = TimeOfDay.now();
-    }
+    final now = TimeOfDay.now();
+    _nowMinutes = now.hour * 60 + now.minute;
+    _minutes = _nowMinutes;
   }
 
   @override
@@ -169,19 +195,29 @@ class _AttendanceManageActionModalState
     super.dispose();
   }
 
-  String _formatHHmm(TimeOfDay t) =>
-      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  String _formatHHmm(int min) =>
+      '${(min ~/ 60).toString().padLeft(2, '0')}:${(min % 60).toString().padLeft(2, '0')}';
 
-  Future<void> _pickTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: _time ?? TimeOfDay.now(),
-    );
-    if (picked != null) setState(() => _time = picked);
+  /// End Break 정책 (진행 중 break 의 경과/초과) — endBreak 일 때만.
+  ({String hint, bool over})? get _breakPolicy {
+    if (widget.action != AdminAction.endBreak) return null;
+    final active = widget.row.breaks.where((b) => b.end == null).toList();
+    if (active.isEmpty) return null;
+    final b = active.first;
+    final parts = b.start.split(':');
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts.length > 1 ? parts[1] : '');
+    if (h == null || m == null) return null;
+    final elapsed = (_nowMinutes - (h * 60 + m)).clamp(0, 24 * 60);
+    final p = breakProgress(b.type, elapsed);
+    final over = p.state != BreakState.within && p.state != BreakState.tooShort;
+    return (hint: p.hint, over: over);
   }
 
+  bool get _reasonRequired =>
+      widget.action.reasonRequired || (_breakPolicy?.over ?? false);
+
   /// 최종 reason — preset 선택했으면 그 라벨, Other 면 free-text, 아니면 "".
-  /// 빈 문자열이면 서버가 "(no reason)" 으로 기록.
   String get _effectiveReason {
     if (_reasonPreset == null) return _reasonCtrl.text.trim();
     if (_reasonPreset == 'Other') return _reasonCtrl.text.trim();
@@ -190,13 +226,12 @@ class _AttendanceManageActionModalState
 
   Future<void> _apply() async {
     if (_saving) return;
-    // reason 은 선택 — preset 또는 Other 의 free-text, 둘 다 안 채우면 "".
     final reason = _effectiveReason;
-    if (widget.action.needsTime && _time == null) {
+    if (_reasonRequired && reason.isEmpty) {
       AppModal.show(
         context,
-        title: 'Time Required',
-        message: 'Set the ${widget.action.timeLabel} time.',
+        title: 'Reason Required',
+        message: 'A reason is required for this action.',
         type: ModalType.error,
       );
       return;
@@ -211,7 +246,7 @@ class _AttendanceManageActionModalState
             userId: widget.row.userId,
             status: 'working',
             reason: reason,
-            clockInHHmm: _formatHHmm(_time!),
+            clockInHHmm: _formatHHmm(_minutes),
           );
           break;
         case AdminAction.clockOut:
@@ -221,7 +256,7 @@ class _AttendanceManageActionModalState
             reason: reason,
             // 기존 clock_in 유지 (서버가 알아서 처리). clock_out 만 갱신.
             clockInHHmm: widget.row.clockInDisplay,
-            clockOutHHmm: _formatHHmm(_time!),
+            clockOutHHmm: _formatHHmm(_minutes),
           );
           break;
         case AdminAction.break10min:
@@ -280,213 +315,179 @@ class _AttendanceManageActionModalState
   Widget build(BuildContext context) {
     final action = widget.action;
     final row = widget.row;
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      appBar: AppBar(
-        title: Text(action.title),
-        leading: IconButton(
-          icon: const Icon(Icons.close, size: 26),
-          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
-        ),
-      ),
-      body: SafeArea(
+    final policy = _breakPolicy;
+    final required = _reasonRequired;
+    final canApply = !required || _effectiveReason.isNotEmpty;
+
+    return Dialog(
+      backgroundColor: AppColors.white,
+      insetPadding: const EdgeInsets.all(24),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460, maxHeight: 760),
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(22),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Action header card
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: action.color.withValues(alpha: 0.10),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: action.color.withValues(alpha: 0.35)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 56,
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: action.color.withValues(alpha: 0.20),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Icon(action.icon, size: 28, color: action.color),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            action.title,
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: action.color,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            row.userName,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.text,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                action.description,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 24),
-              if (action.needsTime) ...[
-                const _SectionLabel('TIME'),
-                const SizedBox(height: 10),
-                _timeTile(action.timeLabel, _time, _pickTime),
-                const SizedBox(height: 24),
-              ],
-              const _SectionLabel('REASON (OPTIONAL)'),
-              const SizedBox(height: 6),
-              const Text(
-                'Tap a preset, pick Other to type, or skip and add later from the Console.',
-                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final p in _kReasonPresets)
-                    _ReasonChip(
-                      label: p,
-                      selected: _reasonPreset == p,
-                      onTap: () => setState(() {
-                        _reasonPreset = _reasonPreset == p ? null : p;
-                        if (_reasonPreset != 'Other') _reasonCtrl.clear();
-                      }),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(row.userName.toUpperCase(),
+                            style: const TextStyle(
+                                fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textMuted, letterSpacing: 0.5)),
+                        const SizedBox(height: 2),
+                        Text(action.title,
+                            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: action.color)),
+                      ],
                     ),
-                  _ReasonChip(
-                    label: 'Other',
-                    selected: _reasonPreset == 'Other',
-                    onTap: () => setState(() {
-                      _reasonPreset = _reasonPreset == 'Other' ? null : 'Other';
-                    }),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                    onPressed: _saving ? null : () => Navigator.of(context).pop(false),
                   ),
                 ],
               ),
-              if (_reasonPreset == 'Other') ...[
-                const SizedBox(height: 10),
+              const SizedBox(height: 4),
+              Text(action.description, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4)),
+              if (action.needsTime) ...[
+                const SizedBox(height: 16),
                 Container(
-                  decoration: BoxDecoration(
-                    color: AppColors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.border),
-                  ),
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: TextField(
-                    controller: _reasonCtrl,
-                    maxLines: 3,
-                    autofocus: true,
-                    textInputAction: TextInputAction.done,
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      hintText: 'Describe the reason',
-                    ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(color: AppColors.bg.withValues(alpha: 0.6), borderRadius: BorderRadius.circular(20)),
+                  child: Column(
+                    children: [
+                      _SectionLabel('${action.timeLabel.toUpperCase()} TIME'),
+                      TimeWheel(initialMinutes: _minutes, onChanged: (v) => setState(() => _minutes = v)),
+                      if (_minutes != _nowMinutes)
+                        Text(
+                          () {
+                            final d = (_minutes - _nowMinutes).abs();
+                            final lbl = d >= 60 ? '${d ~/ 60}h ${d % 60}m' : '${d}m';
+                            return '$lbl ${_minutes < _nowMinutes ? 'earlier' : 'later'} than now';
+                          }(),
+                          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                        ),
+                    ],
                   ),
                 ),
               ],
-              const Spacer(),
-              SizedBox(
-                height: 60,
-                child: ElevatedButton(
-                  onPressed: _saving ? null : _apply,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: action.color,
-                    disabledBackgroundColor:
-                        action.color.withValues(alpha: 0.4),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16)),
+              if (policy != null) ...[
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: (policy.over ? AppColors.danger : AppColors.warning).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  child: _saving
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white),
-                        )
-                      : Text(
-                          'Confirm ${action.title}',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                  child: Text(policy.hint,
+                      style: TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w700, color: policy.over ? AppColors.danger : AppColors.warning)),
+                ),
+              ],
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  _SectionLabel('REASON'),
+                  const Spacer(),
+                  Text(required ? 'Required' : 'Optional',
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: required ? AppColors.danger : AppColors.textMuted)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final p in _kReasonPresets)
+                            _ReasonChip(
+                              label: p,
+                              selected: _reasonPreset == p,
+                              onTap: () => setState(() {
+                                _reasonPreset = _reasonPreset == p ? null : p;
+                                if (_reasonPreset != 'Other') _reasonCtrl.clear();
+                              }),
+                            ),
+                          _ReasonChip(
+                            label: 'Other',
+                            selected: _reasonPreset == 'Other',
+                            onTap: () => setState(() {
+                              _reasonPreset = _reasonPreset == 'Other' ? null : 'Other';
+                            }),
+                          ),
+                        ],
+                      ),
+                      if (_reasonPreset == 'Other') ...[
+                        const SizedBox(height: 10),
+                        Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          child: TextField(
+                            controller: _reasonCtrl,
+                            maxLines: 2,
+                            autofocus: true,
+                            onChanged: (_) => setState(() {}),
+                            textInputAction: TextInputAction.done,
+                            decoration: const InputDecoration(border: InputBorder.none, hintText: 'Describe the reason'),
                           ),
                         ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _timeTile(String label, TimeOfDay? time, VoidCallback onTap) {
-    return Material(
-      color: AppColors.white,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(14),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.border),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label.toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textMuted,
-                        letterSpacing: 0.8,
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: const BorderSide(color: AppColors.border),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
+                      child: const Text('Cancel',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textSecondary)),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      time != null ? _formatHHmm(time) : '--:--',
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.text,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: (_saving || !canApply) ? null : _apply,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: action.color,
+                        disabledBackgroundColor: action.color.withValues(alpha: 0.4),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                       ),
+                      child: _saving
+                          ? const SizedBox(
+                              width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : Text(action.title,
+                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              const Icon(Icons.access_time_rounded,
-                  color: AppColors.textMuted, size: 28),
             ],
           ),
         ),

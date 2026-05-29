@@ -18,10 +18,16 @@ MainFlowState startIdentifying(MainFlowState s, String pin) {
 }
 
 MainFlowState identifySucceeded(MainFlowState s, IdentifyResponse user) {
+  // (Issue 8) 다중이든 단일이든 우선순위 첫 번째(primary) 자동 선택.
+  // server 가 today_attendances 를 우선순위 정렬해 보내므로 first = primary.
+  // picker 없음 — clock-out 하면 그 shift 가 뒤로 밀려 다음이 자동 primary.
+  final selected = user.todayAttendances.isNotEmpty
+      ? user.withSelectedSchedule(user.todayAttendances.first)
+      : user;
   return MainFlowState(
     stage: MainFlowStage.confirming,
     enteredPin: s.enteredPin,
-    user: user,
+    user: selected,
   );
 }
 

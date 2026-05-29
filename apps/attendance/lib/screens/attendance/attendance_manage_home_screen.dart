@@ -2,14 +2,24 @@
 ///
 /// 큰 카드 그리드 (태블릿 2-column). 카드 탭 시 큰 액션 시트가 모달로 열리고
 /// Edit / Change Status / Delete + 빠른 clock 액션을 큰 버튼으로 제공.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
 
+import '../../models/schedule_staff_view.dart';
+import '../../providers/attendance_device_provider.dart';
 import '../../providers/attendance_manage_provider.dart';
 import '../../services/attendance_device_service.dart';
-import 'attendance_manage_action_sheet.dart';
-import 'attendance_manage_schedule_edit_screen.dart';
+import '../../utils/manage_status_utils.dart';
+import '../../utils/staff_status_utils.dart' show StaffSection;
+import '../../widgets/manage_action_picker.dart';
+import '../../widgets/manage_schedule_edit_modal.dart';
+import '../../widgets/schedule_staff_card.dart';
+import '../../widgets/schedule_staff_detail_panel.dart';
+import '../../widgets/store_clock.dart';
+import 'attendance_manage_action_modal.dart';
 
 class AttendanceManageHomeScreen extends ConsumerStatefulWidget {
   const AttendanceManageHomeScreen({super.key});
@@ -21,14 +31,63 @@ class AttendanceManageHomeScreen extends ConsumerStatefulWidget {
 
 class _AttendanceManageHomeScreenState
     extends ConsumerState<AttendanceManageHomeScreen> {
+  static const _sessionSeconds = 5 * 60; // 5분 무반응 자동 종료
+
   bool _loading = true;
   List<AdminScheduleRow> _schedules = const [];
   String? _error;
+  String? _selectedId;
+  DateTime _now = DateTime.now();
+  Timer? _clock;
+  int _sessionLeft = _sessionSeconds;
+  bool _sessionExpired = false;
 
   @override
   void initState() {
     super.initState();
+    // 1초 틱 — 헤더 매장 시계 + 세션 카운트다운 (5분 무반응 시 자동 종료)
+    _clock = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      if (_sessionExpired) return;
+      final next = _sessionLeft - 1;
+      if (next <= 0) {
+        _sessionExpired = true;
+        setState(() {
+          _sessionLeft = 0;
+          _now = DateTime.now();
+        });
+        _onSessionExpired();
+        return;
+      }
+      setState(() {
+        _sessionLeft = next;
+        _now = DateTime.now();
+      });
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) => _refresh());
+  }
+
+  @override
+  void dispose() {
+    _clock?.cancel();
+    super.dispose();
+  }
+
+  void _resetSession() {
+    if (_sessionExpired) return;
+    if (_sessionLeft != _sessionSeconds) setState(() => _sessionLeft = _sessionSeconds);
+  }
+
+  Future<void> _onSessionExpired() async {
+    _clock?.cancel();
+    if (!mounted) return;
+    await AppModal.show(
+      context,
+      title: 'Manage Mode ended',
+      message: 'No activity for 5 minutes, so Manage Mode closed automatically to keep the device secure.',
+      type: ModalType.info,
+    );
+    await _exitAdminMode(silent: true);
   }
 
   Future<void> _refresh() async {
@@ -57,6 +116,19 @@ class _AttendanceManageHomeScreenState
     }
   }
 
+  /// exit 버튼/뒤로가기 시 확인 후 종료 (세션 자동 만료는 확인 없이 바로).
+  Future<void> _confirmExit() async {
+    if (_sessionExpired) return;
+    final ok = await AppModal.show(
+      context,
+      title: 'Exit Manage Mode?',
+      message: 'End the manage session and return to the PIN screen.',
+      type: ModalType.confirm,
+      confirmText: 'Exit',
+    );
+    if (ok == true) await _exitAdminMode(silent: true);
+  }
+
   Future<void> _exitAdminMode({bool silent = false}) async {
     await ref.read(attendanceManageSessionProvider.notifier).close();
     if (!mounted) return;
@@ -72,50 +144,84 @@ class _AttendanceManageHomeScreenState
   }
 
   Future<void> _openCreate() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const AttendanceManageScheduleEditScreen(),
-      ),
-    );
+    final saved = await ManageScheduleEditModal.show(context);
     if (!mounted) return;
-    await _refresh();
+    if (saved) await _refresh();
   }
 
   Future<void> _openCardActions(AdminScheduleRow row) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => AttendanceManageActionSheet(
-        row: row,
-        onChanged: _refresh,
-      ),
-    );
+    // Action Picker(중앙 모달) → 액션 선택 → Action Modal(시간/사유) → 적용.
+    final action = await ManageActionPicker.show(context, row: row, now: _now);
+    if (action == null || !mounted) return;
+    final applied = await AttendanceManageActionModal.show(context, action: action, row: row);
     if (!mounted) return;
-    // 시트 안에서 직접 _refresh 호출하기도 하지만, 닫힐 때도 한번 더 동기화.
-    await _refresh();
+    if (applied) await _refresh();
+  }
+
+  Future<void> _openEditRow(AdminScheduleRow row) async {
+    final saved = await ManageScheduleEditModal.show(context, existing: row);
+    if (!mounted) return;
+    if (saved) await _refresh();
+  }
+
+  Future<void> _confirmDelete(AdminScheduleRow row) async {
+    final ok = await AppModal.show(
+      context,
+      title: 'Delete Schedule?',
+      message: '${row.userName} · ${row.startHHmm ?? '?'} – ${row.endHHmm ?? '?'}',
+      type: ModalType.confirm,
+      confirmText: 'Delete',
+    );
+    if (ok != true) return;
+    try {
+      final service = ref.read(attendanceDeviceServiceProvider);
+      await service.manageDeleteSchedule(row.scheduleId);
+      if (!mounted) return;
+      setState(() => _selectedId = null);
+      await _refresh();
+    } catch (e) {
+      if (!mounted) return;
+      AppModal.show(
+        context,
+        title: 'Delete Failed',
+        message: extractApiError(e, 'Could not delete schedule.'),
+        type: ModalType.error,
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final session = ref.watch(attendanceManageSessionProvider);
+    final device = ref.watch(attendanceDeviceProvider).device;
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        await _exitAdminMode(silent: true);
+        await _confirmExit();
       },
       child: Scaffold(
         backgroundColor: AppColors.bg,
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Column(
-              children: [
-                _buildHeader(session.managerName ?? 'Manager'),
-                const SizedBox(height: 16),
-                Expanded(child: _buildBody()),
-              ],
+        // 화면 어디든 터치하면 세션 타이머 리셋 (실수로 열어둔 키오스크 보호)
+        body: Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (_) => _resetSession(),
+          child: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Column(
+                children: [
+                  _buildHeader(
+                    managerName: session.managerName ?? 'Manager',
+                    storeName: device?.storeName ?? 'Store',
+                    deviceName: device?.deviceName ?? '',
+                    offsetMinutes: device?.storeTimezoneOffsetMinutes,
+                    tzLabel: StoreClock.labelFromIana(device?.storeTimezone),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(child: _buildBody()),
+                ],
+              ),
             ),
           ),
         ),
@@ -123,54 +229,88 @@ class _AttendanceManageHomeScreenState
     );
   }
 
-  Widget _buildHeader(String managerName) {
+  Widget _buildHeader({
+    required String managerName,
+    required String storeName,
+    required String deviceName,
+    required int? offsetMinutes,
+    required String? tzLabel,
+  }) {
+    final sessionLow = _sessionLeft <= 60;
+    final mm = (_sessionLeft ~/ 60).toString();
+    final ss = (_sessionLeft % 60).toString().padLeft(2, '0');
     return Row(
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            color: AppColors.warningBg,
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
+        // 좌: MANAGE MODE 배지 + store/device/manager
+        SizedBox(
+          width: 320,
+          child: Row(
             children: [
-              Icon(Icons.admin_panel_settings_rounded,
-                  size: 18, color: AppColors.warning),
-              SizedBox(width: 8),
-              Text(
-                'MANAGE MODE',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.warning,
-                  letterSpacing: 0.8,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(color: AppColors.warningBg, borderRadius: BorderRadius.circular(999)),
+                child: const Text('MANAGE MODE',
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.warning, letterSpacing: 0.6)),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(storeName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.text)),
+                    Text(
+                      [if (deviceName.isNotEmpty) deviceName, managerName].join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(width: 14),
-        Text(
-          managerName,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: AppColors.text,
+        // 중앙: 매장 시계
+        Expanded(
+          child: Center(
+            child: StoreClock(now: _now, offsetMinutes: offsetMinutes, tzLabel: tzLabel),
           ),
         ),
-        const Spacer(),
-        _HeaderIconButton(
-          icon: Icons.refresh_rounded,
-          tooltip: 'Refresh',
-          onTap: _refresh,
-        ),
-        const SizedBox(width: 8),
-        _HeaderIconButton(
-          icon: Icons.logout_rounded,
-          tooltip: 'Exit',
-          color: AppColors.danger,
-          onTap: () => _exitAdminMode(),
+        // 우: 세션 타이머 + refresh + exit
+        SizedBox(
+          width: 320,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: sessionLow ? AppColors.dangerBg : AppColors.bg,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.timer_outlined, size: 16, color: sessionLow ? AppColors.danger : AppColors.textSecondary),
+                    const SizedBox(width: 6),
+                    Text('$mm:$ss',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: sessionLow ? AppColors.danger : AppColors.textSecondary,
+                            fontFeatures: const [FontFeature.tabularFigures()])),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              _HeaderIconButton(icon: Icons.refresh_rounded, tooltip: 'Refresh', onTap: _refresh),
+              const SizedBox(width: 8),
+              _HeaderIconButton(icon: Icons.logout_rounded, tooltip: 'Exit', color: AppColors.danger, onTap: _confirmExit),
+            ],
+          ),
         ),
       ],
     );
@@ -195,59 +335,136 @@ class _AttendanceManageHomeScreenState
     if (_schedules.isEmpty) {
       return _emptyState();
     }
-    return Column(
+
+    final selected = _selectedId == null
+        ? null
+        : _schedules.where((r) => r.scheduleId == _selectedId).firstOrNull;
+    final clockedIn = _schedules
+        .where((r) => sectionForManageState(r.state) == StaffSection.clockedIn)
+        .toList();
+    final notClockedIn = _schedules
+        .where((r) => sectionForManageState(r.state) == StaffSection.notClockedIn)
+        .toList();
+    final completed = _schedules
+        .where((r) => sectionForManageState(r.state) == StaffSection.completed)
+        .toList();
+
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            const Text(
-              "Today's Schedules",
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: AppColors.text,
+        // 좌측: 헤더 줄 + 3 섹션 (각 내부 스크롤)
+        Expanded(
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  const Text(
+                    "Today's Schedules",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.text),
+                  ),
+                  const Spacer(),
+                  _BigPrimaryButton(icon: Icons.add_rounded, label: 'Add Schedule', onTap: _openCreate),
+                ],
               ),
-            ),
-            const SizedBox(width: 12),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppColors.accentBg,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                '${_schedules.length}',
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.accent,
+              const SizedBox(height: 12),
+              Expanded(
+                child: Column(
+                  children: [
+                    Expanded(child: _section('Working', AppColors.success, clockedIn, 'Nobody is working.')),
+                    const SizedBox(height: 12),
+                    Expanded(child: _section('Upcoming', AppColors.warning, notClockedIn, 'Everyone has clocked in.')),
+                    const SizedBox(height: 12),
+                    Expanded(child: _section('Done', AppColors.textSecondary, completed, 'Nobody has clocked out yet.')),
+                  ],
                 ),
               ),
-            ),
-            const Spacer(),
-            _BigPrimaryButton(
-              icon: Icons.add_rounded,
-              label: 'Add Schedule',
-              onTap: _openCreate,
-            ),
-          ],
+            ],
+          ),
         ),
-        const SizedBox(height: 16),
-        Expanded(
-          child: GridView.builder(
-            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: 480,
-              mainAxisExtent: 200,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
+        const SizedBox(width: 16),
+        // 우측: 디테일/액션 패널
+        SizedBox(
+          width: 360,
+          child: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 16, offset: const Offset(0, 4)),
+              ],
             ),
-            itemCount: _schedules.length,
-            itemBuilder: (_, i) =>
-                _ScheduleCard(row: _schedules[i], onTap: () => _openCardActions(_schedules[i])),
+            child: ScheduleStaffDetailPanel(
+              view: selected?.toView(),
+              now: _now,
+              onActions: selected == null ? null : () => _openCardActions(selected),
+              onEdit: selected == null ? null : () => _openEditRow(selected),
+              onDelete: selected == null ? null : () => _confirmDelete(selected),
+            ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _section(String title, Color accent, List<AdminScheduleRow> rows, String empty) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 12, offset: const Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            child: Row(
+              children: [
+                Container(width: 8, height: 8, decoration: BoxDecoration(color: accent, shape: BoxShape.circle)),
+                const SizedBox(width: 8),
+                Text(title.toUpperCase(),
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.text, letterSpacing: 0.5)),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(999)),
+                  child: Text('${rows.length}',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textSecondary)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Expanded(
+            child: rows.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Text(empty, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                  )
+                : GridView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 300,
+                      mainAxisExtent: 88,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8,
+                    ),
+                    itemCount: rows.length,
+                    itemBuilder: (_, i) => ScheduleStaffCard(
+                      view: rows[i].toView(),
+                      selected: _selectedId == rows[i].scheduleId,
+                      now: _now,
+                      onTap: () => setState(() => _selectedId = rows[i].scheduleId),
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -370,228 +587,6 @@ class _HeaderIconButton extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-// ─── Big schedule card ──────────────────────────────────────────
-
-class _ScheduleCard extends StatelessWidget {
-  final AdminScheduleRow row;
-  final VoidCallback onTap;
-
-  const _ScheduleCard({required this.row, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final status = row.attendanceStatus ?? '';
-    final badge = _statusBadgeData(status);
-
-    return Material(
-      color: AppColors.white,
-      borderRadius: BorderRadius.circular(20),
-      elevation: 0,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.border),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 12,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: AppColors.accentBg,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      _initial(row.userName),
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.accent,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          row.userName,
-                          style: const TextStyle(
-                            fontSize: 19,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.text,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (row.workRoleLabel != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            row.workRoleLabel!,
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textSecondary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  if (badge != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: badge.bg,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        badge.label,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: badge.fg,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const Spacer(),
-              Row(
-                children: [
-                  Expanded(
-                    child: _CardField(
-                      label: 'SCHEDULED',
-                      value:
-                          '${row.startHHmm ?? '--:--'} – ${row.endHHmm ?? '--:--'}',
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _CardField(
-                      label: 'CLOCK IN',
-                      value: row.clockInDisplay ?? '—',
-                      valueColor: row.clockInDisplay != null
-                          ? AppColors.success
-                          : AppColors.textMuted,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _CardField(
-                      label: 'CLOCK OUT',
-                      value: row.clockOutDisplay ?? '—',
-                      valueColor: row.clockOutDisplay != null
-                          ? AppColors.textSecondary
-                          : AppColors.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  String _initial(String name) {
-    final t = name.trim();
-    if (t.isEmpty) return '?';
-    return t.characters.first.toUpperCase();
-  }
-
-  _StatusBadgeData? _statusBadgeData(String status) {
-    if (status.isEmpty) return null;
-    switch (status) {
-      case 'working':
-        return _StatusBadgeData('WORKING', AppColors.successBg, AppColors.success);
-      case 'late':
-        return _StatusBadgeData('LATE', AppColors.warningBg, AppColors.warning);
-      case 'on_break':
-        return _StatusBadgeData('ON BREAK', AppColors.warningBg, AppColors.warning);
-      case 'clocked_out':
-        return _StatusBadgeData('DONE', AppColors.bg, AppColors.textMuted);
-      case 'no_show':
-        return _StatusBadgeData('NO SHOW', AppColors.dangerBg, AppColors.danger);
-      case 'soon':
-        return _StatusBadgeData('SOON', AppColors.accentBg, AppColors.accent);
-      case 'upcoming':
-        return _StatusBadgeData('UPCOMING', AppColors.bg, AppColors.textMuted);
-      default:
-        return _StatusBadgeData(status.toUpperCase(), AppColors.bg, AppColors.textMuted);
-    }
-  }
-}
-
-class _StatusBadgeData {
-  final String label;
-  final Color bg;
-  final Color fg;
-  _StatusBadgeData(this.label, this.bg, this.fg);
-}
-
-class _CardField extends StatelessWidget {
-  final String label;
-  final String value;
-  final Color? valueColor;
-
-  const _CardField({
-    required this.label,
-    required this.value,
-    this.valueColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textMuted,
-            letterSpacing: 0.8,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w800,
-            color: valueColor ?? AppColors.text,
-          ),
-        ),
-      ],
     );
   }
 }

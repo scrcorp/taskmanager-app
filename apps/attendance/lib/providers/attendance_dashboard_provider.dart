@@ -11,6 +11,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/attendance_device_service.dart';
+import 'attendance_manage_provider.dart' show ManageBreak;
 
 /// 현재 진행 중인 break 요약
 class TodayStaffBreak {
@@ -46,6 +47,10 @@ class TodayStaffRow {
   final String? clockInDisplay;
   final String? clockOutDisplay;
   final String status; // upcoming | soon | working | on_break | late | clocked_out | no_show | cancelled
+  // manage 와 공용 — clock 이벤트 기반 state + anomaly + 전체 break (UI 통합용)
+  final String state; // upcoming | working | breaking | done
+  final List<String> anomalies;
+  final List<ManageBreak> breaks;
   final TodayStaffBreak? currentBreak;
   final int paidBreakMinutes;
   final int unpaidBreakMinutes;
@@ -63,6 +68,9 @@ class TodayStaffRow {
     required this.clockInDisplay,
     required this.clockOutDisplay,
     required this.status,
+    this.state = 'upcoming',
+    this.anomalies = const [],
+    this.breaks = const [],
     required this.currentBreak,
     required this.paidBreakMinutes,
     required this.unpaidBreakMinutes,
@@ -87,11 +95,71 @@ class TodayStaffRow {
       clockInDisplay: json['clock_in_display']?.toString(),
       clockOutDisplay: json['clock_out_display']?.toString(),
       status: json['status']?.toString() ?? 'upcoming',
+      state: json['state']?.toString() ?? 'upcoming',
+      anomalies: (json['anomalies'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      breaks: (json['breaks'] as List?)
+              ?.map((e) => ManageBreak.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList() ??
+          const [],
       currentBreak: TodayStaffBreak.fromJson(
         json['current_break'] is Map
             ? Map<String, dynamic>.from(json['current_break'] as Map)
             : null,
       ),
+      paidBreakMinutes: (json['paid_break_minutes'] as num?)?.toInt() ?? 0,
+      unpaidBreakMinutes: (json['unpaid_break_minutes'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  /// build_response (clock action 응답) → TodayStaffRow patch.
+  ///
+  /// today-staff row 와 schema 가 살짝 다름:
+  /// - status 는 server 의 `effective_status` 필드 사용 (DB raw status 아님,
+  ///   'late' → 'working' 승격된 값)
+  /// - current_break: build_response 의 breaks 배열 중 ended_at IS NULL 인 것을 추출
+  factory TodayStaffRow.fromClockResponse(Map<String, dynamic> json) {
+    DateTime? parse(dynamic v) {
+      if (v is String && v.isNotEmpty) return DateTime.tryParse(v);
+      return null;
+    }
+
+    TodayStaffBreak? current;
+    final breaks = json['breaks'];
+    if (breaks is List) {
+      for (final br in breaks) {
+        if (br is Map && br['ended_at'] == null) {
+          final started = parse(br['started_at']);
+          if (started != null) {
+            current = TodayStaffBreak(
+              startedAt: started,
+              breakType: br['break_type']?.toString() ?? '',
+            );
+            break;
+          }
+        }
+      }
+    }
+
+    return TodayStaffRow(
+      userId: json['user_id']?.toString() ?? '',
+      userName: json['user_name']?.toString() ?? '',
+      scheduleId: json['schedule_id']?.toString(),
+      scheduledStart: parse(json['scheduled_start']),
+      scheduledEnd: parse(json['scheduled_end']),
+      scheduledStartDisplay: json['scheduled_start_display']?.toString(),
+      scheduledEndDisplay: json['scheduled_end_display']?.toString(),
+      clockIn: parse(json['clock_in']),
+      clockOut: parse(json['clock_out']),
+      clockInDisplay: json['clock_in_display']?.toString(),
+      clockOutDisplay: json['clock_out_display']?.toString(),
+      status: (json['effective_status'] ?? json['status'] ?? 'upcoming').toString(),
+      // 낙관적 패치 — state 는 clock 이벤트로 derive (다음 폴링이 anomalies/breaks 채움)
+      state: parse(json['clock_out']) != null
+          ? 'done'
+          : parse(json['clock_in']) != null
+              ? (current != null ? 'breaking' : 'working')
+              : 'upcoming',
+      currentBreak: current,
       paidBreakMinutes: (json['paid_break_minutes'] as num?)?.toInt() ?? 0,
       unpaidBreakMinutes: (json['unpaid_break_minutes'] as num?)?.toInt() ?? 0,
     );
@@ -180,6 +248,19 @@ class AttendanceDashboardNotifier
         error: 'Failed to load dashboard data.',
       );
     }
+  }
+
+  /// 해당 user 의 row 를 응답 row 로 교체 (refresh 호출 없이 즉시 반영).
+  ///
+  /// Issue 3 트랙 A: clock action 응답을 그대로 활용해 dashboard state 만 patch.
+  /// 폴링/refresh 호출 없음 — 폴링은 multi-device sync backstop 으로만 유지.
+  /// row.userId 가 staff list 에 없으면 무시 (안전망 — 다음 polling tick 에 들어옴).
+  void patchStaffByUserId(TodayStaffRow row) {
+    final idx = state.staff.indexWhere((r) => r.userId == row.userId);
+    if (idx < 0) return;
+    final next = List<TodayStaffRow>.of(state.staff);
+    next[idx] = row;
+    state = state.copyWith(staff: next);
   }
 
   String _parseError(Object e, String fallback) {
