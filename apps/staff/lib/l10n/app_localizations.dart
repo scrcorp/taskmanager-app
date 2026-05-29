@@ -4182,6 +4182,30 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Failed to create product'**
   String get invAddCreateProductFailedMessage;
+
+  /// No description provided for @myPinLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Clock-in PIN'**
+  String get myPinLabel;
+
+  /// No description provided for @myPinEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit PIN'**
+  String get myPinEdit;
+
+  /// No description provided for @myPinNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available'**
+  String get myPinNotAvailable;
+
+  /// No description provided for @myPinSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save PIN'**
+  String get myPinSaveFailed;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

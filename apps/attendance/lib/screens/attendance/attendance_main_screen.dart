@@ -27,6 +27,7 @@ import 'package:intl/intl.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/attendance_action.dart';
 import '../../models/early_clock_out_reason.dart';
+import '../../models/identify_response.dart';
 import '../../models/tip_models.dart';
 import '../../providers/attendance_dashboard_provider.dart';
 import '../../providers/attendance_device_provider.dart';
@@ -226,12 +227,25 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
       pin: pin,
       breakType: action.breakType,
       reason: reasonText,
+      scheduleId: user.selectedScheduleId, // (Issue 8) 선택된 schedule
     );
     if (!mounted) return;
 
     if (!result.success) {
       setState(() => _flow = flow.submitFailed(_flow, result.message));
       return;
+    }
+
+    // Issue 3 트랙 A: 응답 dict 로 dashboard 의 해당 row 만 즉시 patch.
+    // refresh() 호출 없음 — 폴링은 multi-device backstop 으로만 유지.
+    final data = result.data;
+    if (data != null) {
+      try {
+        final patched = TodayStaffRow.fromClockResponse(data);
+        ref.read(attendanceDashboardProvider.notifier).patchStaffByUserId(patched);
+      } catch (_) {
+        // 응답 schema 변형/누락 시 무시 — 다음 polling tick 에 정상화
+      }
     }
 
     // clock_out + tip payload 가 있으면 tip 도 추가 호출

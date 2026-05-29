@@ -68,6 +68,23 @@ class AdminWorkRole {
       );
 }
 
+/// 한 attendance 의 break 한 건 (manage UI Breaks 존).
+class ManageBreak {
+  final String type; // paid_10min | unpaid_meal
+  final String start; // "HH:mm"
+  final String? end; // null = 진행 중
+
+  const ManageBreak({required this.type, required this.start, this.end});
+
+  bool get inProgress => end == null;
+
+  factory ManageBreak.fromJson(Map<String, dynamic> json) => ManageBreak(
+        type: json['type']?.toString() ?? '',
+        start: json['start']?.toString() ?? '',
+        end: json['end']?.toString(),
+      );
+}
+
 class AdminScheduleRow {
   final String scheduleId;
   final String userId;
@@ -80,6 +97,11 @@ class AdminScheduleRow {
   final String? endHHmm;
   final String status;
   final String? attendanceId;
+  // manage UI 재설계(Issue 10): clock 이벤트 기반 state + anomaly 분리 + breaks 리스트
+  final String state; // upcoming | working | breaking | done
+  final List<String> anomalies; // late/no_show/early_leave/overtime/no_break
+  final List<ManageBreak> breaks;
+  // TODO(state-migration): attendanceStatus 는 state/anomalies 로 대체됨. 전환 후 제거.
   final String? attendanceStatus;
   final String? clockInDisplay;
   final String? clockOutDisplay;
@@ -96,6 +118,9 @@ class AdminScheduleRow {
     required this.endHHmm,
     required this.status,
     required this.attendanceId,
+    this.state = 'upcoming',
+    this.anomalies = const [],
+    this.breaks = const [],
     required this.attendanceStatus,
     required this.clockInDisplay,
     required this.clockOutDisplay,
@@ -127,6 +152,12 @@ class AdminScheduleRow {
         endHHmm: json['end_time']?.toString(),
         status: json['status']?.toString() ?? '',
         attendanceId: json['attendance_id']?.toString(),
+        state: json['state']?.toString() ?? 'upcoming',
+        anomalies: (json['anomalies'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+        breaks: (json['breaks'] as List?)
+                ?.map((e) => ManageBreak.fromJson(e as Map<String, dynamic>))
+                .toList() ??
+            const [],
         attendanceStatus: json['attendance_status']?.toString(),
         clockInDisplay: json['clock_in_display']?.toString(),
         clockOutDisplay: json['clock_out_display']?.toString(),

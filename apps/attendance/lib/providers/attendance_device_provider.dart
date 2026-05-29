@@ -287,12 +287,13 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
     required String pin,
     String? breakType,
     String? reason,
+    String? scheduleId,
   }) async {
     try {
       Map<String, dynamic> result;
       switch (action) {
         case 'clock-in':
-          result = await _service.clockIn(userId: userId, pin: pin);
+          result = await _service.clockIn(userId: userId, pin: pin, scheduleId: scheduleId);
           break;
         case 'clock-out':
           result = await _service.clockOut(userId: userId, pin: pin, reason: reason);

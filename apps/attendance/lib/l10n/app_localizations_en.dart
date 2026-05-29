@@ -390,6 +390,24 @@ class AppL10nEn extends AppL10n {
   String get attMainNoOneOnShift => 'No one is currently on shift';
 
   @override
+  String get scheduleSectionWorking => 'Working';
+
+  @override
+  String get scheduleSectionWorkingEmpty => 'Nobody is working.';
+
+  @override
+  String get scheduleSectionUpcoming => 'Upcoming';
+
+  @override
+  String get scheduleSectionUpcomingEmpty => 'Everyone has clocked in.';
+
+  @override
+  String get scheduleSectionDone => 'Done';
+
+  @override
+  String get scheduleSectionDoneEmpty => 'Nobody has clocked out yet.';
+
+  @override
   String get attMainNotClockedIn => 'Not Clocked In';
 
   @override
@@ -620,6 +638,20 @@ class AppL10nEn extends AppL10n {
   @override
   String get pfIdNoShiftBody =>
       'You don\'t have a schedule today. Clock actions disabled.';
+
+  @override
+  String pfStaleWarnTitle(int count) {
+    return '$count unfinished record(s)';
+  }
+
+  @override
+  String get pfStaleWarnBody =>
+      'You didn\'t clock out on these days. Please ask your manager.';
+
+  @override
+  String pfStaleMore(int count) {
+    return '+$count more';
+  }
 
   @override
   String get pfStatusWorking => 'Currently working';

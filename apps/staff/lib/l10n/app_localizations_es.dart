@@ -2250,4 +2250,16 @@ class AppL10nEs extends AppL10n {
 
   @override
   String get invAddCreateProductFailedMessage => 'No se pudo crear el producto';
+
+  @override
+  String get myPinLabel => 'PIN de registro';
+
+  @override
+  String get myPinEdit => 'Editar PIN';
+
+  @override
+  String get myPinNotAvailable => 'No disponible';
+
+  @override
+  String get myPinSaveFailed => 'No se pudo guardar el PIN';
 }

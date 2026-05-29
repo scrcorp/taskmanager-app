@@ -900,5 +900,9 @@
     "placeholders": { "name": { "type": "String" } }
   },
   "invAddCreateProductFailedTitle": "Couldn't create product",
-  "invAddCreateProductFailedMessage": "Failed to create product"
+  "invAddCreateProductFailedMessage": "Failed to create product",
+  "myPinLabel": "Clock-in PIN",
+  "myPinEdit": "Edit PIN",
+  "myPinNotAvailable": "Not available",
+  "myPinSaveFailed": "Could not save PIN"
 }

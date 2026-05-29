@@ -4,14 +4,14 @@
 
 import '../providers/attendance_dashboard_provider.dart';
 
-/// Schedule screen 의 3 섹션 분류 키.
-enum StaffSection { onShift, notClockedIn, completed, other }
+/// Schedule screen 의 3 섹션 분류 키. (Issue 9: onShift → clockedIn 라벨 변경)
+enum StaffSection { clockedIn, notClockedIn, completed, other }
 
 StaffSection classifySection(String status) {
   switch (status) {
     case 'working':
     case 'on_break':
-      return StaffSection.onShift;
+      return StaffSection.clockedIn;
     case 'upcoming':
     case 'soon':
     case 'late':
