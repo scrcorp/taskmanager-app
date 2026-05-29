@@ -2226,4 +2226,16 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get invAddCreateProductFailedMessage => 'Failed to create product';
+
+  @override
+  String get myPinLabel => 'Clock-in PIN';
+
+  @override
+  String get myPinEdit => 'Edit PIN';
+
+  @override
+  String get myPinNotAvailable => 'Not available';
+
+  @override
+  String get myPinSaveFailed => 'Could not save PIN';
 }

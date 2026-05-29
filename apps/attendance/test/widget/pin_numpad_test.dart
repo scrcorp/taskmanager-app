@@ -127,4 +127,29 @@ void main() {
     expect(submit.onPressed, isNull);
     expect(submitted, isNull);
   });
+
+  // Issue 5 fix: onTapDown 즉시 반응 — 같은 frame 안 연속 tap 도 모두 반영.
+  testWidgets('빠른 연속 tap — pump 없이 6 키 연속 → 모두 누적 (5자리 마스킹)', (tester) async {
+    await tester.pumpWidget(wrapForTest(PinNumpad(onSubmit: (_) {})));
+
+    // pump 호출 없이 연속 tap — frame 단위 처리 검증.
+    // (InkResponse.onTapDown 은 down event 즉시 콜백, gesture arena 대기 없음)
+    for (final d in const ['1', '2', '3', '4', '5']) {
+      await tester.tap(find.text(d));
+    }
+    await tester.pump();
+    // 5자리 마스킹 — 모두 반영됐다는 증거 (누락 시 dot 갯수 적음)
+    expect(find.text('•••••'), findsOneWidget);
+  });
+
+  testWidgets('빠른 같은 키 연속 — 6 키 max 까지 누적', (tester) async {
+    await tester.pumpWidget(wrapForTest(PinNumpad(onSubmit: (_) {})));
+
+    // 같은 key '5' 를 6번 연속 — max 도달
+    for (var i = 0; i < 6; i++) {
+      await tester.tap(find.text('5'));
+    }
+    await tester.pump();
+    expect(find.text('••••••'), findsOneWidget);
+  });
 }

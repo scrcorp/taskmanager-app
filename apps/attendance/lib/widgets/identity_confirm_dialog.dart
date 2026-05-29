@@ -124,6 +124,10 @@ class IdentityConfirmDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 _StatusPanel(user: user, now: now ?? DateTime.now()),
+                if (user.staleAttendances.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  _StaleWarning(items: user.staleAttendances),
+                ],
                 const SizedBox(height: 28),
                 _buildButtons(context),
               ],
@@ -186,6 +190,65 @@ class IdentityConfirmDialog extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// 이전 work_date 미완료 경고 배너 (Issue 11). 최신 3개 날짜 + "+N more".
+class _StaleWarning extends StatelessWidget {
+  final List<StaleAttendanceItem> items;
+  const _StaleWarning({required this.items});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
+    const maxShown = 3;
+    final shown = items.take(maxShown).map((e) => e.workDate).join(', ');
+    final moreCount = items.length - maxShown;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.warningBg,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded,
+                  size: 18, color: AppColors.warning),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  t.pfStaleWarnTitle(items.length),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.warning,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            t.pfStaleWarnBody,
+            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            moreCount > 0 ? '$shown  ${t.pfStaleMore(moreCount)}' : shown,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+              color: AppColors.text,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

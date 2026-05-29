@@ -4,13 +4,15 @@
 /// (1) PIN 으로 user 식별 + (2) 매장 manager 자격 검증 후 진입.
 /// 자격 없으면 거절 (Invalid PIN / Not authorized).
 ///
-/// UI 세부 재설계는 Phase 7.
+/// Issue 6: 자체 numpad/PIN box → 메인 화면의 PinNumpad widget 재사용.
+/// 메인과 일관성 + Issue 5 의 빠른 tap fix 자동 적용.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
 
 import '../../providers/attendance_manage_provider.dart';
 import '../../providers/attendance_device_provider.dart';
+import '../../widgets/pin_numpad.dart';
 import 'attendance_manage_home_screen.dart';
 
 class AttendanceManagePinScreen extends ConsumerStatefulWidget {
@@ -23,37 +25,14 @@ class AttendanceManagePinScreen extends ConsumerStatefulWidget {
 
 class _AttendanceManagePinScreenState
     extends ConsumerState<AttendanceManagePinScreen> {
-  String _pin = '';
   bool _loading = false;
-  bool _revealPin = false;
-  static const int _pinMin = 4;
-  static const int _pinMax = 6;
 
-  void _onNumberTap(String digit) {
+  Future<void> _verify(String pin) async {
     if (_loading) return;
-    if (_pin.length < _pinMax) {
-      setState(() => _pin += digit);
-    }
-  }
-
-  void _onBackspace() {
-    if (_loading) return;
-    if (_pin.isNotEmpty) {
-      setState(() => _pin = _pin.substring(0, _pin.length - 1));
-    }
-  }
-
-  void _onClear() {
-    if (_loading) return;
-    setState(() => _pin = '');
-  }
-
-  Future<void> _verify() async {
-    if (_pin.length < _pinMin || _loading) return;
     setState(() => _loading = true);
     final ok = await ref
         .read(attendanceManageSessionProvider.notifier)
-        .openWithPin(pin: _pin);
+        .openWithPin(pin: pin);
     if (!mounted) return;
     setState(() => _loading = false);
     if (ok) {
@@ -63,8 +42,7 @@ class _AttendanceManagePinScreenState
     } else {
       final err =
           ref.read(attendanceManageSessionProvider).error ?? 'Invalid PIN';
-      setState(() => _pin = '');
-      AppModal.show(
+      await AppModal.show(
         context,
         title: 'Verification Failed',
         message: err,
@@ -85,7 +63,7 @@ class _AttendanceManagePinScreenState
     final device = ref.watch(attendanceDeviceProvider).device;
     return Row(
       children: [
-        // ── 좌: 사이드바 (store + Manage Mode 배지만) ──
+        // ── 좌: 사이드바 (store + Manage Mode 배지) ──
         Container(
           width: 220,
           padding: const EdgeInsets.all(24),
@@ -163,7 +141,7 @@ class _AttendanceManagePinScreenState
             ],
           ),
         ),
-        // ── 중앙: PIN 입력 ──
+        // ── 중앙: PinNumpad ──
         Expanded(flex: 3, child: _buildPinContent()),
         // ── 우측: 정보 패널 ──
         Container(
@@ -195,253 +173,72 @@ class _AttendanceManagePinScreenState
   }
 
   Widget _buildPinContent() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final w = constraints.maxWidth;
-        final h = constraints.maxHeight;
-        final pinBoxW = ((w * 0.72) / _pinMax - 14).clamp(48.0, 90.0);
-        final pinBoxH = (pinBoxW * 1.15).clamp(56.0, h * 0.16);
-        final pinFontSize = (pinBoxH * 0.45).clamp(24.0, 48.0);
-        final padW = (w * 0.78).clamp(320.0, 640.0);
-        final keyH = (h * 0.10).clamp(52.0, 84.0);
-        final keyFont = (keyH * 0.42).clamp(20.0, 36.0);
-
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Manage Mode 임을 식별 — 메인 PIN 화면과 구분.
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.accentBg,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  'MANAGE MODE',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.accent,
-                    letterSpacing: 1.2,
-                  ),
-                ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Manage Mode 배지 (좌측 사이드바와 함께 식별). heading/subtitle 은
+          // 공간 부담 커서 제거 — 좌측 사이드바 'Manage Mode' 와 본 배지로 충분.
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.accentBg,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text(
+              'MANAGE MODE',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                color: AppColors.accent,
+                letterSpacing: 1.2,
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'Enter Manager PIN',
-                style: TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.text,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Enter your PIN to enter Manage Mode.\nManager privileges required.',
-                style: TextStyle(
-                  fontSize: 15,
-                  color: AppColors.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: h * 0.025),
-              _buildPinDisplay(pinBoxW, pinBoxH, pinFontSize),
-              SizedBox(height: h * 0.025),
-              _buildNumberPad(padW, keyH, keyFont),
-              SizedBox(height: h * 0.02),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+            ),
+          ),
+          const SizedBox(height: 8),
+          // 메인 화면과 동일한 PinNumpad 재사용 (4~6 가변).
+          Expanded(
+            child: PinNumpad(
+              key: const ValueKey('manage_pin_numpad'),
+              onSubmit: _verify,
+              enabled: !_loading,
+            ),
+          ),
+          const SizedBox(height: 4),
+          // Cancel & Return — 메인으로 돌아감.
+          GestureDetector(
+            onTap: _loading ? null : () => Navigator.of(context).pop(),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  GestureDetector(
-                    onTap:
-                        _loading ? null : () => Navigator.of(context).pop(),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      child: Row(
-                        children: [
-                          Icon(Icons.arrow_back,
-                              size: 18, color: AppColors.textSecondary),
-                          SizedBox(width: 6),
-                          Text(
-                            'Cancel & Return',
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 24),
-                  SizedBox(
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: (_pin.length >= _pinMin && !_loading)
-                          ? _verify
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.accent,
-                        disabledBackgroundColor:
-                            AppColors.accent.withValues(alpha: 0.4),
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 40),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
-                      ),
-                      child: _loading
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white),
-                            )
-                          : const Text(
-                              'Enter Manage Mode',
-                              style: TextStyle(
-                                fontSize: 17,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
+                  Icon(Icons.arrow_back,
+                      size: 18, color: AppColors.textSecondary),
+                  SizedBox(width: 6),
+                  Text(
+                    'Cancel & Return',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ],
               ),
-            ],
+            ),
           ),
-        );
-      },
-    );
-  }
-
-  Widget _buildPinDisplay(double boxW, double boxH, double fontSize) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        ...List.generate(_pinMax, (i) {
-          final filled = i < _pin.length;
-          return Container(
-            width: boxW,
-            height: boxH,
-            margin: const EdgeInsets.symmetric(horizontal: 7),
-            decoration: BoxDecoration(
-              color: filled ? AppColors.accentBg : AppColors.bg,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: filled ? AppColors.accent : AppColors.border,
-                width: filled ? 2.5 : 1.5,
+          if (_loading)
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
               ),
             ),
-            alignment: Alignment.center,
-            child: filled
-                ? (_revealPin
-                    ? Text(
-                        _pin[i],
-                        style: TextStyle(
-                          fontSize: fontSize,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.accent,
-                        ),
-                      )
-                    : Container(
-                        width: boxW * 0.35,
-                        height: boxW * 0.35,
-                        decoration: const BoxDecoration(
-                          color: AppColors.accent,
-                          shape: BoxShape.circle,
-                        ),
-                      ))
-                : null,
-          );
-        }),
-        const SizedBox(width: 6),
-        IconButton(
-          onPressed: _loading || _pin.isEmpty
-              ? null
-              : () => setState(() => _revealPin = !_revealPin),
-          icon: Icon(
-            _revealPin
-                ? Icons.visibility_off_outlined
-                : Icons.visibility_outlined,
-            size: 22,
-            color: AppColors.textSecondary,
-          ),
-          tooltip: _revealPin ? 'Hide PIN' : 'Show PIN',
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNumberPad(double width, double keyHeight, double keyFont) {
-    return SizedBox(
-      width: width,
-      child: Column(
-        children: [
-          _padRow(['1', '2', '3'], keyHeight, keyFont),
-          const SizedBox(height: 12),
-          _padRow(['4', '5', '6'], keyHeight, keyFont),
-          const SizedBox(height: 12),
-          _padRow(['7', '8', '9'], keyHeight, keyFont),
-          const SizedBox(height: 12),
-          _padRow(['CLEAR', '0', 'DEL'], keyHeight, keyFont),
         ],
       ),
-    );
-  }
-
-  Widget _padRow(List<String> keys, double keyHeight, double keyFont) {
-    return Row(
-      children: keys.map((key) {
-        if (key == 'CLEAR') {
-          return Expanded(
-            child: _PadKey(
-              height: keyHeight,
-              onTap: _onClear,
-              child: Text(
-                'CLEAR',
-                style: TextStyle(
-                  fontSize: (keyFont * 0.55).clamp(15.0, 24.0),
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.accent,
-                ),
-              ),
-            ),
-          );
-        }
-        if (key == 'DEL') {
-          return Expanded(
-            child: _PadKey(
-              height: keyHeight,
-              onTap: _onBackspace,
-              child: Icon(Icons.backspace_outlined,
-                  size: (keyFont * 0.9).clamp(24.0, 38.0),
-                  color: AppColors.textSecondary),
-            ),
-          );
-        }
-        return Expanded(
-          child: _PadKey(
-            height: keyHeight,
-            onTap: () => _onNumberTap(key),
-            child: Text(
-              key,
-              style: TextStyle(
-                fontSize: keyFont,
-                fontWeight: FontWeight.w600,
-                color: AppColors.text,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
     );
   }
 }
@@ -492,35 +289,6 @@ class _InfoCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _PadKey extends StatelessWidget {
-  final Widget child;
-  final double height;
-  final VoidCallback onTap;
-
-  const _PadKey({
-    required this.child,
-    required this.height,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: height,
-        margin: const EdgeInsets.symmetric(horizontal: 5),
-        decoration: BoxDecoration(
-          color: AppColors.bg,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        alignment: Alignment.center,
-        child: child,
       ),
     );
   }

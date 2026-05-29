@@ -13,12 +13,14 @@ IdentifyResponse _user({
   String name = 'Marcus Lee',
   String? status = 'working',
   TodayStaffBreak? currentBreak,
+  List<StaleAttendanceItem> stale = const [],
 }) =>
     IdentifyResponse(
       userId: 'u1',
       userName: name,
       todayStatus: status,
       currentBreak: currentBreak,
+      staleAttendances: stale,
     );
 
 void main() {
@@ -111,5 +113,45 @@ void main() {
       onClose: () {},
     )));
     expect(find.text('Running late'), findsOneWidget);
+  });
+
+  // Issue 11 — 이전 미완료 경고 배너
+  testWidgets('staleAttendances 있으면 경고 배너 표시', (tester) async {
+    await tester.pumpWidget(wrapForTest(IdentityConfirmDialog(
+      user: _user(status: 'upcoming', stale: const [
+        StaleAttendanceItem(workDate: '2026-05-26', status: 'working'),
+        StaleAttendanceItem(workDate: '2026-05-25', status: 'working'),
+      ]),
+      onYes: () {},
+      onClose: () {},
+    )));
+    expect(find.text('2 unfinished record(s)'), findsOneWidget);
+    expect(find.textContaining('2026-05-26'), findsOneWidget);
+    // 정상 status (upcoming) 라 Yes/Close 흐름은 그대로 (배너는 추가 표시일 뿐)
+    expect(find.text("Yes, it's me"), findsOneWidget);
+  });
+
+  testWidgets('stale 없으면 경고 배너 없음', (tester) async {
+    await tester.pumpWidget(wrapForTest(IdentityConfirmDialog(
+      user: _user(status: 'working', stale: const []),
+      onYes: () {},
+      onClose: () {},
+    )));
+    expect(find.textContaining('unfinished record'), findsNothing);
+  });
+
+  testWidgets('stale 4건 → 3개 표시 + "+1 more"', (tester) async {
+    await tester.pumpWidget(wrapForTest(IdentityConfirmDialog(
+      user: _user(status: 'upcoming', stale: const [
+        StaleAttendanceItem(workDate: '2026-05-26', status: 'working'),
+        StaleAttendanceItem(workDate: '2026-05-25', status: 'working'),
+        StaleAttendanceItem(workDate: '2026-05-24', status: 'late'),
+        StaleAttendanceItem(workDate: '2026-05-23', status: 'working'),
+      ]),
+      onYes: () {},
+      onClose: () {},
+    )));
+    expect(find.text('4 unfinished record(s)'), findsOneWidget);
+    expect(find.textContaining('+1 more'), findsOneWidget);
   });
 }

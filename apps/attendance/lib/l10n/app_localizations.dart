@@ -793,6 +793,42 @@ abstract class AppL10n {
   /// **'No one is currently on shift'**
   String get attMainNoOneOnShift;
 
+  /// No description provided for @scheduleSectionWorking.
+  ///
+  /// In en, this message translates to:
+  /// **'Working'**
+  String get scheduleSectionWorking;
+
+  /// No description provided for @scheduleSectionWorkingEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody is working.'**
+  String get scheduleSectionWorkingEmpty;
+
+  /// No description provided for @scheduleSectionUpcoming.
+  ///
+  /// In en, this message translates to:
+  /// **'Upcoming'**
+  String get scheduleSectionUpcoming;
+
+  /// No description provided for @scheduleSectionUpcomingEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone has clocked in.'**
+  String get scheduleSectionUpcomingEmpty;
+
+  /// No description provided for @scheduleSectionDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get scheduleSectionDone;
+
+  /// No description provided for @scheduleSectionDoneEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nobody has clocked out yet.'**
+  String get scheduleSectionDoneEmpty;
+
   /// No description provided for @attMainNotClockedIn.
   ///
   /// In en, this message translates to:
@@ -1170,6 +1206,24 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'You don\'t have a schedule today. Clock actions disabled.'**
   String get pfIdNoShiftBody;
+
+  /// No description provided for @pfStaleWarnTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} unfinished record(s)'**
+  String pfStaleWarnTitle(int count);
+
+  /// No description provided for @pfStaleWarnBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You didn\'t clock out on these days. Please ask your manager.'**
+  String get pfStaleWarnBody;
+
+  /// No description provided for @pfStaleMore.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more'**
+  String pfStaleMore(int count);
 
   /// No description provided for @pfStatusWorking.
   ///

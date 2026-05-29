@@ -12,6 +12,7 @@ import 'package:htm_core/htm_core.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/alert_provider.dart';
+import '../../widgets/profile_pin_row.dart';
 
 /// 서류 유형 정의 — title/subtitle은 ARB에서 동적으로 가져옴
 class _DocumentType {
@@ -315,6 +316,10 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+
+          // ── Clock-in PIN ──
+          const ProfilePinRow(),
           const SizedBox(height: 24),
 
           // ── Documents Section (Coming Soon) ──

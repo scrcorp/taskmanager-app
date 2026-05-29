@@ -394,6 +394,24 @@ class AppL10nEs extends AppL10n {
   String get attMainNoOneOnShift => 'Nadie está en turno actualmente';
 
   @override
+  String get scheduleSectionWorking => 'Trabajando';
+
+  @override
+  String get scheduleSectionWorkingEmpty => 'Nadie está trabajando.';
+
+  @override
+  String get scheduleSectionUpcoming => 'Próximos';
+
+  @override
+  String get scheduleSectionUpcomingEmpty => 'Todos han fichado entrada.';
+
+  @override
+  String get scheduleSectionDone => 'Finalizado';
+
+  @override
+  String get scheduleSectionDoneEmpty => 'Nadie ha fichado salida todavía.';
+
+  @override
   String get attMainNotClockedIn => 'Sin marcar entrada';
 
   @override
@@ -626,6 +644,20 @@ class AppL10nEs extends AppL10n {
   @override
   String get pfIdNoShiftBody =>
       'No tienes turno hoy. Acciones de reloj desactivadas.';
+
+  @override
+  String pfStaleWarnTitle(int count) {
+    return '$count registro(s) sin finalizar';
+  }
+
+  @override
+  String get pfStaleWarnBody =>
+      'No fichaste la salida estos días. Consulta con tu gerente.';
+
+  @override
+  String pfStaleMore(int count) {
+    return '+$count más';
+  }
 
   @override
   String get pfStatusWorking => 'Trabajando';
