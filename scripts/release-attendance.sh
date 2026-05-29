@@ -99,7 +99,7 @@ if $UPLOAD; then
 
   echo
   echo "→ Uploading to s3://${BUCKET}/${S3_KEY}"
-  aws s3 cp --acl public-read "$APK_PATH" "s3://${BUCKET}/${S3_KEY}"
+  aws s3 cp "$APK_PATH" "s3://${BUCKET}/${S3_KEY}"
 
   echo
   echo "→ Registering with server"
