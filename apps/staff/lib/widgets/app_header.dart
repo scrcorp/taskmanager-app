@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
 import '../providers/alert_provider.dart';
+import '../providers/warnings_provider.dart';
 
 /// 앱 공통 헤더 — SafeArea + 52px 높이의 상단 바
 class AppHeader extends ConsumerStatefulWidget {
@@ -31,15 +32,23 @@ class _AppHeaderState extends ConsumerState<AppHeader> {
   @override
   void initState() {
     super.initState();
-    // 미읽음 알림 수를 가볍게 조회 (배지 표시용)
+    // 미읽음 알림 수 + 미서명 경고 수를 가볍게 조회 (배지 표시용)
     Future.microtask(() {
       ref.read(alertProvider.notifier).getUnreadCount();
+      ref.read(warningsProvider.notifier).refreshUnsignedCount();
     });
   }
 
   /// 현재 라우트 경로에서 화면 제목을 결정
   String _getTitleFromLocation(BuildContext context) {
-    final location = GoRouterState.of(context).uri.path;
+    // AppHeader 가 go_router 라우트 밖(raw Navigator.push, 예: 경고 원본문서 PDF 뷰)에서
+    // 쓰이면 GoRouterState 가 없어 throw → widget.title 로 안전 폴백 (빈 화면 방지).
+    final String location;
+    try {
+      location = GoRouterState.of(context).uri.path;
+    } catch (_) {
+      return widget.title ?? 'HTM';
+    }
     switch (location) {
       case '/home': return 'Home';
       case '/work': return 'mytask';
@@ -53,6 +62,7 @@ class _AppHeaderState extends ConsumerState<AppHeader> {
   @override
   Widget build(BuildContext context) {
     final unreadCount = ref.watch(alertProvider).unreadCount;
+    final unsignedWarnings = ref.watch(warningsProvider).unsignedCount;
 
     return SafeArea(
       bottom: false,
@@ -76,10 +86,28 @@ class _AppHeaderState extends ConsumerState<AppHeader> {
                     )
                   : GestureDetector(
                       onTap: () => context.push('/my', extra: GoRouterState.of(context).uri.path),
-                      child: CircleAvatar(
-                        radius: 16,
-                        backgroundColor: AppColors.accentBg,
-                        child: Icon(Icons.person, size: 16, color: AppColors.accent),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          const CircleAvatar(
+                            radius: 16,
+                            backgroundColor: AppColors.accentBg,
+                            child: Icon(Icons.person, size: 16, color: AppColors.accent),
+                          ),
+                          // 미서명 경고가 있으면 아바타에 점 배지 (My Page 로 유도).
+                          if (unsignedWarnings > 0)
+                            Positioned(
+                              top: -1, right: -1,
+                              child: Container(
+                                width: 10, height: 10,
+                                decoration: BoxDecoration(
+                                  color: AppColors.danger,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: AppColors.white, width: 1.5),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
             ),
