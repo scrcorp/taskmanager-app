@@ -904,5 +904,97 @@
   "myPinLabel": "Clock-in PIN",
   "myPinEdit": "Edit PIN",
   "myPinNotAvailable": "Not available",
-  "myPinSaveFailed": "Could not save PIN"
+  "myPinSaveFailed": "Could not save PIN",
+
+  "warningsHeader": "Warnings",
+  "warningsCardTitle": "Warnings",
+  "warningsCardAllSigned": "All signed",
+  "warningsCardNeedSignature": "{count} need your signature",
+  "@warningsCardNeedSignature": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "warningsBannerNeedSignature": "{count, plural, one{1 warning needs your signature.} other{{count} warnings need your signature.}}",
+  "@warningsBannerNeedSignature": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "warningsBannerAllSigned": "All warnings signed. Nothing needs your attention.",
+  "warningsEmpty": "No warnings.",
+  "warningsLoadFailed": "Couldn't load warnings",
+  "warningsNotFound": "Warning not found.",
+  "warningsNewBadge": "New",
+  "warningStatusSigned": "Signed",
+  "warningStatusUnsigned": "Signature required",
+  "warningOrdinalFirst": "First Warning",
+  "warningOrdinalSecond": "Second Warning",
+  "warningOrdinalFinal": "Final Warning",
+  "warningOrdinalN": "Warning #{n}",
+  "@warningOrdinalN": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "warningDetailTitle": "Warning {refNo}",
+  "@warningDetailTitle": {
+    "placeholders": { "refNo": { "type": "String" } }
+  },
+  "warningIssuedBy": "Issued by {name}",
+  "@warningIssuedBy": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "warningReadOn": "Read on {date}",
+  "@warningReadOn": {
+    "placeholders": { "date": { "type": "String" } }
+  },
+  "warningSectionReasons": "Reasons",
+  "warningSectionDetails": "Details",
+  "warningSectionCorrective": "Corrective action",
+  "warningSectionFollowUp": "Follow-up",
+  "warningDeadline": "Deadline",
+  "warningSignedOn": "Signed on {date}",
+  "@warningSignedOn": {
+    "placeholders": { "date": { "type": "String" } }
+  },
+  "warningManagerSignedOn": "Manager signed on {date}",
+  "@warningManagerSignedOn": {
+    "placeholders": { "date": { "type": "String" } }
+  },
+  "warningManagerAwaiting": "Awaiting manager signature",
+  "warningSignatureRequired": "Your signature is required",
+  "warningEmployeeSignature": "Employee signature",
+  "warningActionSign": "Sign",
+  "warningViewDocument": "View official document",
+  "warningViewDocumentSubtitle": "Employee Warning Notice Form · PDF",
+  "warningDocumentTitle": "Document · {refNo}",
+  "@warningDocumentTitle": {
+    "placeholders": { "refNo": { "type": "String" } }
+  },
+  "warningSignSheetTitle": "Sign this warning",
+  "warningSignSheetSubtitle": "Your signature confirms you have read and received this warning.",
+  "warningSignDrawNew": "Draw new",
+  "warningSignUseSaved": "Use saved signature",
+  "warningSignDrawHint": "Draw your signature here",
+  "warningSignNoSaved": "No saved signature yet. Draw one below.",
+  "warningSignSigningAs": "Signing as {name}",
+  "@warningSignSigningAs": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "warningSignSaveAsDefault": "Save as my default signature",
+  "warningSignClear": "Clear",
+  "warningSignConfirm": "Confirm signature",
+  "warningSignFailed": "Couldn't sign. Please try again.",
+  "warningDocEmployeeName": "Employee Name",
+  "warningDocEmpId": "Emp ID",
+  "warningDocManagerName": "Manager Name",
+  "warningDocStoreBrand": "Store / Brand",
+  "warningDocDate": "Date",
+  "warningDocWarningType": "Warning Type",
+  "warningDocReasonsTitle": "1. Behavior / actions found unsatisfactory — reasons",
+  "warningDocDetailsLabel": "Details of unsatisfactory behavior / actions",
+  "warningDocCorrectiveTitle": "2. Corrective action required",
+  "warningDocDeadline": "3. Deadline",
+  "warningDocFollowUpDate": "4. Follow-up date",
+  "warningDocFollowUpTime": "Follow-up time",
+  "warningDocEmployeeSignature": "Employee Signature",
+  "warningDocManagerSignature": "Manager Signature",
+  "warningDocCc": "cc",
+  "warningDocCcValue": "Employee / Manager / Human Resources / Personnel File",
+  "warningDocNone": "—"
 }

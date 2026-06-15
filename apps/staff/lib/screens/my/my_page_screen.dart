@@ -12,6 +12,7 @@ import 'package:htm_core/htm_core.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/alert_provider.dart';
+import '../../providers/warnings_provider.dart';
 import '../../widgets/profile_pin_row.dart';
 
 /// 서류 유형 정의 — title/subtitle은 ARB에서 동적으로 가져옴
@@ -76,6 +77,13 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
   final _picker = ImagePicker();
   final Map<String, Uint8List> _documents = {};
   final Map<String, DateTime> _uploadedAt = {};
+
+  @override
+  void initState() {
+    super.initState();
+    // Warnings 카드 배지용 — 미서명 수를 가볍게 조회.
+    Future.microtask(() => ref.read(warningsProvider.notifier).refreshUnsignedCount());
+  }
 
   Future<void> _pickProfileImage() async {
     final t = AppL10n.of(context);
@@ -243,6 +251,7 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
     final t = AppL10n.of(context);
     final user = ref.watch(authProvider).user;
     final unread = ref.watch(alertProvider).unreadCount;
+    final unsignedWarnings = ref.watch(warningsProvider).unsignedCount;
     return Scaffold(
       backgroundColor: AppColors.bg,
       appBar: AppBar(
@@ -320,6 +329,13 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
 
           // ── Clock-in PIN ──
           const ProfilePinRow(),
+          const SizedBox(height: 16),
+
+          // ── Warnings ──
+          _WarningsCard(
+            unsignedCount: unsignedWarnings,
+            onTap: () => context.push('/my/warnings'),
+          ),
           const SizedBox(height: 24),
 
           // ── Documents Section (Coming Soon) ──
@@ -426,6 +442,77 @@ class _MyPageScreenState extends ConsumerState<MyPageScreen> {
           ),
           const SizedBox(height: 20),
         ],
+      ),
+    );
+  }
+}
+
+/// My Page 의 Warnings 진입 카드 (PIN 아래). 미서명 수 배지를 표시.
+class _WarningsCard extends StatelessWidget {
+  final int unsignedCount;
+  final VoidCallback onTap;
+  const _WarningsCard({required this.unsignedCount, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
+    final hasUnsigned = unsignedCount > 0;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44, height: 44,
+              decoration: BoxDecoration(
+                color: hasUnsigned ? AppColors.dangerBg : AppColors.accentBg,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.warning_amber_rounded,
+                  size: 22, color: hasUnsigned ? AppColors.danger : AppColors.accent),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(t.warningsCardTitle,
+                      style: const TextStyle(
+                          fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.text)),
+                  const SizedBox(height: 2),
+                  Text(
+                    hasUnsigned
+                        ? t.warningsCardNeedSignature(unsignedCount)
+                        : t.warningsCardAllSigned,
+                    style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+                  ),
+                ],
+              ),
+            ),
+            if (hasUnsigned) ...[
+              Container(
+                constraints: const BoxConstraints(minWidth: 22),
+                height: 22,
+                alignment: Alignment.center,
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                decoration: BoxDecoration(
+                    color: AppColors.danger, borderRadius: BorderRadius.circular(11)),
+                child: Text('$unsignedCount',
+                    style: const TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
+              ),
+              const SizedBox(width: 8),
+            ],
+            const Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
+          ],
+        ),
       ),
     );
   }

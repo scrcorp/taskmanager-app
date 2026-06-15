@@ -1,14 +1,15 @@
 /// 본인 사인 등록/변경 화면.
 ///
+/// 통일 벡터 서명(users.signature_strokes) 을 관리한다 — 경고와 동일한 서명.
 /// 빈 상태 + 저장된 상태 (Re-draw / Remove) 분기.
-/// 캔버스 그리기 → Save → server upload (PNG blob) → signature_image_key 저장.
-import 'package:dio/dio.dart';
+/// 캔버스 그리기 → Save → exportStrokes() 로 정규화 벡터 추출 → 서버 저장.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
 
-import '../../services/api_client.dart';
+import '../../models/warning.dart';
 import '../../services/tip_service.dart';
+import '../../widgets/signature_strokes_view.dart';
 import 'signature_pad.dart';
 
 class SignatureScreen extends ConsumerStatefulWidget {
@@ -20,8 +21,7 @@ class SignatureScreen extends ConsumerStatefulWidget {
 
 class _SignatureScreenState extends ConsumerState<SignatureScreen> {
   final _padKey = GlobalKey<SignaturePadState>();
-  String? _savedKey;
-  String? _savedUrl;
+  SignatureStrokes? _saved;
   bool _loading = true;
   bool _busy = false;
   String? _error;
@@ -34,13 +34,14 @@ class _SignatureScreenState extends ConsumerState<SignatureScreen> {
 
   Future<void> _load() async {
     try {
-      final res = await ref.read(tipServiceProvider).getSignature();
+      final sig = await ref.read(tipServiceProvider).getSavedSignature();
+      if (!mounted) return;
       setState(() {
-        _savedKey = res['signature_image_key']?.toString();
-        _savedUrl = res['signature_url']?.toString();
+        _saved = sig;
         _loading = false;
       });
     } catch (_) {
+      if (!mounted) return;
       setState(() {
         _error = 'Could not load saved signature.';
         _loading = false;
@@ -51,7 +52,8 @@ class _SignatureScreenState extends ConsumerState<SignatureScreen> {
   Future<void> _save() async {
     if (_busy) return;
     final pad = _padKey.currentState;
-    if (pad == null || !pad.hasInk) {
+    final strokes = pad?.exportStrokes();
+    if (strokes == null) {
       setState(() => _error = 'Draw your signature first.');
       return;
     }
@@ -60,56 +62,37 @@ class _SignatureScreenState extends ConsumerState<SignatureScreen> {
       _error = null;
     });
     try {
-      final png = await pad.capture();
-      if (png == null) {
-        setState(() {
-          _busy = false;
-          _error = 'Could not capture signature.';
-        });
-        return;
-      }
-      // PNG blob upload → key 반환
-      final dio = ref.read(dioProvider);
-      final uploadRes = await dio.post<Map<String, dynamic>>(
-        '/app/my/tips/signature/blob',
-        data: png,
-        options: Options(
-          headers: {'Content-Type': 'image/png'},
-          contentType: 'image/png',
-        ),
-      );
-      final key = uploadRes.data?['signature_image_key']?.toString();
-      if (key == null) {
-        throw Exception('No signature_image_key returned');
-      }
-      // user.signature_image_key 갱신
-      await ref.read(tipServiceProvider).updateSignature(key);
-      await _load();
+      final saved =
+          await ref.read(tipServiceProvider).putSavedSignature(strokes);
       if (!mounted) return;
-      pad.clear();
+      setState(() {
+        _saved = saved;
+        _busy = false;
+      });
+      pad?.clear();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Signature saved.')),
       );
-    } catch (e) {
+    } catch (_) {
+      if (!mounted) return;
       setState(() {
         _busy = false;
         _error = 'Could not save signature. Try again.';
       });
-      return;
     }
-    setState(() => _busy = false);
   }
 
   Future<void> _remove() async {
     setState(() => _busy = true);
     try {
       await ref.read(tipServiceProvider).clearSignature();
+      if (!mounted) return;
       setState(() {
-        _savedKey = null;
-        _savedUrl = null;
+        _saved = null;
         _busy = false;
       });
     } catch (_) {
+      if (!mounted) return;
       setState(() {
         _busy = false;
         _error = 'Could not remove signature.';
@@ -131,36 +114,21 @@ class _SignatureScreenState extends ConsumerState<SignatureScreen> {
             : ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  if (_savedKey != null) ...[
+                  if (_saved != null) ...[
                     const _SectionLabel(text: 'Current signature'),
                     const SizedBox(height: 6),
                     Container(
+                      height: 110,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: AppColors.white,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: AppColors.border),
                       ),
-                      child: _savedUrl == null
-                          ? const Text(
-                              'Saved (key only).',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textMuted,
-                              ),
-                            )
-                          : Image.network(
-                              _savedUrl!,
-                              height: 100,
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) => const Text(
-                                'Could not load preview.',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.danger,
-                                ),
-                              ),
-                            ),
+                      child: SignatureStrokesView(
+                        signature: _saved!,
+                        strokeWidth: 2.6,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     OutlinedButton.icon(
@@ -211,7 +179,7 @@ class _SignatureScreenState extends ConsumerState<SignatureScreen> {
                                   ),
                                 )
                               : Text(
-                                  _savedKey == null
+                                  _saved == null
                                       ? 'Save signature'
                                       : 'Replace signature',
                                   style: const TextStyle(
@@ -234,7 +202,7 @@ class _SignatureScreenState extends ConsumerState<SignatureScreen> {
                   ],
                   const SizedBox(height: 30),
                   const Text(
-                    'Your signature is reused on IRS Form 4070 each cycle. You can replace it any time.',
+                    'Your signature is reused on IRS Form 4070 each cycle and on any warnings you sign. You can replace it any time.',
                     style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                   ),
                 ],

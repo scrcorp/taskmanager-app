@@ -11,6 +11,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:htm_core/htm_core.dart';
 
+import '../../models/warning.dart';
+
 class SignaturePad extends StatefulWidget {
   /// 캡처된 PNG bytes 콜백 (Apply / Save 시 호출).
   final void Function(Uint8List png) onCaptured;
@@ -29,11 +31,42 @@ class SignaturePadState extends State<SignaturePad> {
   final _key = GlobalKey();
   // 각 stroke = List<Offset?> (null = stroke 종료점). 단일 List<Offset?> 로 누적.
   final List<Offset?> _points = [];
+  // 마지막으로 렌더된 패드 크기 — stroke 좌표를 0..1 로 정규화할 때 사용.
+  Size _padSize = Size.zero;
 
   bool get hasInk => _points.any((p) => p != null);
 
   void clear() {
     setState(() => _points.clear());
+  }
+
+  /// 그려진 stroke 를 0..1 로 정규화한 벡터로 export 한다 (PNG 경로와 독립).
+  ///
+  /// Warning 서명 제출(`/sign`) 및 저장된 서명(`/saved-signature`)에 사용.
+  /// 잉크가 없으면 null 반환. aspect = 패드 width/height.
+  SignatureStrokes? exportStrokes() {
+    if (!hasInk) return null;
+    final w = _padSize.width;
+    final h = _padSize.height;
+    if (w <= 0 || h <= 0) return null;
+    final strokes = <List<List<double>>>[];
+    var current = <List<double>>[];
+    for (final p in _points) {
+      if (p == null) {
+        if (current.isNotEmpty) {
+          strokes.add(current);
+          current = <List<double>>[];
+        }
+        continue;
+      }
+      current.add([
+        (p.dx / w).clamp(0.0, 1.0),
+        (p.dy / h).clamp(0.0, 1.0),
+      ]);
+    }
+    if (current.isNotEmpty) strokes.add(current);
+    if (strokes.isEmpty) return null;
+    return SignatureStrokes(strokes: strokes, aspect: w / h);
   }
 
   Future<Uint8List?> capture() async {
@@ -70,14 +103,19 @@ class SignaturePadState extends State<SignaturePad> {
           child: SizedBox(
             width: double.infinity,
             height: widget.height,
-            child: GestureDetector(
-              onPanStart: (d) => _addPoint(d.localPosition),
-              onPanUpdate: (d) => _addPoint(d.localPosition),
-              onPanEnd: (_) => _addPoint(null),
-              child: CustomPaint(
-                painter: _SignaturePainter(_points),
-                size: Size.infinite,
-              ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                _padSize = Size(constraints.maxWidth, constraints.maxHeight);
+                return GestureDetector(
+                  onPanStart: (d) => _addPoint(d.localPosition),
+                  onPanUpdate: (d) => _addPoint(d.localPosition),
+                  onPanEnd: (_) => _addPoint(null),
+                  child: CustomPaint(
+                    painter: _SignaturePainter(_points),
+                    size: Size.infinite,
+                  ),
+                );
+              },
             ),
           ),
         ),
