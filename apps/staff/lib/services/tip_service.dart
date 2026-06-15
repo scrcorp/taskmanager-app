@@ -8,6 +8,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/warning.dart' show SignatureStrokes;
 import 'api_client.dart';
 
 final tipServiceProvider = Provider<TipService>((ref) {
@@ -108,38 +109,49 @@ class TipService {
     return const [];
   }
 
-  /// 4070 폼에 서명 적용. signature_image_key 는 storage upload 결과의 key.
+  /// 4070 폼에 벡터 서명 적용 — 통일 벡터 서명(users.signature_strokes) 경로.
+  ///
+  /// [method] = 'drawn' (새로 그림) 또는 'saved' (저장 서명 재사용, 감사용).
+  /// [saveForFuture] = true 면 이 서명을 users.signature_strokes 로도 저장.
   Future<Map<String, dynamic>> signForm({
     required String formId,
-    required String signatureImageKey,
+    required SignatureStrokes signature,
+    String method = 'drawn',
     bool saveForFuture = false,
   }) async {
     final res = await _dio.post(
       '/app/my/tips/forms/$formId/sign',
       data: {
-        'signature_image_key': signatureImageKey,
+        'strokes': signature.strokes,
+        'aspect': signature.aspect,
+        'method': method,
         'save_for_future': saveForFuture,
       },
     );
     return Map<String, dynamic>.from(res.data as Map);
   }
 
-  /// 저장된 사인 조회.
-  Future<Map<String, dynamic>> getSignature() async {
+  /// 저장된 벡터 서명 조회 — 경고와 공용(users.signature_strokes). 없으면 null.
+  Future<SignatureStrokes?> getSavedSignature() async {
     final res = await _dio.get('/app/my/tips/signature');
-    return Map<String, dynamic>.from(res.data as Map);
+    final data = Map<String, dynamic>.from(res.data as Map);
+    final sig = data['signature_strokes'];
+    if (sig == null) return null;
+    return SignatureStrokes.fromJson((sig as Map).cast<String, dynamic>());
   }
 
-  /// 사인 등록/교체.
-  Future<Map<String, dynamic>> updateSignature(String signatureImageKey) async {
+  /// 저장된 벡터 서명 설정/갱신 — users.signature_strokes (경고와 공용 통일 서명).
+  Future<SignatureStrokes> putSavedSignature(SignatureStrokes signature) async {
     final res = await _dio.put(
-      '/app/my/tips/signature',
-      data: {'signature_image_key': signatureImageKey},
+      '/app/my/tips/saved-signature',
+      data: signature.toJson(),
     );
-    return Map<String, dynamic>.from(res.data as Map);
+    final data = Map<String, dynamic>.from(res.data as Map);
+    return SignatureStrokes.fromJson(
+        (data['signature_strokes'] as Map).cast<String, dynamic>());
   }
 
-  /// 사인 삭제.
+  /// 저장된 서명 삭제 (벡터 + 레거시 이미지 모두 클리어).
   Future<void> clearSignature() async {
     await _dio.delete('/app/my/tips/signature');
   }

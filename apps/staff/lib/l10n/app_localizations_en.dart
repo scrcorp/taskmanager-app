@@ -2238,4 +2238,219 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get myPinSaveFailed => 'Could not save PIN';
+
+  @override
+  String get warningsHeader => 'Warnings';
+
+  @override
+  String get warningsCardTitle => 'Warnings';
+
+  @override
+  String get warningsCardAllSigned => 'All signed';
+
+  @override
+  String warningsCardNeedSignature(int count) {
+    return '$count need your signature';
+  }
+
+  @override
+  String warningsBannerNeedSignature(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count warnings need your signature.',
+      one: '1 warning needs your signature.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get warningsBannerAllSigned =>
+      'All warnings signed. Nothing needs your attention.';
+
+  @override
+  String get warningsEmpty => 'No warnings.';
+
+  @override
+  String get warningsLoadFailed => 'Couldn\'t load warnings';
+
+  @override
+  String get warningsNotFound => 'Warning not found.';
+
+  @override
+  String get warningsNewBadge => 'New';
+
+  @override
+  String get warningStatusSigned => 'Signed';
+
+  @override
+  String get warningStatusUnsigned => 'Signature required';
+
+  @override
+  String get warningOrdinalFirst => 'First Warning';
+
+  @override
+  String get warningOrdinalSecond => 'Second Warning';
+
+  @override
+  String get warningOrdinalFinal => 'Final Warning';
+
+  @override
+  String warningOrdinalN(int n) {
+    return 'Warning #$n';
+  }
+
+  @override
+  String warningDetailTitle(String refNo) {
+    return 'Warning $refNo';
+  }
+
+  @override
+  String warningIssuedBy(String name) {
+    return 'Issued by $name';
+  }
+
+  @override
+  String warningReadOn(String date) {
+    return 'Read on $date';
+  }
+
+  @override
+  String get warningSectionReasons => 'Reasons';
+
+  @override
+  String get warningSectionDetails => 'Details';
+
+  @override
+  String get warningSectionCorrective => 'Corrective action';
+
+  @override
+  String get warningSectionFollowUp => 'Follow-up';
+
+  @override
+  String get warningDeadline => 'Deadline';
+
+  @override
+  String warningSignedOn(String date) {
+    return 'Signed on $date';
+  }
+
+  @override
+  String warningManagerSignedOn(String date) {
+    return 'Manager signed on $date';
+  }
+
+  @override
+  String get warningManagerAwaiting => 'Awaiting manager signature';
+
+  @override
+  String get warningSignatureRequired => 'Your signature is required';
+
+  @override
+  String get warningEmployeeSignature => 'Employee signature';
+
+  @override
+  String get warningActionSign => 'Sign';
+
+  @override
+  String get warningViewDocument => 'View official document';
+
+  @override
+  String get warningViewDocumentSubtitle =>
+      'Employee Warning Notice Form · PDF';
+
+  @override
+  String warningDocumentTitle(String refNo) {
+    return 'Document · $refNo';
+  }
+
+  @override
+  String get warningSignSheetTitle => 'Sign this warning';
+
+  @override
+  String get warningSignSheetSubtitle =>
+      'Your signature confirms you have read and received this warning.';
+
+  @override
+  String get warningSignDrawNew => 'Draw new';
+
+  @override
+  String get warningSignUseSaved => 'Use saved signature';
+
+  @override
+  String get warningSignDrawHint => 'Draw your signature here';
+
+  @override
+  String get warningSignNoSaved => 'No saved signature yet. Draw one below.';
+
+  @override
+  String warningSignSigningAs(String name) {
+    return 'Signing as $name';
+  }
+
+  @override
+  String get warningSignSaveAsDefault => 'Save as my default signature';
+
+  @override
+  String get warningSignClear => 'Clear';
+
+  @override
+  String get warningSignConfirm => 'Confirm signature';
+
+  @override
+  String get warningSignFailed => 'Couldn\'t sign. Please try again.';
+
+  @override
+  String get warningDocEmployeeName => 'Employee Name';
+
+  @override
+  String get warningDocEmpId => 'Emp ID';
+
+  @override
+  String get warningDocManagerName => 'Manager Name';
+
+  @override
+  String get warningDocStoreBrand => 'Store / Brand';
+
+  @override
+  String get warningDocDate => 'Date';
+
+  @override
+  String get warningDocWarningType => 'Warning Type';
+
+  @override
+  String get warningDocReasonsTitle =>
+      '1. Behavior / actions found unsatisfactory — reasons';
+
+  @override
+  String get warningDocDetailsLabel =>
+      'Details of unsatisfactory behavior / actions';
+
+  @override
+  String get warningDocCorrectiveTitle => '2. Corrective action required';
+
+  @override
+  String get warningDocDeadline => '3. Deadline';
+
+  @override
+  String get warningDocFollowUpDate => '4. Follow-up date';
+
+  @override
+  String get warningDocFollowUpTime => 'Follow-up time';
+
+  @override
+  String get warningDocEmployeeSignature => 'Employee Signature';
+
+  @override
+  String get warningDocManagerSignature => 'Manager Signature';
+
+  @override
+  String get warningDocCc => 'cc';
+
+  @override
+  String get warningDocCcValue =>
+      'Employee / Manager / Human Resources / Personnel File';
+
+  @override
+  String get warningDocNone => '—';
 }

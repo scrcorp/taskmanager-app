@@ -1,23 +1,19 @@
 /// 4070 폼 미리보기 + 서명 화면.
 ///
 /// 단순화 (Stage C): 실제 IRS PDF 양식 대신 4 boxes 시각화 + Sign 흐름.
-/// Sign 흐름 (가이드 §1.11 / §8.7):
-///   - saved signature 있으면 confirm modal (Use saved / Draw new / Cancel)
-///   - 없으면 draw modal (Apply + Save for future 토글)
-///   - Apply 후 Preview 상태 (사인 표시 + Edit/Submit & File)
-///   - Submit & File 누르면 server sign API 호출
-///
-/// 캔버스는 Stage C 의 SignaturePad widget 재사용.
-import 'dart:typed_data';
-
-import 'package:dio/dio.dart';
+/// 통일 벡터 서명(users.signature_strokes) 으로 이행 — 경고 서명 시트 재사용.
+/// Sign 흐름:
+///   - 서명 시트(Use saved / Draw new) → SignResult (벡터 strokes)
+///   - Apply 후 Preview 상태 (벡터 서명 표시 + Edit/Submit & File)
+///   - Submit & File 누르면 server sign API 호출 (strokes 전송)
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
 
-import '../../services/api_client.dart';
+import '../../models/warning.dart';
 import '../../services/tip_service.dart';
-import 'signature_pad.dart';
+import '../../widgets/signature_strokes_view.dart';
+import '../warnings/warning_sign_sheet.dart';
 
 class ViewFormScreen extends ConsumerStatefulWidget {
   final String formId;
@@ -32,12 +28,12 @@ class _ViewFormScreenState extends ConsumerState<ViewFormScreen> {
   Map<String, dynamic>? _form;
   bool _busy = false;
   String? _error;
-  // sign preview 상태 — Apply 후 Submit 전.
-  String? _pendingKey;
-  Uint8List? _pendingPng;
-  // 저장된 사인 (있으면 confirm modal 표시)
-  String? _savedKey;
-  String? _savedUrl;
+  // sign preview 상태 — Apply 후 Submit 전 (벡터 strokes).
+  SignatureStrokes? _pending;
+  String _pendingMethod = 'drawn';
+  bool _pendingSaveForFuture = false;
+  // 저장된 벡터 서명 (있으면 시트 기본값 = Use saved).
+  SignatureStrokes? _saved;
 
   @override
   void initState() {
@@ -63,165 +59,32 @@ class _ViewFormScreenState extends ConsumerState<ViewFormScreen> {
 
   Future<void> _loadSignature() async {
     try {
-      final res = await ref.read(tipServiceProvider).getSignature();
+      final sig = await ref.read(tipServiceProvider).getSavedSignature();
       if (!mounted) return;
-      setState(() {
-        _savedKey = res['signature_image_key']?.toString();
-        _savedUrl = res['signature_url']?.toString();
-      });
+      setState(() => _saved = sig);
     } catch (_) {}
   }
 
   Future<void> _startSign() async {
-    if (_savedKey != null) {
-      // Confirm apply saved or draw new
-      final choice = await showDialog<String>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Use saved signature?'),
-          content: _savedUrl == null
-              ? const Text('Saved signature exists.')
-              : Image.network(_savedUrl!, height: 80, fit: BoxFit.contain),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, 'cancel'),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, 'draw'),
-              child: const Text('Draw new'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(ctx, 'use'),
-              child: const Text('Use this'),
-            ),
-          ],
-        ),
-      );
-      if (choice == 'cancel' || choice == null) return;
-      if (choice == 'use') {
-        setState(() {
-          _pendingKey = _savedKey;
-          _pendingPng = null;
-        });
-        return;
-      }
-    }
-    // draw new
-    await _showDrawDialog();
-  }
-
-  Future<void> _showDrawDialog() async {
-    final padKey = GlobalKey<SignaturePadState>();
-    Uint8List? captured;
-    bool saveForFuture = _savedKey == null;
-    String? newKey;
-    bool busy = false;
-
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setSt) => AlertDialog(
-          title: const Text('Draw your signature'),
-          content: SizedBox(
-            width: 400,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SignaturePad(
-                  key: padKey,
-                  height: 180,
-                  onCaptured: (b) => captured = b,
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => padKey.currentState?.clear(),
-                        child: const Text('Clear'),
-                      ),
-                    ),
-                  ],
-                ),
-                CheckboxListTile(
-                  value: saveForFuture,
-                  onChanged: (v) =>
-                      setSt(() => saveForFuture = v ?? false),
-                  title: Text(
-                    _savedKey == null
-                        ? 'Save for future forms'
-                        : 'Replace saved signature',
-                  ),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  dense: true,
-                ),
-                if (busy)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 8),
-                    child: LinearProgressIndicator(),
-                  ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: busy ? null : () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: busy
-                  ? null
-                  : () async {
-                      final pad = padKey.currentState;
-                      if (pad == null || !pad.hasInk) return;
-                      setSt(() => busy = true);
-                      try {
-                        final png = await pad.capture();
-                        if (png == null) return;
-                        final dio = ref.read(dioProvider);
-                        final res = await dio.post<Map<String, dynamic>>(
-                          '/app/my/tips/signature/blob',
-                          data: png,
-                          options: Options(
-                            headers: {'Content-Type': 'image/png'},
-                            contentType: 'image/png',
-                          ),
-                        );
-                        final key =
-                            res.data?['signature_image_key']?.toString();
-                        if (key == null) return;
-                        newKey = key;
-                        captured = png;
-                        if (saveForFuture) {
-                          await ref
-                              .read(tipServiceProvider)
-                              .updateSignature(key);
-                        }
-                        if (mounted) Navigator.pop(ctx);
-                      } catch (e) {
-                        setSt(() => busy = false);
-                      }
-                    },
-              child: const Text('Apply'),
-            ),
-          ],
-        ),
-      ),
+    final result = await showWarningSignSheet(
+      context,
+      savedSignature: _saved,
     );
-    if (newKey != null) {
-      setState(() {
-        _pendingKey = newKey;
-        _pendingPng = captured;
-      });
-      if (saveForFuture) await _loadSignature();
+    if (result == null) return;
+    setState(() {
+      _pending = result.signature;
+      _pendingMethod = result.method;
+      _pendingSaveForFuture = result.saveAsDefault;
+    });
+    // 시트에서 "Save as my default" 선택 시 저장 서명 프리뷰도 갱신.
+    if (result.saveAsDefault) {
+      setState(() => _saved = result.signature);
     }
   }
 
   Future<void> _submitFile() async {
-    if (_pendingKey == null) return;
+    final pending = _pending;
+    if (pending == null) return;
     setState(() {
       _busy = true;
       _error = null;
@@ -229,19 +92,21 @@ class _ViewFormScreenState extends ConsumerState<ViewFormScreen> {
     try {
       final updated = await ref.read(tipServiceProvider).signForm(
             formId: widget.formId,
-            signatureImageKey: _pendingKey!,
+            signature: pending,
+            method: _pendingMethod,
+            saveForFuture: _pendingSaveForFuture,
           );
       if (!mounted) return;
       setState(() {
         _form = updated;
-        _pendingKey = null;
-        _pendingPng = null;
+        _pending = null;
         _busy = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Form filed successfully.')),
       );
     } catch (_) {
+      if (!mounted) return;
       setState(() {
         _busy = false;
         _error = 'Could not submit. Try again.';
@@ -250,7 +115,7 @@ class _ViewFormScreenState extends ConsumerState<ViewFormScreen> {
   }
 
   Future<bool> _onWillPop() async {
-    if (_pendingKey == null) return true;
+    if (_pending == null) return true;
     final discard = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -282,7 +147,7 @@ class _ViewFormScreenState extends ConsumerState<ViewFormScreen> {
       );
     }
     final isSigned = form['status'] == 'signed';
-    final isPreview = _pendingKey != null && !isSigned;
+    final isPreview = _pending != null && !isSigned;
 
     return PopScope(
       canPop: !isPreview,
@@ -331,8 +196,7 @@ class _ViewFormScreenState extends ConsumerState<ViewFormScreen> {
               const SizedBox(height: 16),
               _SignatureSection(
                 form: form,
-                pendingPng: _pendingPng,
-                pendingKey: _pendingKey,
+                pending: _pending,
                 onStartSign: _startSign,
               ),
               if (_error != null) ...[
@@ -350,10 +214,7 @@ class _ViewFormScreenState extends ConsumerState<ViewFormScreen> {
                       child: OutlinedButton(
                         onPressed: _busy
                             ? null
-                            : () => setState(() {
-                                  _pendingKey = null;
-                                  _pendingPng = null;
-                                }),
+                            : () => setState(() => _pending = null),
                         child: const Text('Edit sign'),
                       ),
                     ),
@@ -515,21 +376,24 @@ class _BoxRow extends StatelessWidget {
 
 class _SignatureSection extends StatelessWidget {
   final Map<String, dynamic> form;
-  final String? pendingKey;
-  final Uint8List? pendingPng;
+  final SignatureStrokes? pending;
   final VoidCallback onStartSign;
   const _SignatureSection({
     required this.form,
-    required this.pendingKey,
-    required this.pendingPng,
+    required this.pending,
     required this.onStartSign,
   });
 
   @override
   Widget build(BuildContext context) {
     final isSigned = form['status'] == 'signed';
-    final signedUrl = form['signature_url']?.toString();
     final signedAt = form['signed_at']?.toString();
+    // 서명된 폼: 벡터 strokes 우선, 없으면 레거시 이미지(구 폼) fallback.
+    final signedStrokesRaw = form['signature_strokes'];
+    final signedStrokes = signedStrokesRaw is Map
+        ? SignatureStrokes.fromJson(signedStrokesRaw.cast<String, dynamic>())
+        : null;
+    final signedUrl = form['signature_url']?.toString();
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -551,7 +415,18 @@ class _SignatureSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          if (isSigned && signedUrl != null)
+          if (isSigned && signedStrokes != null && !signedStrokes.isEmpty)
+            Container(
+              height: 96,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.bg,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: SignatureStrokesView(signature: signedStrokes),
+            )
+          else if (isSigned && signedUrl != null)
+            // 레거시 이미지 서명 (벡터 이행 이전 구 폼).
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
@@ -560,23 +435,15 @@ class _SignatureSection extends StatelessWidget {
               ),
               child: Image.network(signedUrl, height: 80, fit: BoxFit.contain),
             )
-          else if (pendingPng != null)
+          else if (pending != null && !pending!.isEmpty)
             Container(
+              height: 96,
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: AppColors.bg,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Image.memory(pendingPng!,
-                  height: 80, fit: BoxFit.contain),
-            )
-          else if (pendingKey != null)
-            const Text(
-              'Saved signature applied (preview)',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textSecondary,
-              ),
+              child: SignatureStrokesView(signature: pending!),
             )
           else
             InkWell(

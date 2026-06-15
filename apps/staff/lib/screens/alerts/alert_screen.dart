@@ -43,6 +43,8 @@ class _AlertScreenState extends ConsumerState<AlertScreen> {
         context.push('/tasks/$id');
       case 'notice':
         context.push('/notices/$id');
+      case 'warning':
+        context.push('/my/warnings/$id');
       case 'cl_instances':
       case 'cl_instance_items':
       case 'checklist_review':

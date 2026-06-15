@@ -2262,4 +2262,220 @@ class AppL10nEs extends AppL10n {
 
   @override
   String get myPinSaveFailed => 'No se pudo guardar el PIN';
+
+  @override
+  String get warningsHeader => 'Advertencias';
+
+  @override
+  String get warningsCardTitle => 'Advertencias';
+
+  @override
+  String get warningsCardAllSigned => 'Todas firmadas';
+
+  @override
+  String warningsCardNeedSignature(int count) {
+    return '$count requieren tu firma';
+  }
+
+  @override
+  String warningsBannerNeedSignature(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count advertencias requieren tu firma.',
+      one: '1 advertencia requiere tu firma.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get warningsBannerAllSigned =>
+      'Todas las advertencias están firmadas. No requieren tu atención.';
+
+  @override
+  String get warningsEmpty => 'Sin advertencias.';
+
+  @override
+  String get warningsLoadFailed => 'No se pudieron cargar las advertencias';
+
+  @override
+  String get warningsNotFound => 'Advertencia no encontrada.';
+
+  @override
+  String get warningsNewBadge => 'Nueva';
+
+  @override
+  String get warningStatusSigned => 'Firmada';
+
+  @override
+  String get warningStatusUnsigned => 'Firma requerida';
+
+  @override
+  String get warningOrdinalFirst => 'Primera Advertencia';
+
+  @override
+  String get warningOrdinalSecond => 'Segunda Advertencia';
+
+  @override
+  String get warningOrdinalFinal => 'Advertencia Final';
+
+  @override
+  String warningOrdinalN(int n) {
+    return 'Advertencia #$n';
+  }
+
+  @override
+  String warningDetailTitle(String refNo) {
+    return 'Advertencia $refNo';
+  }
+
+  @override
+  String warningIssuedBy(String name) {
+    return 'Emitida por $name';
+  }
+
+  @override
+  String warningReadOn(String date) {
+    return 'Leída el $date';
+  }
+
+  @override
+  String get warningSectionReasons => 'Motivos';
+
+  @override
+  String get warningSectionDetails => 'Detalles';
+
+  @override
+  String get warningSectionCorrective => 'Acción correctiva';
+
+  @override
+  String get warningSectionFollowUp => 'Seguimiento';
+
+  @override
+  String get warningDeadline => 'Fecha límite';
+
+  @override
+  String warningSignedOn(String date) {
+    return 'Firmada el $date';
+  }
+
+  @override
+  String warningManagerSignedOn(String date) {
+    return 'Gerente firmó el $date';
+  }
+
+  @override
+  String get warningManagerAwaiting => 'Esperando la firma del gerente';
+
+  @override
+  String get warningSignatureRequired => 'Se requiere tu firma';
+
+  @override
+  String get warningEmployeeSignature => 'Firma del empleado';
+
+  @override
+  String get warningActionSign => 'Firmar';
+
+  @override
+  String get warningViewDocument => 'Ver documento oficial';
+
+  @override
+  String get warningViewDocumentSubtitle =>
+      'Formulario de Aviso de Advertencia · PDF';
+
+  @override
+  String warningDocumentTitle(String refNo) {
+    return 'Documento · $refNo';
+  }
+
+  @override
+  String get warningSignSheetTitle => 'Firmar esta advertencia';
+
+  @override
+  String get warningSignSheetSubtitle =>
+      'Tu firma confirma que has leído y recibido esta advertencia.';
+
+  @override
+  String get warningSignDrawNew => 'Dibujar nueva';
+
+  @override
+  String get warningSignUseSaved => 'Usar firma guardada';
+
+  @override
+  String get warningSignDrawHint => 'Dibuja tu firma aquí';
+
+  @override
+  String get warningSignNoSaved =>
+      'Aún no hay firma guardada. Dibuja una abajo.';
+
+  @override
+  String warningSignSigningAs(String name) {
+    return 'Firmando como $name';
+  }
+
+  @override
+  String get warningSignSaveAsDefault => 'Guardar como mi firma predeterminada';
+
+  @override
+  String get warningSignClear => 'Borrar';
+
+  @override
+  String get warningSignConfirm => 'Confirmar firma';
+
+  @override
+  String get warningSignFailed => 'No se pudo firmar. Inténtalo de nuevo.';
+
+  @override
+  String get warningDocEmployeeName => 'Nombre del Empleado';
+
+  @override
+  String get warningDocEmpId => 'ID de Empleado';
+
+  @override
+  String get warningDocManagerName => 'Nombre del Gerente';
+
+  @override
+  String get warningDocStoreBrand => 'Tienda / Marca';
+
+  @override
+  String get warningDocDate => 'Fecha';
+
+  @override
+  String get warningDocWarningType => 'Tipo de Advertencia';
+
+  @override
+  String get warningDocReasonsTitle =>
+      '1. Conducta / acciones consideradas insatisfactorias — motivos';
+
+  @override
+  String get warningDocDetailsLabel =>
+      'Detalles de la conducta / acciones insatisfactorias';
+
+  @override
+  String get warningDocCorrectiveTitle => '2. Acción correctiva requerida';
+
+  @override
+  String get warningDocDeadline => '3. Fecha límite';
+
+  @override
+  String get warningDocFollowUpDate => '4. Fecha de seguimiento';
+
+  @override
+  String get warningDocFollowUpTime => 'Hora de seguimiento';
+
+  @override
+  String get warningDocEmployeeSignature => 'Firma del Empleado';
+
+  @override
+  String get warningDocManagerSignature => 'Firma del Gerente';
+
+  @override
+  String get warningDocCc => 'cc';
+
+  @override
+  String get warningDocCcValue =>
+      'Empleado / Gerente / Recursos Humanos / Expediente Personal';
+
+  @override
+  String get warningDocNone => '—';
 }

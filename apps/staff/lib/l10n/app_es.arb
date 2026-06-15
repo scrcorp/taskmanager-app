@@ -901,5 +901,97 @@
   "myPinLabel": "PIN de registro",
   "myPinEdit": "Editar PIN",
   "myPinNotAvailable": "No disponible",
-  "myPinSaveFailed": "No se pudo guardar el PIN"
+  "myPinSaveFailed": "No se pudo guardar el PIN",
+
+  "warningsHeader": "Advertencias",
+  "warningsCardTitle": "Advertencias",
+  "warningsCardAllSigned": "Todas firmadas",
+  "warningsCardNeedSignature": "{count} requieren tu firma",
+  "@warningsCardNeedSignature": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "warningsBannerNeedSignature": "{count, plural, one{1 advertencia requiere tu firma.} other{{count} advertencias requieren tu firma.}}",
+  "@warningsBannerNeedSignature": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "warningsBannerAllSigned": "Todas las advertencias están firmadas. No requieren tu atención.",
+  "warningsEmpty": "Sin advertencias.",
+  "warningsLoadFailed": "No se pudieron cargar las advertencias",
+  "warningsNotFound": "Advertencia no encontrada.",
+  "warningsNewBadge": "Nueva",
+  "warningStatusSigned": "Firmada",
+  "warningStatusUnsigned": "Firma requerida",
+  "warningOrdinalFirst": "Primera Advertencia",
+  "warningOrdinalSecond": "Segunda Advertencia",
+  "warningOrdinalFinal": "Advertencia Final",
+  "warningOrdinalN": "Advertencia #{n}",
+  "@warningOrdinalN": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "warningDetailTitle": "Advertencia {refNo}",
+  "@warningDetailTitle": {
+    "placeholders": { "refNo": { "type": "String" } }
+  },
+  "warningIssuedBy": "Emitida por {name}",
+  "@warningIssuedBy": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "warningReadOn": "Leída el {date}",
+  "@warningReadOn": {
+    "placeholders": { "date": { "type": "String" } }
+  },
+  "warningSectionReasons": "Motivos",
+  "warningSectionDetails": "Detalles",
+  "warningSectionCorrective": "Acción correctiva",
+  "warningSectionFollowUp": "Seguimiento",
+  "warningDeadline": "Fecha límite",
+  "warningSignedOn": "Firmada el {date}",
+  "@warningSignedOn": {
+    "placeholders": { "date": { "type": "String" } }
+  },
+  "warningManagerSignedOn": "Gerente firmó el {date}",
+  "@warningManagerSignedOn": {
+    "placeholders": { "date": { "type": "String" } }
+  },
+  "warningManagerAwaiting": "Esperando la firma del gerente",
+  "warningSignatureRequired": "Se requiere tu firma",
+  "warningEmployeeSignature": "Firma del empleado",
+  "warningActionSign": "Firmar",
+  "warningViewDocument": "Ver documento oficial",
+  "warningViewDocumentSubtitle": "Formulario de Aviso de Advertencia · PDF",
+  "warningDocumentTitle": "Documento · {refNo}",
+  "@warningDocumentTitle": {
+    "placeholders": { "refNo": { "type": "String" } }
+  },
+  "warningSignSheetTitle": "Firmar esta advertencia",
+  "warningSignSheetSubtitle": "Tu firma confirma que has leído y recibido esta advertencia.",
+  "warningSignDrawNew": "Dibujar nueva",
+  "warningSignUseSaved": "Usar firma guardada",
+  "warningSignDrawHint": "Dibuja tu firma aquí",
+  "warningSignNoSaved": "Aún no hay firma guardada. Dibuja una abajo.",
+  "warningSignSigningAs": "Firmando como {name}",
+  "@warningSignSigningAs": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "warningSignSaveAsDefault": "Guardar como mi firma predeterminada",
+  "warningSignClear": "Borrar",
+  "warningSignConfirm": "Confirmar firma",
+  "warningSignFailed": "No se pudo firmar. Inténtalo de nuevo.",
+  "warningDocEmployeeName": "Nombre del Empleado",
+  "warningDocEmpId": "ID de Empleado",
+  "warningDocManagerName": "Nombre del Gerente",
+  "warningDocStoreBrand": "Tienda / Marca",
+  "warningDocDate": "Fecha",
+  "warningDocWarningType": "Tipo de Advertencia",
+  "warningDocReasonsTitle": "1. Conducta / acciones consideradas insatisfactorias — motivos",
+  "warningDocDetailsLabel": "Detalles de la conducta / acciones insatisfactorias",
+  "warningDocCorrectiveTitle": "2. Acción correctiva requerida",
+  "warningDocDeadline": "3. Fecha límite",
+  "warningDocFollowUpDate": "4. Fecha de seguimiento",
+  "warningDocFollowUpTime": "Hora de seguimiento",
+  "warningDocEmployeeSignature": "Firma del Empleado",
+  "warningDocManagerSignature": "Firma del Gerente",
+  "warningDocCc": "cc",
+  "warningDocCcValue": "Empleado / Gerente / Recursos Humanos / Expediente Personal",
+  "warningDocNone": "—"
 }

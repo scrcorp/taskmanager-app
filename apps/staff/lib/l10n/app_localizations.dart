@@ -4206,6 +4206,372 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Could not save PIN'**
   String get myPinSaveFailed;
+
+  /// No description provided for @warningsHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Warnings'**
+  String get warningsHeader;
+
+  /// No description provided for @warningsCardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Warnings'**
+  String get warningsCardTitle;
+
+  /// No description provided for @warningsCardAllSigned.
+  ///
+  /// In en, this message translates to:
+  /// **'All signed'**
+  String get warningsCardAllSigned;
+
+  /// No description provided for @warningsCardNeedSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} need your signature'**
+  String warningsCardNeedSignature(int count);
+
+  /// No description provided for @warningsBannerNeedSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{1 warning needs your signature.} other{{count} warnings need your signature.}}'**
+  String warningsBannerNeedSignature(int count);
+
+  /// No description provided for @warningsBannerAllSigned.
+  ///
+  /// In en, this message translates to:
+  /// **'All warnings signed. Nothing needs your attention.'**
+  String get warningsBannerAllSigned;
+
+  /// No description provided for @warningsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No warnings.'**
+  String get warningsEmpty;
+
+  /// No description provided for @warningsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load warnings'**
+  String get warningsLoadFailed;
+
+  /// No description provided for @warningsNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning not found.'**
+  String get warningsNotFound;
+
+  /// No description provided for @warningsNewBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get warningsNewBadge;
+
+  /// No description provided for @warningStatusSigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed'**
+  String get warningStatusSigned;
+
+  /// No description provided for @warningStatusUnsigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Signature required'**
+  String get warningStatusUnsigned;
+
+  /// No description provided for @warningOrdinalFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'First Warning'**
+  String get warningOrdinalFirst;
+
+  /// No description provided for @warningOrdinalSecond.
+  ///
+  /// In en, this message translates to:
+  /// **'Second Warning'**
+  String get warningOrdinalSecond;
+
+  /// No description provided for @warningOrdinalFinal.
+  ///
+  /// In en, this message translates to:
+  /// **'Final Warning'**
+  String get warningOrdinalFinal;
+
+  /// No description provided for @warningOrdinalN.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning #{n}'**
+  String warningOrdinalN(int n);
+
+  /// No description provided for @warningDetailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning {refNo}'**
+  String warningDetailTitle(String refNo);
+
+  /// No description provided for @warningIssuedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Issued by {name}'**
+  String warningIssuedBy(String name);
+
+  /// No description provided for @warningReadOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Read on {date}'**
+  String warningReadOn(String date);
+
+  /// No description provided for @warningSectionReasons.
+  ///
+  /// In en, this message translates to:
+  /// **'Reasons'**
+  String get warningSectionReasons;
+
+  /// No description provided for @warningSectionDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Details'**
+  String get warningSectionDetails;
+
+  /// No description provided for @warningSectionCorrective.
+  ///
+  /// In en, this message translates to:
+  /// **'Corrective action'**
+  String get warningSectionCorrective;
+
+  /// No description provided for @warningSectionFollowUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow-up'**
+  String get warningSectionFollowUp;
+
+  /// No description provided for @warningDeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Deadline'**
+  String get warningDeadline;
+
+  /// No description provided for @warningSignedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed on {date}'**
+  String warningSignedOn(String date);
+
+  /// No description provided for @warningManagerSignedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Manager signed on {date}'**
+  String warningManagerSignedOn(String date);
+
+  /// No description provided for @warningManagerAwaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting manager signature'**
+  String get warningManagerAwaiting;
+
+  /// No description provided for @warningSignatureRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Your signature is required'**
+  String get warningSignatureRequired;
+
+  /// No description provided for @warningEmployeeSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Employee signature'**
+  String get warningEmployeeSignature;
+
+  /// No description provided for @warningActionSign.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign'**
+  String get warningActionSign;
+
+  /// No description provided for @warningViewDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'View official document'**
+  String get warningViewDocument;
+
+  /// No description provided for @warningViewDocumentSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Employee Warning Notice Form · PDF'**
+  String get warningViewDocumentSubtitle;
+
+  /// No description provided for @warningDocumentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Document · {refNo}'**
+  String warningDocumentTitle(String refNo);
+
+  /// No description provided for @warningSignSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign this warning'**
+  String get warningSignSheetTitle;
+
+  /// No description provided for @warningSignSheetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your signature confirms you have read and received this warning.'**
+  String get warningSignSheetSubtitle;
+
+  /// No description provided for @warningSignDrawNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw new'**
+  String get warningSignDrawNew;
+
+  /// No description provided for @warningSignUseSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Use saved signature'**
+  String get warningSignUseSaved;
+
+  /// No description provided for @warningSignDrawHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Draw your signature here'**
+  String get warningSignDrawHint;
+
+  /// No description provided for @warningSignNoSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'No saved signature yet. Draw one below.'**
+  String get warningSignNoSaved;
+
+  /// No description provided for @warningSignSigningAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Signing as {name}'**
+  String warningSignSigningAs(String name);
+
+  /// No description provided for @warningSignSaveAsDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Save as my default signature'**
+  String get warningSignSaveAsDefault;
+
+  /// No description provided for @warningSignClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get warningSignClear;
+
+  /// No description provided for @warningSignConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm signature'**
+  String get warningSignConfirm;
+
+  /// No description provided for @warningSignFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t sign. Please try again.'**
+  String get warningSignFailed;
+
+  /// No description provided for @warningDocEmployeeName.
+  ///
+  /// In en, this message translates to:
+  /// **'Employee Name'**
+  String get warningDocEmployeeName;
+
+  /// No description provided for @warningDocEmpId.
+  ///
+  /// In en, this message translates to:
+  /// **'Emp ID'**
+  String get warningDocEmpId;
+
+  /// No description provided for @warningDocManagerName.
+  ///
+  /// In en, this message translates to:
+  /// **'Manager Name'**
+  String get warningDocManagerName;
+
+  /// No description provided for @warningDocStoreBrand.
+  ///
+  /// In en, this message translates to:
+  /// **'Store / Brand'**
+  String get warningDocStoreBrand;
+
+  /// No description provided for @warningDocDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get warningDocDate;
+
+  /// No description provided for @warningDocWarningType.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning Type'**
+  String get warningDocWarningType;
+
+  /// No description provided for @warningDocReasonsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'1. Behavior / actions found unsatisfactory — reasons'**
+  String get warningDocReasonsTitle;
+
+  /// No description provided for @warningDocDetailsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Details of unsatisfactory behavior / actions'**
+  String get warningDocDetailsLabel;
+
+  /// No description provided for @warningDocCorrectiveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'2. Corrective action required'**
+  String get warningDocCorrectiveTitle;
+
+  /// No description provided for @warningDocDeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'3. Deadline'**
+  String get warningDocDeadline;
+
+  /// No description provided for @warningDocFollowUpDate.
+  ///
+  /// In en, this message translates to:
+  /// **'4. Follow-up date'**
+  String get warningDocFollowUpDate;
+
+  /// No description provided for @warningDocFollowUpTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow-up time'**
+  String get warningDocFollowUpTime;
+
+  /// No description provided for @warningDocEmployeeSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Employee Signature'**
+  String get warningDocEmployeeSignature;
+
+  /// No description provided for @warningDocManagerSignature.
+  ///
+  /// In en, this message translates to:
+  /// **'Manager Signature'**
+  String get warningDocManagerSignature;
+
+  /// No description provided for @warningDocCc.
+  ///
+  /// In en, this message translates to:
+  /// **'cc'**
+  String get warningDocCc;
+
+  /// No description provided for @warningDocCcValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Employee / Manager / Human Resources / Personnel File'**
+  String get warningDocCcValue;
+
+  /// No description provided for @warningDocNone.
+  ///
+  /// In en, this message translates to:
+  /// **'—'**
+  String get warningDocNone;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {
