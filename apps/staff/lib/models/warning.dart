@@ -108,6 +108,28 @@ class Warning {
   final SigInfo? managerSignature;
   final DateTime? createdAt;
 
+  /// 서명 방식: 'digital' (앱 내 벡터 서명) 또는 'wet' (실물 서명 후 PDF 업로드).
+  final String signatureMethod;
+
+  /// 스토어 코드 (파일명/표시용, 서버가 제공). 없으면 null.
+  final String? storeCode;
+
+  /// wet 방식에서 서명된 PDF 가 업로드되어 있는지 여부.
+  final bool signedPdfPresent;
+
+  /// wet 문서상 서명일 (업로더 입력, 폴백=업로드일). 없으면 null.
+  final DateTime? wetSignedOn;
+
+  /// wet PDF 업로드 시각. 없으면 null.
+  final DateTime? wetUploadedAt;
+
+  /// 직원 서명 완료 여부 (서버 파생: digital=벡터 서명행 존재 / wet=PDF 업로드).
+  /// 서명 상태 판단은 항상 이 값을 사용한다.
+  final bool employeeSigned;
+
+  /// 매니저 서명 완료 여부 (서버 파생: digital=매니저 서명행 / wet=PDF 업로드).
+  final bool managerSigned;
+
   const Warning({
     required this.id,
     required this.refNo,
@@ -131,10 +153,21 @@ class Warning {
     this.employeeSignature,
     this.managerSignature,
     this.createdAt,
+    this.signatureMethod = 'digital',
+    this.storeCode,
+    this.signedPdfPresent = false,
+    this.wetSignedOn,
+    this.wetUploadedAt,
+    this.employeeSigned = false,
+    this.managerSigned = false,
   });
 
-  /// employee 서명이 있으면 signed.
-  bool get isSigned => employeeSignature != null;
+  /// wet 서명 방식 여부.
+  bool get isWet => signatureMethod == 'wet';
+
+  /// 직원 서명 완료 여부. wet/digital 모두 서버 파생 [employeeSigned] 를 신뢰하되,
+  /// 레거시 응답(필드 부재) 호환을 위해 벡터 서명행 존재도 함께 본다.
+  bool get isSigned => employeeSigned || employeeSignature != null;
 
   /// 카테고리 코드 → 사람이 읽을 라벨 (서버 라벨 우선, 없으면 코드 그대로).
   String labelFor(String code) => categoryLabels[code] ?? code;
@@ -179,6 +212,13 @@ class Warning {
           ? SigInfo.fromJson((sigs['manager'] as Map).cast<String, dynamic>())
           : null,
       createdAt: _parseDate(json['created_at']),
+      signatureMethod: json['signature_method']?.toString() ?? 'digital',
+      storeCode: json['store_code'] as String?,
+      signedPdfPresent: json['signed_pdf_present'] == true,
+      wetSignedOn: _parseDate(json['wet_signed_on']),
+      wetUploadedAt: _parseDate(json['wet_uploaded_at']),
+      employeeSigned: json['employee_signed'] == true,
+      managerSigned: json['manager_signed'] == true,
     );
   }
 }

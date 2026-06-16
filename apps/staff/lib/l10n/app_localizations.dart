@@ -4471,6 +4471,48 @@ abstract class AppL10n {
   /// **'Couldn\'t sign. Please try again.'**
   String get warningSignFailed;
 
+  /// No description provided for @warningStatusSignInPerson.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in person'**
+  String get warningStatusSignInPerson;
+
+  /// No description provided for @warningViewSignedDocument.
+  ///
+  /// In en, this message translates to:
+  /// **'View signed document'**
+  String get warningViewSignedDocument;
+
+  /// No description provided for @warningSignedDocOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the signed document. Please try again.'**
+  String get warningSignedDocOpenFailed;
+
+  /// No description provided for @warningWetSignInPersonTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign this warning in person'**
+  String get warningWetSignInPersonTitle;
+
+  /// No description provided for @warningWetSignInPersonBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This warning must be signed in person — see your manager. There\'s nothing to sign in the app.'**
+  String get warningWetSignInPersonBody;
+
+  /// No description provided for @warningWetDocOnFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed document on file'**
+  String get warningWetDocOnFile;
+
+  /// No description provided for @warningWetDocAwaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Awaiting signed document'**
+  String get warningWetDocAwaiting;
+
   /// No description provided for @warningDocEmployeeName.
   ///
   /// In en, this message translates to:

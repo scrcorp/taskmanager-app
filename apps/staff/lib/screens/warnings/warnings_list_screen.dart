@@ -29,12 +29,16 @@ class _WarningsListScreenState extends ConsumerState<WarningsListScreen> {
     Future.microtask(() => ref.read(warningsProvider.notifier).loadWarnings());
   }
 
-  /// 미서명 우선, 그 다음 최신(warning_date) 순으로 정렬.
+  /// 직원이 앱에서 서명해야 하는 경고(digital + 미서명)인지.
+  /// wet 은 앱에서 할 게 없으므로 항상 false.
+  bool _needsSignature(Warning w) => !w.isWet && !w.isSigned;
+
+  /// 서명 필요(digital 미서명) 우선, 그 다음 최신(warning_date) 순으로 정렬.
   List<Warning> _sorted(List<Warning> warnings) {
     final list = [...warnings];
     list.sort((a, b) {
-      final sa = a.isSigned ? 1 : 0;
-      final sb = b.isSigned ? 1 : 0;
+      final sa = _needsSignature(a) ? 0 : 1;
+      final sb = _needsSignature(b) ? 0 : 1;
       if (sa != sb) return sa - sb;
       final da = a.warningDate ?? a.createdAt;
       final db = b.warningDate ?? b.createdAt;
@@ -190,7 +194,9 @@ class _WarningCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppL10n.of(context);
     // 미서명 + 한 번도 열어본 적 없음(acknowledged_at == null) → "New" 점.
-    final isNew = !warning.isSigned && warning.acknowledgedAt == null;
+    // wet 경고는 직원이 앱에서 서명할 게 없어 "New(미서명)" 표시에서 제외.
+    final isNew =
+        !warning.isWet && !warning.isSigned && warning.acknowledgedAt == null;
     final date = warning.warningDate ?? warning.createdAt;
 
     return InkWell(
@@ -240,7 +246,7 @@ class _WarningCard extends StatelessWidget {
                   ),
                 ],
                 const Spacer(),
-                WarningStatusPill(signed: warning.isSigned),
+                WarningStatusPill(warning: warning),
               ],
             ),
             const SizedBox(height: 6),
