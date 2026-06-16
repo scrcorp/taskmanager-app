@@ -138,22 +138,24 @@ class _Sheet extends StatelessWidget {
                     ],
                   ),
                 ),
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('TIGERSPLUS',
-                        style: TextStyle(
+                    // 레터헤드 = 발행 매장(브랜드)명 + 발행일. (회사/조직명 아님 — 멀티브랜드)
+                    Text(warning.storeName ?? '',
+                        style: const TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 1.2,
                             color: _ink)),
-                    SizedBox(height: 2),
-                    Text('OFFICIAL NOTICE',
-                        style: TextStyle(
-                            fontSize: 9,
-                            letterSpacing: 1.8,
-                            fontWeight: FontWeight.w600,
-                            color: _muted)),
+                    const SizedBox(height: 3),
+                    if (warningDate != null)
+                      Text('${t.warningDocDate} · ${formatFixedDate(warningDate)}',
+                          style: const TextStyle(
+                              fontSize: 10,
+                              letterSpacing: 0.3,
+                              fontWeight: FontWeight.w600,
+                              color: _muted)),
                   ],
                 ),
               ],
@@ -172,16 +174,7 @@ class _Sheet extends StatelessWidget {
                   _Cell(flex: 5, label: t.warningDocEmployeeName, value: warning.subjectName),
                   _Cell(flex: 4, edgeRight: true, label: t.warningDocManagerName, value: warning.issuedByName),
                 ]),
-                // STORE / DATE
-                _Row(children: [
-                  _Cell(flex: 8, label: t.warningDocStoreBrand, value: warning.storeName),
-                  _Cell(
-                    flex: 4,
-                    edgeRight: true,
-                    label: t.warningDocDate,
-                    value: warningDate != null ? formatFixedDate(warningDate) : null,
-                  ),
-                ]),
+                // STORE / DATE 행 제거 — 매장명·날짜는 우상단 레터헤드로 이동(중복 제거).
                 // WARNING TYPE
                 _Row(children: [
                   _Cell(

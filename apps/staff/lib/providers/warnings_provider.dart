@@ -55,12 +55,16 @@ class WarningsNotifier extends StateNotifier<WarningsState> {
 
   WarningsNotifier(this._service) : super(const WarningsState());
 
+  /// 직원이 앱에서 서명해야 하는(=배지/독촉 대상) 경고인지.
+  /// wet 경고는 앱에서 할 게 없어 제외(서버 unsigned-count 와 동일 기준).
+  static bool needsSignature(Warning w) => !w.isWet && !w.isSigned;
+
   /// 내 active 경고 목록 로드 + 미서명 수 파생.
   Future<void> loadWarnings() async {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final pageResult = await _service.list(perPage: 100);
-      final unsigned = pageResult.items.where((w) => !w.isSigned).length;
+      final unsigned = pageResult.items.where(needsSignature).length;
       state = state.copyWith(
         warnings: pageResult.items,
         total: pageResult.total,
@@ -87,7 +91,7 @@ class WarningsNotifier extends StateNotifier<WarningsState> {
         .toList();
     state = state.copyWith(
       warnings: next,
-      unsignedCount: next.where((w) => !w.isSigned).length,
+      unsignedCount: next.where(needsSignature).length,
     );
   }
 }
