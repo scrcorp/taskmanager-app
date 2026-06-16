@@ -13,6 +13,7 @@ import '../../models/warning.dart';
 import '../../providers/warnings_provider.dart';
 import '../../services/warning_service.dart';
 import '../../utils/date_utils.dart';
+import '../../utils/pdf_opener.dart';
 import '../../widgets/app_header.dart';
 import '../../widgets/signature_strokes_view.dart';
 import 'warning_pdf_view.dart';
@@ -31,6 +32,7 @@ class _WarningDetailScreenState extends ConsumerState<WarningDetailScreen> {
   SignatureStrokes? _savedSignature;
   bool _loading = true;
   bool _signing = false;
+  bool _openingSignedPdf = false;
   String? _error;
 
   @override
@@ -104,6 +106,30 @@ class _WarningDetailScreenState extends ConsumerState<WarningDetailScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => WarningPdfView(warning: warning)),
     );
+  }
+
+  /// wet 서명 PDF 열기 — 인증 게이트 엔드포인트라 dio 로 바이트를 받은 뒤
+  /// (웹에서) blob URL 로 새 탭에서 연다.
+  Future<void> _openSignedPdf() async {
+    final warning = _warning;
+    if (warning == null || _openingSignedPdf) return;
+    final t = AppL10n.of(context);
+    setState(() => _openingSignedPdf = true);
+    try {
+      final bytes = await ref.read(warningServiceProvider).getSignedPdf(warning.id);
+      await openPdfBytes(bytes, filename: '${warning.refNo}.pdf');
+      if (!mounted) return;
+      setState(() => _openingSignedPdf = false);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _openingSignedPdf = false);
+      await AppModal.show(
+        context,
+        title: t.warningSignedDocOpenFailed,
+        message: t.warningSignedDocOpenFailed,
+        type: ModalType.error,
+      );
+    }
   }
 
   @override
@@ -236,6 +262,8 @@ class _WarningDetailScreenState extends ConsumerState<WarningDetailScreen> {
           warning: warning,
           signing: _signing,
           onSign: _openSignSheet,
+          openingSignedPdf: _openingSignedPdf,
+          onOpenSignedPdf: _openSignedPdf,
         ),
         const SizedBox(height: 12),
       ],
@@ -415,17 +443,26 @@ class _SignatureSection extends StatelessWidget {
   final Warning warning;
   final bool signing;
   final VoidCallback onSign;
+  final bool openingSignedPdf;
+  final VoidCallback onOpenSignedPdf;
 
   const _SignatureSection({
     required this.warning,
     required this.signing,
     required this.onSign,
+    required this.openingSignedPdf,
+    required this.onOpenSignedPdf,
   });
 
   @override
   Widget build(BuildContext context) {
     final t = AppL10n.of(context);
     final sig = warning.employeeSignature;
+
+    // WET → 디지털 서명버튼 숨김. "관리자에게 직접 서명" 안내 + (업로드 시) 문서 보기.
+    if (warning.isWet) {
+      return _buildWet(context, t);
+    }
 
     // SIGNED → 서명 stroke + "Signed on {date}".
     if (warning.isSigned && sig != null) {
@@ -531,11 +568,122 @@ class _SignatureSection extends StatelessWidget {
     );
   }
 
+  /// WET 서명 섹션 — 디지털 서명버튼 숨김.
+  /// 미업로드: "관리자에게 직접 서명" 안내. 업로드됨: "Signed" + 문서 보기 버튼.
+  Widget _buildWet(BuildContext context, AppL10n t) {
+    final uploaded = warning.signedPdfPresent;
+    final signedDate = warning.wetSignedOn ?? warning.wetUploadedAt;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (uploaded) ...[
+            // 업로드 완료 = 서명 완료.
+            Row(
+              children: [
+                Container(
+                  width: 24, height: 24,
+                  decoration: const BoxDecoration(
+                      color: AppColors.success, shape: BoxShape.circle),
+                  child: const Icon(Icons.check, size: 14, color: Colors.white),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    signedDate != null
+                        ? t.warningSignedOn(formatDate(signedDate))
+                        : t.warningStatusSigned,
+                    style: const TextStyle(
+                        fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.success),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: openingSignedPdf ? null : onOpenSignedPdf,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.accent,
+                  side: const BorderSide(color: AppColors.accent),
+                  padding: const EdgeInsets.symmetric(vertical: 13),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: openingSignedPdf
+                    ? const SizedBox(
+                        width: 16, height: 16,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: AppColors.accent),
+                      )
+                    : const Icon(Icons.picture_as_pdf_outlined, size: 18),
+                label: Text(t.warningViewSignedDocument,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+              ),
+            ),
+          ] else ...[
+            // 미업로드 = 직원이 앱에서 할 게 없음 → 직접 서명 안내(중립 톤).
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                  color: AppColors.bg, borderRadius: BorderRadius.circular(12)),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.draw_outlined, size: 18, color: AppColors.textSecondary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(t.warningWetSignInPersonTitle,
+                            style: const TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.text)),
+                        const SizedBox(height: 3),
+                        Text(t.warningWetSignInPersonBody,
+                            style: const TextStyle(
+                                fontSize: 12.5, height: 1.4, color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          _managerStatus(context),
+        ],
+      ),
+    );
+  }
+
   /// 매니저(발행자) 서명 상태 줄 — PDF뿐 아니라 네이티브 상세에도 표시.
+  /// wet 이면 "문서 보관됨 / 문서 대기" 로 분기.
   Widget _managerStatus(BuildContext context) {
     final t = AppL10n.of(context);
-    final mgr = warning.managerSignature;
-    final signed = mgr?.signedAt != null;
+
+    final bool signed;
+    final String label;
+    if (warning.isWet) {
+      signed = warning.signedPdfPresent;
+      label = signed ? t.warningWetDocOnFile : t.warningWetDocAwaiting;
+    } else {
+      final mgr = warning.managerSignature;
+      signed = mgr?.signedAt != null;
+      label = signed
+          ? t.warningManagerSignedOn(formatDate(mgr!.signedAt!))
+          : t.warningManagerAwaiting;
+    }
+
     return Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Row(
@@ -545,9 +693,7 @@ class _SignatureSection extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              signed
-                  ? t.warningManagerSignedOn(formatDate(mgr!.signedAt!))
-                  : t.warningManagerAwaiting,
+              label,
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: FontWeight.w600,

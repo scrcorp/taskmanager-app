@@ -2401,6 +2401,29 @@ class AppL10nEn extends AppL10n {
   String get warningSignFailed => 'Couldn\'t sign. Please try again.';
 
   @override
+  String get warningStatusSignInPerson => 'Sign in person';
+
+  @override
+  String get warningViewSignedDocument => 'View signed document';
+
+  @override
+  String get warningSignedDocOpenFailed =>
+      'Couldn\'t open the signed document. Please try again.';
+
+  @override
+  String get warningWetSignInPersonTitle => 'Sign this warning in person';
+
+  @override
+  String get warningWetSignInPersonBody =>
+      'This warning must be signed in person — see your manager. There\'s nothing to sign in the app.';
+
+  @override
+  String get warningWetDocOnFile => 'Signed document on file';
+
+  @override
+  String get warningWetDocAwaiting => 'Awaiting signed document';
+
+  @override
   String get warningDocEmployeeName => 'Employee Name';
 
   @override

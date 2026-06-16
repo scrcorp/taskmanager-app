@@ -2426,6 +2426,29 @@ class AppL10nEs extends AppL10n {
   String get warningSignFailed => 'No se pudo firmar. Inténtalo de nuevo.';
 
   @override
+  String get warningStatusSignInPerson => 'Firmar en persona';
+
+  @override
+  String get warningViewSignedDocument => 'Ver documento firmado';
+
+  @override
+  String get warningSignedDocOpenFailed =>
+      'No se pudo abrir el documento firmado. Inténtalo de nuevo.';
+
+  @override
+  String get warningWetSignInPersonTitle => 'Firma esta advertencia en persona';
+
+  @override
+  String get warningWetSignInPersonBody =>
+      'Esta advertencia debe firmarse en persona — consulta a tu gerente. No hay nada que firmar en la app.';
+
+  @override
+  String get warningWetDocOnFile => 'Documento firmado archivado';
+
+  @override
+  String get warningWetDocAwaiting => 'Esperando el documento firmado';
+
+  @override
   String get warningDocEmployeeName => 'Nombre del Empleado';
 
   @override

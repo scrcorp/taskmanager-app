@@ -5,6 +5,8 @@
 /// 엔드포인트: /app/my/warnings/*
 ///
 /// 주의: 상세 GET(`getDetail`) 호출 시 서버가 자동으로 acknowledge 처리한다.
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -59,6 +61,18 @@ class WarningService {
   Future<Warning> getDetail(String id) async {
     final response = await _dio.get('/app/my/warnings/$id');
     return Warning.fromJson((response.data as Map).cast<String, dynamic>());
+  }
+
+  /// wet 서명된 PDF 바이트 조회 — 인증 헤더(dio)를 거쳐 받는다.
+  ///
+  /// 엔드포인트가 인증 게이트를 두므로 plain `<a href>` 로는 열 수 없다.
+  /// 웹에서는 이 바이트로 blob URL 을 만들어 새 탭에서 연다.
+  Future<Uint8List> getSignedPdf(String id) async {
+    final response = await _dio.get<List<int>>(
+      '/app/my/warnings/$id/signed-pdf',
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return Uint8List.fromList(response.data ?? const []);
   }
 
   /// 미서명(employee 서명 없는) 경고 수 — 배지/독촉용 (가벼운 API).
