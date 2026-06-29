@@ -322,6 +322,7 @@
   "dailyReportsEmpty": "Sin reportes",
   "dailyReportsFilterDraft": "Borrador",
   "dailyReportsFilterSubmitted": "Enviado",
+  "dailyReportsFilterReviewed": "Revisado",
 
   "inventoryHeader": "Inventario",
   "inventoryStoresLoadFailed": "No se pudieron cargar las tiendas",
@@ -502,6 +503,33 @@
   "drOptional": "  (Opcional)",
   "drNoContent": "(Sin contenido)",
   "drFieldRequired": "Este campo es obligatorio",
+  "drDeadline": "Vence {time}",
+  "@drDeadline": {
+    "placeholders": { "time": { "type": "String" } }
+  },
+  "drOverdue": "Vencido",
+  "drLate": "Tarde",
+  "drReviewedBy": "Revisado por {name}",
+  "@drReviewedBy": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "drReviewedByAt": "Revisado por {name} · {time}",
+  "@drReviewedByAt": {
+    "placeholders": {
+      "name": { "type": "String" },
+      "time": { "type": "String" }
+    }
+  },
+  "drAcknowledge": "Confirmar lectura",
+  "drAcknowledged": "Confirmado",
+  "drAcknowledgedCount": "{count, plural, =0{Sin confirmaciones} =1{1 confirmación} other{{count} confirmaciones}}",
+  "@drAcknowledgedCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "drAcknowledgedTitle": "Confirmado",
+  "drAcknowledgedMessage": "Confirmaste la lectura de este informe",
+  "drAcknowledgeFailedTitle": "No se pudo confirmar",
+  "drAcknowledgeFailedMessage": "Error al confirmar el informe",
 
   "actionView": "Ver",
 
@@ -1000,5 +1028,9 @@
   "warningDocManagerSignature": "Firma del Gerente",
   "warningDocCc": "cc",
   "warningDocCcValue": "Empleado / Gerente / Recursos Humanos / Expediente Personal",
-  "warningDocNone": "—"
+  "warningDocNone": "—",
+  "changelogTitle": "Novedades",
+  "changelogEmpty": "Aún no hay novedades",
+  "changelogLoadError": "No se pudieron cargar las novedades",
+  "changelogRetry": "Reintentar"
 }

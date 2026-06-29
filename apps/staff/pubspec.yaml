@@ -20,6 +20,7 @@ dependencies:
   wakelock_plus: ^1.2.8
   package_info_plus: ^8.0.0
   url_launcher: ^6.3.0
+  flutter_markdown: ^0.7.1
   htm_core:
     path: ../../packages/htm_core
 

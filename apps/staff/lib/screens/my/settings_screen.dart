@@ -173,6 +173,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           label: t.settingsChangePassword,
                           onTap: () => context.push('/my/change-password'),
                         ),
+                        const Divider(height: 1, color: AppColors.border),
+                        _SettingsItem(
+                          label: t.changelogTitle,
+                          onTap: () => context.push('/my/changelog'),
+                        ),
                       ],
                     ),
                   ),
