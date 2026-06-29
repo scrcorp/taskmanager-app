@@ -4692,6 +4692,30 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'—'**
   String get warningDocNone;
+
+  /// No description provided for @changelogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What\'s New'**
+  String get changelogTitle;
+
+  /// No description provided for @changelogEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No updates yet'**
+  String get changelogEmpty;
+
+  /// No description provided for @changelogLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load updates'**
+  String get changelogLoadError;
+
+  /// No description provided for @changelogRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get changelogRetry;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

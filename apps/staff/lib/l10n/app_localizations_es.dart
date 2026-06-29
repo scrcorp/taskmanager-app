@@ -2555,4 +2555,16 @@ class AppL10nEs extends AppL10n {
 
   @override
   String get warningDocNone => '—';
+
+  @override
+  String get changelogTitle => 'Novedades';
+
+  @override
+  String get changelogEmpty => 'Aún no hay novedades';
+
+  @override
+  String get changelogLoadError => 'No se pudieron cargar las novedades';
+
+  @override
+  String get changelogRetry => 'Reintentar';
 }

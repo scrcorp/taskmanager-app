@@ -1031,5 +1031,9 @@
   "warningDocManagerSignature": "Manager Signature",
   "warningDocCc": "cc",
   "warningDocCcValue": "Employee / Manager / Human Resources / Personnel File",
-  "warningDocNone": "—"
+  "warningDocNone": "—",
+  "changelogTitle": "What's New",
+  "changelogEmpty": "No updates yet",
+  "changelogLoadError": "Failed to load updates",
+  "changelogRetry": "Retry"
 }
