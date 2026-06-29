@@ -5,16 +5,20 @@
 class Store {
   final String id;
   final String name;
+  final String? code;
   final String? address;
   final bool isActive;
+  final String? status;
   final String? timezone;
   final Map<String, String>? dayStartTime;
 
   const Store({
     required this.id,
     required this.name,
+    this.code,
     this.address,
     this.isActive = true,
+    this.status,
     this.timezone,
     this.dayStartTime,
   });
@@ -24,12 +28,17 @@ class Store {
     return Store(
       id: json['id'],
       name: json['name'],
+      code: json['code'],
       address: json['address'],
       isActive: json['is_active'] ?? true,
+      status: json['status'],
       timezone: json['timezone'],
       dayStartTime: json['day_start_time'] != null
           ? Map<String, String>.from(json['day_start_time'])
           : null,
     );
   }
+
+  /// 표시용 라벨 — code 가 있으면 "CODE · Name", 없으면 Name.
+  String get displayLabel => code != null && code!.isNotEmpty ? '$code · $name' : name;
 }
