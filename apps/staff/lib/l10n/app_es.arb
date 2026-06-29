@@ -1028,5 +1028,9 @@
   "warningDocManagerSignature": "Firma del Gerente",
   "warningDocCc": "cc",
   "warningDocCcValue": "Empleado / Gerente / Recursos Humanos / Expediente Personal",
-  "warningDocNone": "—"
+  "warningDocNone": "—",
+  "changelogTitle": "Novedades",
+  "changelogEmpty": "Aún no hay novedades",
+  "changelogLoadError": "No se pudieron cargar las novedades",
+  "changelogRetry": "Reintentar"
 }
