@@ -44,6 +44,9 @@ class _DailyReportDetailScreenState
   bool _isCreating = false;
   List<Store> _stores = [];
   bool _isLoadingStores = true;
+  // Effective report types (period options) for the selected store.
+  List<EffectiveReportType> _reportTypes = [];
+  bool _loadingTypes = false;
 
   @override
   void initState() {
@@ -51,9 +54,53 @@ class _DailyReportDetailScreenState
     if (_isCreateMode) {
       Future.microtask(() => _loadStores());
     } else {
-      Future.microtask(
-          () => ref.read(dailyReportProvider.notifier).loadReport(widget.id!));
+      Future.microtask(_loadDetail);
     }
+  }
+
+  /// Detail mode: load report, then its store template (for section
+  /// description/required hints — these are not carried in the report payload).
+  Future<void> _loadDetail() async {
+    await ref.read(dailyReportProvider.notifier).loadReport(widget.id!);
+    if (!mounted) return;
+    final r = ref.read(dailyReportProvider).selected;
+    if (r == null) return;
+    try {
+      final tpl = await ref
+          .read(dailyReportServiceProvider)
+          .getTemplate(storeId: r.storeId);
+      if (mounted) setState(() => _template = tpl);
+    } catch (_) {
+      // Template is optional for display; ignore load failures.
+    }
+  }
+
+  /// Resolve section description/required from the template (payload sections
+  /// do not carry them). Falls back to whatever the section already holds.
+  ({String? description, bool isRequired}) _metaFor(DailyReportSection s) {
+    final tpl = _template;
+    if (tpl == null) {
+      return (description: s.description, isRequired: s.isRequired);
+    }
+    DailyReportTemplateSection? match;
+    for (final ts in tpl.sections) {
+      if (s.templateSectionId != null && ts.id == s.templateSectionId) {
+        match = ts;
+        break;
+      }
+    }
+    if (match == null) {
+      for (final ts in tpl.sections) {
+        if (ts.sortOrder == s.sortOrder) {
+          match = ts;
+          break;
+        }
+      }
+    }
+    return (
+      description: match?.description ?? s.description,
+      isRequired: match?.isRequired ?? s.isRequired,
+    );
   }
 
   @override
@@ -79,6 +126,28 @@ class _DailyReportDetailScreenState
     } catch (_) {
       if (mounted) setState(() => _isLoadingStores = false);
     }
+  }
+
+  /// Store selected → load that store's effective report types (period options).
+  Future<void> _onStoreSelected(Store? v) async {
+    setState(() {
+      _selectedStore = v;
+      _reportTypes = [];
+    });
+    if (v == null) return;
+    setState(() => _loadingTypes = true);
+    final types = await ref
+        .read(dailyReportProvider.notifier)
+        .loadReportTypes(storeId: v.id);
+    if (!mounted) return;
+    setState(() {
+      _reportTypes = types;
+      _loadingTypes = false;
+      // Default the period to the first active type if the current pick is gone.
+      if (types.isNotEmpty && !types.any((t) => t.code == _selectedPeriod)) {
+        _selectedPeriod = types.first.code;
+      }
+    });
   }
 
   Future<void> _showDuplicateDialog(String existingId) async {
@@ -252,7 +321,7 @@ class _DailyReportDetailScreenState
     // Validate required sections only
     final empty = <String>{};
     for (final section in report.sections) {
-      if (!section.isRequired) continue;
+      if (!_metaFor(section).isRequired) continue;
       final text = _isEditing
           ? (_controllers[section.key]?.text.trim() ?? '')
           : (section.content?.trim() ?? '');
@@ -368,6 +437,32 @@ class _DailyReportDetailScreenState
     }
   }
 
+  Future<void> _acknowledge() async {
+    final t = AppL10n.of(context);
+    final report = _currentReport;
+    if (report == null) return;
+
+    final ok = await ref
+        .read(dailyReportProvider.notifier)
+        .acknowledgeReport(report.id);
+    if (!mounted) return;
+    if (ok) {
+      await AppModal.show(
+        context,
+        title: t.drAcknowledgedTitle,
+        message: t.drAcknowledgedMessage,
+        type: ModalType.success,
+      );
+    } else {
+      await AppModal.show(
+        context,
+        title: t.drAcknowledgeFailedTitle,
+        message: t.drAcknowledgeFailedMessage,
+        type: ModalType.error,
+      );
+    }
+  }
+
   // ─── Build ───
 
   @override
@@ -421,6 +516,11 @@ class _DailyReportDetailScreenState
     final isOwner =
         user != null && report.authorId == user.id;
     final isDraft = report.status == 'draft';
+    // A supervisor (non-author) can acknowledge a submitted/reviewed report.
+    final canAck = user != null && user.hasPermission('reports:acknowledge');
+    final alreadyAcked = user != null && report.acknowledgedBy(user.id);
+    final showAckBar =
+        !_isCreateMode && !isOwner && !isDraft && canAck;
 
     return Column(
       children: [
@@ -436,11 +536,45 @@ class _DailyReportDetailScreenState
                   const SizedBox(height: 8),
                   _buildComments(report),
                 ],
+                if (!_isCreateMode && report.acknowledgements.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  _buildAcknowledgements(report),
+                ],
                 const SizedBox(height: 24),
               ],
             ),
           ),
         ),
+        // Acknowledge action for supervisors (non-author)
+        if (showAckBar)
+          SafeArea(
+            top: false,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+              color: AppColors.white,
+              child: alreadyAcked
+                  ? OutlinedButton.icon(
+                      onPressed: null,
+                      icon: const Icon(Icons.check_circle,
+                          size: 18, color: AppColors.success),
+                      label: Text(t.drAcknowledged),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                        side: const BorderSide(color: AppColors.border),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                    )
+                  : ElevatedButton.icon(
+                      onPressed: state.isLoading ? null : _acknowledge,
+                      icon: const Icon(Icons.done_all, size: 18),
+                      label: Text(t.drAcknowledge),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48),
+                      ),
+                    ),
+            ),
+          ),
         // Action buttons for draft
         if (isDraft && isOwner)
           SafeArea(
@@ -575,7 +709,7 @@ class _DailyReportDetailScreenState
                 items: _stores.map((s) {
                   return DropdownMenuItem(value: s, child: Text(s.name));
                 }).toList(),
-                onChanged: (v) => setState(() => _selectedStore = v),
+                onChanged: _onStoreSelected,
               ),
             ),
           ),
@@ -649,21 +783,7 @@ class _DailyReportDetailScreenState
                   fontWeight: FontWeight.w600,
                   color: AppColors.text)),
           const SizedBox(height: 8),
-          Row(
-            children: [
-              _PeriodChip(
-                label: t.drPeriodLunch,
-                isSelected: _selectedPeriod == 'lunch',
-                onTap: () => setState(() => _selectedPeriod = 'lunch'),
-              ),
-              const SizedBox(width: 12),
-              _PeriodChip(
-                label: t.drPeriodDinner,
-                isSelected: _selectedPeriod == 'dinner',
-                onTap: () => setState(() => _selectedPeriod = 'dinner'),
-              ),
-            ],
-          ),
+          _buildPeriodSelector(t),
           const SizedBox(height: 32),
 
           // Next button
@@ -686,9 +806,48 @@ class _DailyReportDetailScreenState
     );
   }
 
+  /// Period selector — driven by the store's effective report types.
+  /// Falls back to lunch/dinner before a store/types are loaded.
+  Widget _buildPeriodSelector(AppL10n t) {
+    if (_loadingTypes) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 4),
+        child: SizedBox(
+          height: 16,
+          width: 16,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    final List<({String code, String label})> options;
+    if (_reportTypes.isNotEmpty) {
+      options =
+          _reportTypes.map((e) => (code: e.code, label: e.label)).toList();
+    } else {
+      options = [
+        (code: 'lunch', label: t.drPeriodLunch),
+        (code: 'dinner', label: t.drPeriodDinner),
+      ];
+    }
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: options.map((o) {
+        return _PeriodChip(
+          label: o.label,
+          isSelected: _selectedPeriod == o.code,
+          onTap: () => setState(() => _selectedPeriod = o.code),
+        );
+      }).toList(),
+    );
+  }
+
   // ─── Report header ───
 
   Widget _buildHeader(DailyReport report) {
+    final t = AppL10n.of(context);
     Color statusColor;
     Color statusBgColor;
     switch (report.status) {
@@ -787,6 +946,42 @@ class _DailyReportDetailScreenState
               ),
             ],
           ),
+          // Deadline + overdue/late indicator
+          if (report.deadlineAt != null) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Icon(
+                  report.isOverdue
+                      ? Icons.warning_amber_rounded
+                      : Icons.schedule,
+                  size: 16,
+                  color: report.isOverdue
+                      ? AppColors.warning
+                      : AppColors.textMuted,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  t.drDeadline(formatActionTime(report.deadlineAt!)),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: report.isOverdue
+                        ? AppColors.warning
+                        : AppColors.textSecondary,
+                    fontWeight:
+                        report.isOverdue ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+                if (report.isOverdue) ...[
+                  const SizedBox(width: 6),
+                  _miniBadge(t.drOverdue, AppColors.warning, AppColors.warningBg),
+                ] else if (report.isLate) ...[
+                  const SizedBox(width: 6),
+                  _miniBadge(t.drLate, AppColors.warning, AppColors.warningBg),
+                ],
+              ],
+            ),
+          ],
           if (report.status == 'submitted' && report.submittedAt != null) ...[
             const SizedBox(height: 12),
             Container(
@@ -802,7 +997,7 @@ class _DailyReportDetailScreenState
                       size: 16, color: AppColors.success),
                   const SizedBox(width: 6),
                   Text(
-                    AppL10n.of(context).drSubmittedAt(formatActionTime(report.submittedAt!)),
+                    t.drSubmittedAt(formatActionTime(report.submittedAt!)),
                     style: const TextStyle(
                       fontSize: 13,
                       color: AppColors.success,
@@ -813,7 +1008,58 @@ class _DailyReportDetailScreenState
               ),
             ),
           ],
+          // Reviewed banner
+          if (report.status == 'reviewed' && report.reviewedByName != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.accentBg,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.verified_outlined,
+                      size: 16, color: AppColors.accent),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      report.reviewedAt != null
+                          ? t.drReviewedByAt(report.reviewedByName!,
+                              formatActionTime(report.reviewedAt!))
+                          : t.drReviewedBy(report.reviewedByName!),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.accent,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+
+  /// Small inline pill badge.
+  Widget _miniBadge(String label, Color fg, Color bg) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: fg,
+        ),
       ),
     );
   }
@@ -843,8 +1089,9 @@ class _DailyReportDetailScreenState
           const SizedBox(height: 16),
           ...sections.map((section) {
             final hasError = _emptySectionIds.contains(section.key);
-            // Use snapshotted description from section
-            final hintText = section.description ?? t.drEnterContent;
+            // Description/required resolved from the store template.
+            final meta = _metaFor(section);
+            final hintText = meta.description ?? t.drEnterContent;
 
             return Padding(
               padding: const EdgeInsets.only(bottom: 20),
@@ -861,7 +1108,7 @@ class _DailyReportDetailScreenState
                           color: AppColors.accent,
                         ),
                       ),
-                      if (section.isRequired)
+                      if (meta.isRequired)
                         const Text(
                           ' *',
                           style: TextStyle(
@@ -1032,6 +1279,70 @@ class _DailyReportDetailScreenState
                           ),
                         ),
                       ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // ─── Acknowledgements (read-only) ───
+
+  Widget _buildAcknowledgements(DailyReport report) {
+    final t = AppL10n.of(context);
+    return Container(
+      width: double.infinity,
+      color: AppColors.white,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            t.drAcknowledgedCount(report.acknowledgements.length),
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: AppColors.text,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...report.acknowledgements.map((ack) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 14,
+                    backgroundColor: AppColors.successBg,
+                    child: Text(
+                      (ack.userName ?? '?')[0].toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.success,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      ack.userName ?? t.commonUnknown,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.text,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    timeAgo(ack.acknowledgedAt),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
                     ),
                   ),
                 ],

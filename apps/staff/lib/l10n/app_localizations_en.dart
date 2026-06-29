@@ -783,6 +783,9 @@ class AppL10nEn extends AppL10n {
   String get dailyReportsFilterSubmitted => 'Submitted';
 
   @override
+  String get dailyReportsFilterReviewed => 'Reviewed';
+
+  @override
   String get inventoryHeader => 'Inventory';
 
   @override
@@ -1234,6 +1237,57 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get drFieldRequired => 'This field is required';
+
+  @override
+  String drDeadline(String time) {
+    return 'Due $time';
+  }
+
+  @override
+  String get drOverdue => 'Overdue';
+
+  @override
+  String get drLate => 'Late';
+
+  @override
+  String drReviewedBy(String name) {
+    return 'Reviewed by $name';
+  }
+
+  @override
+  String drReviewedByAt(String name, String time) {
+    return 'Reviewed by $name · $time';
+  }
+
+  @override
+  String get drAcknowledge => 'Acknowledge';
+
+  @override
+  String get drAcknowledged => 'Acknowledged';
+
+  @override
+  String drAcknowledgedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count acknowledgements',
+      one: '1 acknowledgement',
+      zero: 'No acknowledgements',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get drAcknowledgedTitle => 'Acknowledged';
+
+  @override
+  String get drAcknowledgedMessage => 'You confirmed this report as read';
+
+  @override
+  String get drAcknowledgeFailedTitle => 'Couldn\'t acknowledge';
+
+  @override
+  String get drAcknowledgeFailedMessage => 'Failed to acknowledge the report';
 
   @override
   String get actionView => 'View';

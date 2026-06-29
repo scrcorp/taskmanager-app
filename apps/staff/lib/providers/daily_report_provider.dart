@@ -11,6 +11,7 @@ class DailyReportState {
   final List<DailyReport> reports;
   final DailyReport? selected;
   final DailyReportTemplate? template;
+  final List<EffectiveReportType> reportTypes;
   final bool isLoading;
   final String? error;
 
@@ -18,6 +19,7 @@ class DailyReportState {
     this.reports = const [],
     this.selected,
     this.template,
+    this.reportTypes = const [],
     this.isLoading = false,
     this.error,
   });
@@ -26,6 +28,7 @@ class DailyReportState {
     List<DailyReport>? reports,
     DailyReport? selected,
     DailyReportTemplate? template,
+    List<EffectiveReportType>? reportTypes,
     bool? isLoading,
     String? error,
   }) {
@@ -33,6 +36,7 @@ class DailyReportState {
       reports: reports ?? this.reports,
       selected: selected ?? this.selected,
       template: template ?? this.template,
+      reportTypes: reportTypes ?? this.reportTypes,
       isLoading: isLoading ?? this.isLoading,
       error: error,
     );
@@ -52,16 +56,37 @@ class DailyReportNotifier extends StateNotifier<DailyReportState> {
   DailyReportNotifier(this._service) : super(const DailyReportState());
 
   /// 내 리포트 목록 로드
-  Future<void> loadReports({String? storeId, String? status}) async {
+  Future<void> loadReports({
+    String? storeId,
+    String? status,
+    String? dateFrom,
+    String? dateTo,
+    String? period,
+  }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final result = await _service.getMyReports(
         storeId: storeId,
         status: status,
+        dateFrom: dateFrom,
+        dateTo: dateTo,
+        period: period,
       );
       state = state.copyWith(reports: result.items, isLoading: false);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  /// 매장의 활성 report type(period) 목록 로드 — period 선택지용
+  Future<List<EffectiveReportType>> loadReportTypes({String? storeId}) async {
+    try {
+      final types = await _service.getReportTypes(storeId: storeId);
+      state = state.copyWith(reportTypes: types);
+      return types;
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+      return const [];
     }
   }
 
@@ -135,6 +160,23 @@ class DailyReportNotifier extends StateNotifier<DailyReportState> {
     state = state.copyWith(isLoading: true, error: null);
     try {
       final report = await _service.submitReport(id);
+      state = state.copyWith(
+        selected: report,
+        reports: state.reports.map((r) => r.id == id ? report : r).toList(),
+        isLoading: false,
+      );
+      return true;
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+      return false;
+    }
+  }
+
+  /// 리포트 읽음 확인 (멱등) — SV가 리포트를 읽고 확인
+  Future<bool> acknowledgeReport(String id) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      final report = await _service.acknowledgeReport(id);
       state = state.copyWith(
         selected: report,
         reports: state.reports.map((r) => r.id == id ? report : r).toList(),
