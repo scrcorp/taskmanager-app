@@ -171,7 +171,7 @@ class _StoreCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    store.name,
+                    store.displayLabel,
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
