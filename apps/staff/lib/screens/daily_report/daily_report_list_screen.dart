@@ -77,6 +77,8 @@ class _DailyReportListScreenState
                       DropdownMenuItem(value: 'draft', child: Text(t.dailyReportsFilterDraft)),
                       DropdownMenuItem(
                           value: 'submitted', child: Text(t.dailyReportsFilterSubmitted)),
+                      DropdownMenuItem(
+                          value: 'reviewed', child: Text(t.dailyReportsFilterReviewed)),
                     ],
                     onChanged: (v) => setState(() => _filter = v ?? 'all'),
                   ),
@@ -143,8 +145,27 @@ class _ReportCard extends StatelessWidget {
 
   bool get _isDraft => report.status == 'draft';
 
+  Widget _miniBadge(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.warningBg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: AppColors.warning,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: GestureDetector(
@@ -230,6 +251,14 @@ class _ReportCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
+                  // Overdue / late indicator
+                  if (report.isOverdue) ...[
+                    _miniBadge(t.drOverdue),
+                    const SizedBox(width: 8),
+                  ] else if (report.isLate) ...[
+                    _miniBadge(t.drLate),
+                    const SizedBox(width: 8),
+                  ],
                   // Store name
                   if (report.storeName != null)
                     Expanded(

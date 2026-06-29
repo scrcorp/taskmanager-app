@@ -337,6 +337,7 @@ class InventoryAuditItem {
 class InventoryStore {
   final String id;
   final String name;
+  final String? code;
   final String? address;
   final int? totalProducts;
   final int? lowStockCount;
@@ -345,16 +346,22 @@ class InventoryStore {
   const InventoryStore({
     required this.id,
     required this.name,
+    this.code,
     this.address,
     this.totalProducts,
     this.lowStockCount,
     this.outOfStockCount,
   });
 
+  /// "CODE · Name" 형태 라벨 (code 없으면 name). Store 모델과 동일 규칙.
+  String get displayLabel =>
+      code != null && code!.isNotEmpty ? '$code · $name' : name;
+
   factory InventoryStore.fromJson(Map<String, dynamic> json) {
     return InventoryStore(
       id: json['id'] as String,
       name: json['name'] as String,
+      code: json['code'] as String?,
       address: json['address'] as String?,
       totalProducts: json['total_products'] as int?,
       lowStockCount: json['low_stock_count'] as int?,
