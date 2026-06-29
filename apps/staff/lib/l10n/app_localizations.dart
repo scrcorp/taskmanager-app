@@ -1471,6 +1471,12 @@ abstract class AppL10n {
   /// **'Submitted'**
   String get dailyReportsFilterSubmitted;
 
+  /// No description provided for @dailyReportsFilterReviewed.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewed'**
+  String get dailyReportsFilterReviewed;
+
   /// No description provided for @inventoryHeader.
   ///
   /// In en, this message translates to:
@@ -2310,6 +2316,78 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'This field is required'**
   String get drFieldRequired;
+
+  /// No description provided for @drDeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Due {time}'**
+  String drDeadline(String time);
+
+  /// No description provided for @drOverdue.
+  ///
+  /// In en, this message translates to:
+  /// **'Overdue'**
+  String get drOverdue;
+
+  /// No description provided for @drLate.
+  ///
+  /// In en, this message translates to:
+  /// **'Late'**
+  String get drLate;
+
+  /// No description provided for @drReviewedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewed by {name}'**
+  String drReviewedBy(String name);
+
+  /// No description provided for @drReviewedByAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviewed by {name} · {time}'**
+  String drReviewedByAt(String name, String time);
+
+  /// No description provided for @drAcknowledge.
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledge'**
+  String get drAcknowledge;
+
+  /// No description provided for @drAcknowledged.
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledged'**
+  String get drAcknowledged;
+
+  /// No description provided for @drAcknowledgedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No acknowledgements} =1{1 acknowledgement} other{{count} acknowledgements}}'**
+  String drAcknowledgedCount(int count);
+
+  /// No description provided for @drAcknowledgedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledged'**
+  String get drAcknowledgedTitle;
+
+  /// No description provided for @drAcknowledgedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You confirmed this report as read'**
+  String get drAcknowledgedMessage;
+
+  /// No description provided for @drAcknowledgeFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t acknowledge'**
+  String get drAcknowledgeFailedTitle;
+
+  /// No description provided for @drAcknowledgeFailedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to acknowledge the report'**
+  String get drAcknowledgeFailedMessage;
 
   /// No description provided for @actionView.
   ///

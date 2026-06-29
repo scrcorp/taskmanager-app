@@ -796,6 +796,9 @@ class AppL10nEs extends AppL10n {
   String get dailyReportsFilterSubmitted => 'Enviado';
 
   @override
+  String get dailyReportsFilterReviewed => 'Revisado';
+
+  @override
   String get inventoryHeader => 'Inventario';
 
   @override
@@ -1249,6 +1252,57 @@ class AppL10nEs extends AppL10n {
 
   @override
   String get drFieldRequired => 'Este campo es obligatorio';
+
+  @override
+  String drDeadline(String time) {
+    return 'Vence $time';
+  }
+
+  @override
+  String get drOverdue => 'Vencido';
+
+  @override
+  String get drLate => 'Tarde';
+
+  @override
+  String drReviewedBy(String name) {
+    return 'Revisado por $name';
+  }
+
+  @override
+  String drReviewedByAt(String name, String time) {
+    return 'Revisado por $name · $time';
+  }
+
+  @override
+  String get drAcknowledge => 'Confirmar lectura';
+
+  @override
+  String get drAcknowledged => 'Confirmado';
+
+  @override
+  String drAcknowledgedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count confirmaciones',
+      one: '1 confirmación',
+      zero: 'Sin confirmaciones',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get drAcknowledgedTitle => 'Confirmado';
+
+  @override
+  String get drAcknowledgedMessage => 'Confirmaste la lectura de este informe';
+
+  @override
+  String get drAcknowledgeFailedTitle => 'No se pudo confirmar';
+
+  @override
+  String get drAcknowledgeFailedMessage => 'Error al confirmar el informe';
 
   @override
   String get actionView => 'Ver';
