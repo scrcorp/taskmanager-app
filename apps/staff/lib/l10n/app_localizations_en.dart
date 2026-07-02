@@ -2535,11 +2535,5 @@ class AppL10nEn extends AppL10n {
   String get changelogTitle => 'What\'s New';
 
   @override
-  String get changelogEmpty => 'No updates yet';
-
-  @override
-  String get changelogLoadError => 'Failed to load updates';
-
-  @override
-  String get changelogRetry => 'Retry';
+  String get changelogOpenError => 'Couldn\'t open What\'s New';
 }
