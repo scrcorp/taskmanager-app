@@ -3,11 +3,15 @@
 /// today_status 기반 분기와 이름 → 이니셜 변환을 widget 에서 분리.
 
 /// Close 버튼만 보여줄 상태인지.
-///   - null (no shift today) → true
-///   - 'clocked_out' → true
+///   - null + walkInAllowed=false → true (NO SHIFT TODAY, 차단)
+///   - null + walkInAllowed=true  → false (워크인 클락인 허용 — Yes + Close)
+///   - 'clocked_out' + walkInAllowed=false → true (Shift completed, 차단)
+///   - 'clocked_out' + walkInAllowed=true  → false (퇴근 후 재출근 허용 — 하루 여러 워크인 shift)
 ///   - 그 외 (working/on_break/upcoming/soon/late/no_show 등) → false (Yes + Close)
-bool isCloseOnly(String? todayStatus) {
-  return todayStatus == null || todayStatus == 'clocked_out';
+bool isCloseOnly(String? todayStatus, {bool walkInAllowed = false}) {
+  if (todayStatus == null) return !walkInAllowed;
+  if (todayStatus == 'clocked_out') return !walkInAllowed;
+  return false;
 }
 
 /// status 별 dialog 표시용 라벨.

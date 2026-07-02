@@ -5,12 +5,24 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('isCloseOnly', () {
-    test('null → true (no shift)', () {
+    test('null → true (no shift, 기본 walkInAllowed=false)', () {
       expect(isCloseOnly(null), true);
     });
 
-    test('clocked_out → true', () {
+    test('null + walkInAllowed=false → true (차단)', () {
+      expect(isCloseOnly(null, walkInAllowed: false), true);
+    });
+
+    test('null + walkInAllowed=true → false (워크인 허용 — Yes + Close)', () {
+      expect(isCloseOnly(null, walkInAllowed: true), false);
+    });
+
+    test('clocked_out (기본 walkInAllowed=false) → true (차단)', () {
       expect(isCloseOnly('clocked_out'), true);
+    });
+
+    test('clocked_out + walkInAllowed=true → false (퇴근 후 재출근 허용)', () {
+      expect(isCloseOnly('clocked_out', walkInAllowed: true), false);
     });
 
     test('working / on_break → false (Yes + Close)', () {

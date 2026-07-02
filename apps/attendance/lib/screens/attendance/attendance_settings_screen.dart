@@ -8,9 +8,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/attendance_device_provider.dart';
 import '../../providers/locale_provider.dart';
+import '../../utils/app_version_gate.dart';
 import '../../utils/attendance_device_storage.dart';
 import 'attendance_access_code_screen.dart';
 import 'attendance_manage_pin_screen.dart';
@@ -176,6 +178,45 @@ class _AttendanceSettingsScreenState
                       monospace: true,
                     ),
                   ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // ── App info card (앱 이름 / 버전 / 회사) ──
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _InfoRow(
+                    icon: Icons.apps_rounded,
+                    label: t.attSettingsAppLabel,
+                    value: t.appTitle,
+                  ),
+                  const SizedBox(height: 12),
+                  FutureBuilder<PackageInfo>(
+                    future: PackageInfo.fromPlatform(),
+                    builder: (context, snap) => _InfoRow(
+                      icon: Icons.info_outline_rounded,
+                      label: t.attSettingsVersionLabel,
+                      value: snap.hasData
+                          ? currentVersionString(snap.data!)
+                          : '—',
+                      monospace: true,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _InfoRow(
+                    icon: Icons.business_rounded,
+                    label: t.attSettingsCompanyLabel,
+                    value: t.attSettingsCompanyName,
+                  ),
                 ],
               ),
             ),

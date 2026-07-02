@@ -343,6 +343,30 @@ abstract class AppL10n {
   /// **'Device ID'**
   String get attSettingsDeviceIdLabel;
 
+  /// No description provided for @attSettingsAppLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'App'**
+  String get attSettingsAppLabel;
+
+  /// No description provided for @attSettingsVersionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get attSettingsVersionLabel;
+
+  /// No description provided for @attSettingsCompanyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Company'**
+  String get attSettingsCompanyLabel;
+
+  /// No description provided for @attSettingsCompanyName.
+  ///
+  /// In en, this message translates to:
+  /// **'Tigers Plus'**
+  String get attSettingsCompanyName;
+
   /// No description provided for @attSettingsLanguageLabel.
   ///
   /// In en, this message translates to:
@@ -1093,6 +1117,18 @@ abstract class AppL10n {
   /// **'Settings'**
   String get pfHeaderSettings;
 
+  /// No description provided for @pfHeaderRefreshTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get pfHeaderRefreshTooltip;
+
+  /// No description provided for @pfHeaderRefreshed.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated'**
+  String get pfHeaderRefreshed;
+
   /// No description provided for @pfPinHint.
   ///
   /// In en, this message translates to:
@@ -1206,6 +1242,24 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'You don\'t have a schedule today. Clock actions disabled.'**
   String get pfIdNoShiftBody;
+
+  /// No description provided for @pfIdWalkInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'WALK-IN'**
+  String get pfIdWalkInTitle;
+
+  /// No description provided for @pfIdWalkInBody.
+  ///
+  /// In en, this message translates to:
+  /// **'No scheduled shift. Walk-in clock-in is enabled.'**
+  String get pfIdWalkInBody;
+
+  /// No description provided for @pfIdWalkInAgainBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous shift completed. You can clock in again.'**
+  String get pfIdWalkInAgainBody;
 
   /// No description provided for @pfStaleWarnTitle.
   ///

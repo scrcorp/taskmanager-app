@@ -140,6 +140,18 @@ class AppL10nEs extends AppL10n {
   String get attSettingsDeviceIdLabel => 'ID del dispositivo';
 
   @override
+  String get attSettingsAppLabel => 'Aplicación';
+
+  @override
+  String get attSettingsVersionLabel => 'Versión';
+
+  @override
+  String get attSettingsCompanyLabel => 'Empresa';
+
+  @override
+  String get attSettingsCompanyName => 'Tigers Plus';
+
+  @override
   String get attSettingsLanguageLabel => 'Idioma';
 
   @override
@@ -580,6 +592,12 @@ class AppL10nEs extends AppL10n {
   String get pfHeaderSettings => 'Ajustes';
 
   @override
+  String get pfHeaderRefreshTooltip => 'Actualizar';
+
+  @override
+  String get pfHeaderRefreshed => 'Actualizado';
+
+  @override
   String pfPinHint(int min, int max) {
     return 'Ingresa $min~$max dígitos y toca Verificar';
   }
@@ -644,6 +662,17 @@ class AppL10nEs extends AppL10n {
   @override
   String get pfIdNoShiftBody =>
       'No tienes turno hoy. Acciones de reloj desactivadas.';
+
+  @override
+  String get pfIdWalkInTitle => 'ENTRADA LIBRE';
+
+  @override
+  String get pfIdWalkInBody =>
+      'Sin turno programado. Registro de entrada libre habilitado.';
+
+  @override
+  String get pfIdWalkInAgainBody =>
+      'Turno anterior completado. Puede registrar entrada de nuevo.';
 
   @override
   String pfStaleWarnTitle(int count) {
