@@ -296,6 +296,19 @@
   "attUpdateButton": "Update",
   "attUpdateDownloading": "Downloading",
   "attUpdateLaunchingInstaller": "Launching installer…",
+  "attUpdateReadyTitle": "Update Downloaded",
+  "attUpdateReadyMessage": "The update is ready to install. The screen will unlock briefly so the installer can run, then re-lock automatically.",
+  "attUpdateInstallNow": "Install Now",
+  "attSettingsCheckUpdate": "Check for updates",
+  "attSettingsUpToDate": "You're on the latest version.",
+  "attSettingsUpdateAvailable": "Update available: v{latest}",
+  "@attSettingsUpdateAvailable": {
+    "placeholders": {
+      "latest": { "type": "String" }
+    }
+  },
+  "attSettingsUpdateButton": "Update",
+  "attSettingsUpdateCheckFailed": "Couldn't check for updates. Check your connection and try again.",
 
   "@@_pin_first": "── PIN-first kiosk (Phase 5) ──",
 

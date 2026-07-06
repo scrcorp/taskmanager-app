@@ -583,6 +583,34 @@ class AppL10nEs extends AppL10n {
   String get attUpdateLaunchingInstaller => 'Abriendo instalador…';
 
   @override
+  String get attUpdateReadyTitle => 'Actualización descargada';
+
+  @override
+  String get attUpdateReadyMessage =>
+      'La actualización está lista para instalar. La pantalla se desbloqueará brevemente para ejecutar el instalador y luego se volverá a bloquear automáticamente.';
+
+  @override
+  String get attUpdateInstallNow => 'Instalar ahora';
+
+  @override
+  String get attSettingsCheckUpdate => 'Buscar actualizaciones';
+
+  @override
+  String get attSettingsUpToDate => 'Tienes la última versión.';
+
+  @override
+  String attSettingsUpdateAvailable(String latest) {
+    return 'Actualización disponible: v$latest';
+  }
+
+  @override
+  String get attSettingsUpdateButton => 'Actualizar';
+
+  @override
+  String get attSettingsUpdateCheckFailed =>
+      'No se pudo buscar actualizaciones. Revisa tu conexión e inténtalo de nuevo.';
+
+  @override
   String get pfStoreFallback => 'Tienda';
 
   @override

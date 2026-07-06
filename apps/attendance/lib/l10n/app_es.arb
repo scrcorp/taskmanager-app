@@ -296,6 +296,19 @@
   "attUpdateButton": "Actualizar",
   "attUpdateDownloading": "Descargando",
   "attUpdateLaunchingInstaller": "Abriendo instalador…",
+  "attUpdateReadyTitle": "Actualización descargada",
+  "attUpdateReadyMessage": "La actualización está lista para instalar. La pantalla se desbloqueará brevemente para ejecutar el instalador y luego se volverá a bloquear automáticamente.",
+  "attUpdateInstallNow": "Instalar ahora",
+  "attSettingsCheckUpdate": "Buscar actualizaciones",
+  "attSettingsUpToDate": "Tienes la última versión.",
+  "attSettingsUpdateAvailable": "Actualización disponible: v{latest}",
+  "@attSettingsUpdateAvailable": {
+    "placeholders": {
+      "latest": { "type": "String" }
+    }
+  },
+  "attSettingsUpdateButton": "Actualizar",
+  "attSettingsUpdateCheckFailed": "No se pudo buscar actualizaciones. Revisa tu conexión e inténtalo de nuevo.",
 
   "@@_pin_first": "── Quiosco PIN-first (Fase 5) ──",
 

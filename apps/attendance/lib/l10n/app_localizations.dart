@@ -1099,6 +1099,54 @@ abstract class AppL10n {
   /// **'Launching installer…'**
   String get attUpdateLaunchingInstaller;
 
+  /// No description provided for @attUpdateReadyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Downloaded'**
+  String get attUpdateReadyTitle;
+
+  /// No description provided for @attUpdateReadyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The update is ready to install. The screen will unlock briefly so the installer can run, then re-lock automatically.'**
+  String get attUpdateReadyMessage;
+
+  /// No description provided for @attUpdateInstallNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Install Now'**
+  String get attUpdateInstallNow;
+
+  /// No description provided for @attSettingsCheckUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates'**
+  String get attSettingsCheckUpdate;
+
+  /// No description provided for @attSettingsUpToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re on the latest version.'**
+  String get attSettingsUpToDate;
+
+  /// No description provided for @attSettingsUpdateAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Update available: v{latest}'**
+  String attSettingsUpdateAvailable(String latest);
+
+  /// No description provided for @attSettingsUpdateButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get attSettingsUpdateButton;
+
+  /// No description provided for @attSettingsUpdateCheckFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t check for updates. Check your connection and try again.'**
+  String get attSettingsUpdateCheckFailed;
+
   /// No description provided for @pfStoreFallback.
   ///
   /// In en, this message translates to:

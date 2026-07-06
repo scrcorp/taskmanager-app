@@ -95,6 +95,51 @@ class _InstallController {
   bool get isRunning => progress != null && error == null;
 }
 
+/// 업데이트 설치 흐름: 다운로드 → "설치할래?" 확인 → 키오스크 자동해제 → 설치.
+///
+/// 사장님 요청 흐름 그대로 — 다운로드가 끝나면 설치 여부를 물어보고, 승인하면
+/// lock-task 를 잠깐 풀어(5분 뒤 자동 재잠금) OS 설치 관리자가 포그라운드로 뜰 수
+/// 있게 한 뒤 설치 intent 를 발사한다. 키오스크가 켜져 있으면 설치 관리자가 가려져
+/// "설치가 안 되는" 문제를 이 자동 해제가 방지한다.
+///
+/// [onProgress]: null=idle, 0.0~1.0=다운로드 중, 1.0=설치 관리자 호출 중.
+/// 사용자가 확인을 취소하면 onProgress(null) 로 되돌리고 조용히 종료.
+Future<void> runUpdateInstall(
+  BuildContext context, {
+  required String url,
+  required void Function(double? progress) onProgress,
+}) async {
+  final t = AppL10n.of(context);
+  onProgress(0.0);
+  final apkPath = await AppInstaller.downloadApk(
+    url,
+    onProgress: (p) => onProgress(p),
+  );
+
+  // 다운로드 완료 → 설치 확인 (in-app 다이얼로그라 lock-task 여부와 무관하게 표시됨)
+  if (!context.mounted) return;
+  final confirmed = await AppModal.show(
+    context,
+    title: t.attUpdateReadyTitle,
+    message: t.attUpdateReadyMessage,
+    type: ModalType.confirm,
+    confirmText: t.attUpdateInstallNow,
+  );
+  if (confirmed != true) {
+    onProgress(null);
+    return;
+  }
+
+  // 키오스크가 잠겨 있으면 OS 설치 관리자가 가려진다 → 잠깐 해제 (5분 뒤 자동 재잠금).
+  if (await KioskLock.isLocked()) {
+    await KioskIntent.disableTemporarily();
+    await KioskLock.stop();
+  }
+
+  onProgress(1.0); // 설치 관리자 호출 중
+  await AppInstaller.installApk(apkPath);
+}
+
 class UpdateBlockerScreen extends StatefulWidget {
   final AppVersionStatus status;
   const UpdateBlockerScreen({super.key, required this.status});
@@ -118,19 +163,15 @@ class _UpdateBlockerScreenState extends State<UpdateBlockerScreen> {
       );
       return;
     }
-    setState(() {
-      _ctrl.progress = 0.0;
-      _ctrl.error = null;
-    });
     try {
-      await AppInstaller.downloadAndInstall(
-        url,
+      await runUpdateInstall(
+        context,
+        url: url,
         onProgress: (p) {
           if (!mounted) return;
           setState(() => _ctrl.progress = p);
         },
       );
-      if (mounted) setState(() => _ctrl.progress = 1.0);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -243,104 +284,6 @@ class _UpdateBlockerScreenState extends State<UpdateBlockerScreen> {
               ),
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class UpdateAvailableBanner extends StatefulWidget {
-  final AppVersionStatus status;
-  final VoidCallback onDismiss;
-  const UpdateAvailableBanner({
-    super.key,
-    required this.status,
-    required this.onDismiss,
-  });
-
-  @override
-  State<UpdateAvailableBanner> createState() => _UpdateAvailableBannerState();
-}
-
-class _UpdateAvailableBannerState extends State<UpdateAvailableBanner> {
-  final _ctrl = _InstallController();
-
-  Future<void> _onDownload() async {
-    final url = widget.status.downloadUrl;
-    if (url == null || url.isEmpty) return;
-    setState(() {
-      _ctrl.progress = 0.0;
-      _ctrl.error = null;
-    });
-    try {
-      await AppInstaller.downloadAndInstall(
-        url,
-        onProgress: (p) {
-          if (!mounted) return;
-          setState(() => _ctrl.progress = p);
-        },
-      );
-      if (mounted) setState(() => _ctrl.progress = 1.0);
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _ctrl.progress = null;
-        _ctrl.error = e.toString();
-      });
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppL10n.of(context);
-    final progress = _ctrl.progress;
-    return Material(
-      color: AppColors.accentBg,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Row(
-          children: [
-            const Icon(Icons.system_update_alt,
-                size: 18, color: AppColors.accent),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                progress != null
-                    ? (progress >= 1.0
-                        ? t.attUpdateLaunchingInstaller
-                        : '${t.attUpdateDownloading} ${(progress * 100).toStringAsFixed(0)}%')
-                    : t.attUpdateAvailableBanner(
-                        widget.status.latestVersion ?? '?',
-                        widget.status.current,
-                      ),
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.text,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            if (progress != null && progress < 1.0)
-              SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  value: progress,
-                  strokeWidth: 2,
-                  color: AppColors.accent,
-                ),
-              )
-            else
-              TextButton(
-                onPressed: _ctrl.isRunning ? null : _onDownload,
-                child: Text(t.attUpdateButton),
-              ),
-            IconButton(
-              onPressed: _ctrl.isRunning ? null : widget.onDismiss,
-              icon: const Icon(Icons.close, size: 18),
-              tooltip: t.commonDismiss,
-            ),
-          ],
         ),
       ),
     );
