@@ -8,7 +8,8 @@ import 'staff_status_utils.dart';
 
 /// 지금 이 action 이 허용되는지.
 ///
-///   - todayStatus == null → 항상 false (no shift)
+///   - todayStatus == null + walkInAllowed=false → 항상 false (no shift)
+///   - todayStatus == null + walkInAllowed=true  → Clock In 만 허용 (워크인)
 ///   - 'upcoming' / 'soon' / 'late' / 'no_show' → Clock In 만
 ///   - 'working' → Clock Out / 10-min Break / Meal Break
 ///   - 'on_break':
@@ -22,8 +23,12 @@ bool isActionAllowed({
   required AttendanceAction action,
   String? currentBreakType,
   int currentBreakElapsedMinutes = 0,
+  bool walkInAllowed = false,
 }) {
-  if (todayStatus == null) return false;
+  if (todayStatus == null) {
+    // 워크인 허용 매장 + 스케줄 없음 → Clock In 만 허용
+    return walkInAllowed && action == AttendanceAction.clockIn;
+  }
   switch (todayStatus) {
     case 'upcoming':
     case 'soon':
@@ -42,7 +47,8 @@ bool isActionAllowed({
       }
       return false;
     case 'clocked_out':
-      return false;
+      // 워크인 허용 매장이면 퇴근 후 다시 출근(하루 여러 shift) 가능 → Clock In 만 허용.
+      return walkInAllowed && action == AttendanceAction.clockIn;
     default:
       return false;
   }

@@ -37,8 +37,15 @@ class _AttendanceManageHomeScreenState
   List<AdminScheduleRow> _schedules = const [];
   String? _error;
   String? _selectedId;
+  /// 스케줄 그리드/디테일 패널이 쓰는 now — 분 단위 표시라 분 경계에서만 rebuild.
   DateTime _now = DateTime.now();
   Timer? _clock;
+  /// 헤더 매장 시계 + 세션 카운트다운은 매초 바뀌어야 하지만, 이 값들 때문에
+  /// 화면 전체(스케줄 그리드 포함)를 매초 rebuild 할 필요는 없다.
+  /// setState 대신 ValueNotifier 로 전달해 헤더 subtree 만 rebuild 시킨다.
+  /// (배터리: 매초 setState 로 전체 화면 rebuild 하던 문제 fix, Task 1)
+  final ValueNotifier<DateTime> _liveNow = ValueNotifier(DateTime.now());
+  final ValueNotifier<int> _sessionLeftNotifier = ValueNotifier(_sessionSeconds);
   int _sessionLeft = _sessionSeconds;
   bool _sessionExpired = false;
 
@@ -49,20 +56,22 @@ class _AttendanceManageHomeScreenState
     _clock = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       if (_sessionExpired) return;
-      final next = _sessionLeft - 1;
-      if (next <= 0) {
+      final prev = _now;
+      final next = DateTime.now();
+      _liveNow.value = next;
+      if (prev.minute != next.minute || prev.hour != next.hour) {
+        setState(() => _now = next);
+      }
+      final nextLeft = _sessionLeft - 1;
+      if (nextLeft <= 0) {
         _sessionExpired = true;
-        setState(() {
-          _sessionLeft = 0;
-          _now = DateTime.now();
-        });
+        _sessionLeft = 0;
+        _sessionLeftNotifier.value = 0;
         _onSessionExpired();
         return;
       }
-      setState(() {
-        _sessionLeft = next;
-        _now = DateTime.now();
-      });
+      _sessionLeft = nextLeft;
+      _sessionLeftNotifier.value = nextLeft;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) => _refresh());
   }
@@ -70,12 +79,17 @@ class _AttendanceManageHomeScreenState
   @override
   void dispose() {
     _clock?.cancel();
+    _liveNow.dispose();
+    _sessionLeftNotifier.dispose();
     super.dispose();
   }
 
   void _resetSession() {
     if (_sessionExpired) return;
-    if (_sessionLeft != _sessionSeconds) setState(() => _sessionLeft = _sessionSeconds);
+    if (_sessionLeft != _sessionSeconds) {
+      _sessionLeft = _sessionSeconds;
+      _sessionLeftNotifier.value = _sessionSeconds;
+    }
   }
 
   Future<void> _onSessionExpired() async {
@@ -236,9 +250,6 @@ class _AttendanceManageHomeScreenState
     required int? offsetMinutes,
     required String? tzLabel,
   }) {
-    final sessionLow = _sessionLeft <= 60;
-    final mm = (_sessionLeft ~/ 60).toString();
-    final ss = (_sessionLeft % 60).toString().padLeft(2, '0');
     return Row(
       children: [
         // 좌: MANAGE MODE 배지 + store/device/manager
@@ -273,10 +284,13 @@ class _AttendanceManageHomeScreenState
             ],
           ),
         ),
-        // 중앙: 매장 시계
+        // 중앙: 매장 시계 (초 단위 — 이 subtree 만 매초 rebuild)
         Expanded(
           child: Center(
-            child: StoreClock(now: _now, offsetMinutes: offsetMinutes, tzLabel: tzLabel),
+            child: ValueListenableBuilder<DateTime>(
+              valueListenable: _liveNow,
+              builder: (_, v, __) => StoreClock(now: v, offsetMinutes: offsetMinutes, tzLabel: tzLabel),
+            ),
           ),
         ),
         // 우: 세션 타이머 + refresh + exit
@@ -285,25 +299,34 @@ class _AttendanceManageHomeScreenState
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: sessionLow ? AppColors.dangerBg : AppColors.bg,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.timer_outlined, size: 16, color: sessionLow ? AppColors.danger : AppColors.textSecondary),
-                    const SizedBox(width: 6),
-                    Text('$mm:$ss',
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800,
-                            color: sessionLow ? AppColors.danger : AppColors.textSecondary,
-                            fontFeatures: const [FontFeature.tabularFigures()])),
-                  ],
-                ),
+              // 세션 카운트다운 (초 단위 — 이 subtree 만 매초 rebuild)
+              ValueListenableBuilder<int>(
+                valueListenable: _sessionLeftNotifier,
+                builder: (_, sessionLeft, __) {
+                  final sessionLow = sessionLeft <= 60;
+                  final mm = (sessionLeft ~/ 60).toString();
+                  final ss = (sessionLeft % 60).toString().padLeft(2, '0');
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: sessionLow ? AppColors.dangerBg : AppColors.bg,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.timer_outlined, size: 16, color: sessionLow ? AppColors.danger : AppColors.textSecondary),
+                        const SizedBox(width: 6),
+                        Text('$mm:$ss',
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
+                                color: sessionLow ? AppColors.danger : AppColors.textSecondary,
+                                fontFeatures: const [FontFeature.tabularFigures()])),
+                      ],
+                    ),
+                  );
+                },
               ),
               const SizedBox(width: 8),
               _HeaderIconButton(icon: Icons.refresh_rounded, tooltip: 'Refresh', onTap: _refresh),

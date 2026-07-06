@@ -139,6 +139,18 @@ class AppL10nEn extends AppL10n {
   String get attSettingsDeviceIdLabel => 'Device ID';
 
   @override
+  String get attSettingsAppLabel => 'App';
+
+  @override
+  String get attSettingsVersionLabel => 'Version';
+
+  @override
+  String get attSettingsCompanyLabel => 'Company';
+
+  @override
+  String get attSettingsCompanyName => 'Tigers Plus';
+
+  @override
   String get attSettingsLanguageLabel => 'Language';
 
   @override
@@ -575,6 +587,12 @@ class AppL10nEn extends AppL10n {
   String get pfHeaderSettings => 'Settings';
 
   @override
+  String get pfHeaderRefreshTooltip => 'Refresh';
+
+  @override
+  String get pfHeaderRefreshed => 'Updated';
+
+  @override
   String pfPinHint(int min, int max) {
     return 'Enter $min~$max digits, then tap Verify';
   }
@@ -638,6 +656,17 @@ class AppL10nEn extends AppL10n {
   @override
   String get pfIdNoShiftBody =>
       'You don\'t have a schedule today. Clock actions disabled.';
+
+  @override
+  String get pfIdWalkInTitle => 'WALK-IN';
+
+  @override
+  String get pfIdWalkInBody =>
+      'No scheduled shift. Walk-in clock-in is enabled.';
+
+  @override
+  String get pfIdWalkInAgainBody =>
+      'Previous shift completed. You can clock in again.';
 
   @override
   String pfStaleWarnTitle(int count) {

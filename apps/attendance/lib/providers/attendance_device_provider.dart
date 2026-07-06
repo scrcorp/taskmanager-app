@@ -44,6 +44,9 @@ class DeviceInfo {
   final String? workDate;        // store tz + day_start 기준 "YYYY-MM-DD"
   final DateTime? registeredAt;
   final DateTime? lastSeenAt;
+  /// 매장의 워크인 허용 여부 — Settings Registry `attendance.walk_in_allowed` 해소값.
+  /// 없으면 기본 false (스케줄 없이 출근 불가).
+  final bool walkInAllowed;
 
   const DeviceInfo({
     required this.deviceId,
@@ -56,6 +59,7 @@ class DeviceInfo {
     this.workDate,
     this.registeredAt,
     this.lastSeenAt,
+    this.walkInAllowed = false,
   });
 
   factory DeviceInfo.fromJson(Map<String, dynamic> json) {
@@ -78,6 +82,7 @@ class DeviceInfo {
       workDate: json['work_date']?.toString(),
       registeredAt: parseDt(json['registered_at']),
       lastSeenAt: parseDt(json['last_seen_at']),
+      walkInAllowed: json['walk_in_allowed'] == true,
     );
   }
 }
@@ -280,6 +285,7 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
   /// [userId] — 대시보드에서 선택된 직원 ID
   /// [pin] — 6자리 숫자
   /// [breakType] — break-start 에만 사용 ('paid_10min' | 'unpaid_meal')
+  /// [walkIn] — true 이면 스케줄 없는 워크인 클락인 (body 에 walk_in=true 포함)
   /// 반환: { success: bool, message: String, data: Map? }
   Future<ClockActionResult> performClockAction({
     required String action,
@@ -288,12 +294,13 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
     String? breakType,
     String? reason,
     String? scheduleId,
+    bool walkIn = false,
   }) async {
     try {
       Map<String, dynamic> result;
       switch (action) {
         case 'clock-in':
-          result = await _service.clockIn(userId: userId, pin: pin, scheduleId: scheduleId);
+          result = await _service.clockIn(userId: userId, pin: pin, scheduleId: scheduleId, walkIn: walkIn);
           break;
         case 'clock-out':
           result = await _service.clockOut(userId: userId, pin: pin, reason: reason);

@@ -256,6 +256,7 @@
 
   "commonComingSoon": "Coming soon",
   "commonUnknown": "Unknown",
+  "watermarkNoTime": "No time",
 
   "ojtTitle": "OJT Training",
   "ojtSubtitle": "On-the-job training modules will be available here.",
@@ -1033,7 +1034,5 @@
   "warningDocCcValue": "Employee / Manager / Human Resources / Personnel File",
   "warningDocNone": "—",
   "changelogTitle": "What's New",
-  "changelogEmpty": "No updates yet",
-  "changelogLoadError": "Failed to load updates",
-  "changelogRetry": "Retry"
+  "changelogOpenError": "Couldn't open What's New"
 }

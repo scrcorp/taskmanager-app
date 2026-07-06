@@ -59,6 +59,9 @@ class IdentityConfirmDialog extends StatelessWidget {
   final VoidCallback onYes;
   final VoidCallback onClose;
   final DateTime? now;
+  /// 매장의 워크인 허용 여부 (DeviceMe `walk_in_allowed` 해소값).
+  /// true 이면 스케줄 없어도 클락인 버튼 노출.
+  final bool walkInAllowed;
 
   const IdentityConfirmDialog({
     super.key,
@@ -66,9 +69,10 @@ class IdentityConfirmDialog extends StatelessWidget {
     required this.onYes,
     required this.onClose,
     this.now,
+    this.walkInAllowed = false,
   });
 
-  bool get _closeOnly => isCloseOnly(user.todayStatus);
+  bool get _closeOnly => isCloseOnly(user.todayStatus, walkInAllowed: walkInAllowed);
 
   @override
   Widget build(BuildContext context) {
@@ -123,7 +127,7 @@ class IdentityConfirmDialog extends StatelessWidget {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 20),
-                _StatusPanel(user: user, now: now ?? DateTime.now()),
+                _StatusPanel(user: user, now: now ?? DateTime.now(), walkInAllowed: walkInAllowed),
                 if (user.staleAttendances.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   _StaleWarning(items: user.staleAttendances),
@@ -256,7 +260,8 @@ class _StaleWarning extends StatelessWidget {
 class _StatusPanel extends StatelessWidget {
   final IdentifyResponse user;
   final DateTime now;
-  const _StatusPanel({required this.user, required this.now});
+  final bool walkInAllowed;
+  const _StatusPanel({required this.user, required this.now, this.walkInAllowed = false});
 
   @override
   Widget build(BuildContext context) {
@@ -265,11 +270,30 @@ class _StatusPanel extends StatelessWidget {
 
     // No shift
     if (status == null) {
+      if (walkInAllowed) {
+        // 워크인 허용 매장 — 클락인 가능 안내 패널 (accent 색)
+        return _Panel(
+          bg: AppColors.accentBg,
+          fg: AppColors.accent,
+          title: t.pfIdWalkInTitle,
+          body: t.pfIdWalkInBody,
+        );
+      }
       return _Panel(
         bg: AppColors.warningBg,
         fg: AppColors.warning,
         title: t.pfIdNoShiftTitle,
         body: t.pfIdNoShiftBody,
+      );
+    }
+
+    // 퇴근 완료 + 워크인 허용 매장 → 다시 출근 가능 안내 (하루 여러 shift)
+    if (status == 'clocked_out' && walkInAllowed) {
+      return _Panel(
+        bg: AppColors.accentBg,
+        fg: AppColors.accent,
+        title: t.pfIdWalkInTitle,
+        body: t.pfIdWalkInAgainBody,
       );
     }
 

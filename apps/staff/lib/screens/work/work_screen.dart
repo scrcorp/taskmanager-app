@@ -30,6 +30,7 @@ import '../../providers/my_schedule_provider.dart';
 import '../../providers/task_provider.dart';
 import 'checklist_chat_screen.dart';
 import '../../services/storage_service.dart';
+import '../../widgets/time_watermark.dart';
 
 /// 근무 화면 메인 위젯 — Today/Past 체크리스트 + 추가 업무
 class WorkScreen extends ConsumerStatefulWidget {
@@ -2860,6 +2861,8 @@ class _ChecklistItemTile extends StatelessWidget {
                                   itemCount: item.rejectionPhotoUrls.length,
                                   separatorBuilder: (_, __) =>
                                       const SizedBox(width: 4),
+                                  // 48px 썸네일은 너무 작아 시각 pill 미표시.
+                                  // 워터마크는 캐러셀/풀스크린(_PhotoCarousel)에서 확인.
                                   itemBuilder: (context, i) => ClipRRect(
                                     borderRadius: BorderRadius.circular(6),
                                     child: Image.network(
@@ -3516,6 +3519,7 @@ class _ItemDetailSheet extends StatelessWidget {
                       at: event.atDisplay,
                       comment: event.comment,
                       photoUrls: event.photoUrls,
+                      photoTimes: event.photoTimes,
                       isLast: index == totalSteps - 1,
                     );
                   },
@@ -3624,6 +3628,7 @@ class _TimelineStepCard extends StatelessWidget {
   final String? at;
   final String? comment;
   final List<String> photoUrls;
+  final List<DateTime?> photoTimes;
   final bool isLast;
 
   const _TimelineStepCard({
@@ -3632,6 +3637,7 @@ class _TimelineStepCard extends StatelessWidget {
     this.at,
     this.comment,
     this.photoUrls = const [],
+    this.photoTimes = const [],
     this.isLast = false,
   });
 
@@ -3857,7 +3863,7 @@ class _TimelineStepCard extends StatelessWidget {
                   ],
                   if (photoUrls.isNotEmpty) ...[
                     const SizedBox(height: 8),
-                    _PhotoCarousel(photoUrls: photoUrls),
+                    _PhotoCarousel(photoUrls: photoUrls, photoTimes: photoTimes),
                   ],
                 ],
               ),
@@ -3873,8 +3879,9 @@ class _TimelineStepCard extends StatelessWidget {
 
 class _PhotoCarousel extends StatefulWidget {
   final List<String> photoUrls;
+  final List<DateTime?> photoTimes;
 
-  const _PhotoCarousel({required this.photoUrls});
+  const _PhotoCarousel({required this.photoUrls, this.photoTimes = const []});
 
   @override
   State<_PhotoCarousel> createState() => _PhotoCarouselState();
@@ -3882,6 +3889,10 @@ class _PhotoCarousel extends StatefulWidget {
 
 class _PhotoCarouselState extends State<_PhotoCarousel> {
   int _currentPage = 0;
+
+  /// index 위치의 워터마크 시각 (목록 길이 안 맞으면 null → 미표시).
+  DateTime? _timeAt(int index) =>
+      index < widget.photoTimes.length ? widget.photoTimes[index] : null;
 
   @override
   Widget build(BuildContext context) {
@@ -3929,13 +3940,16 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
       onTap: () => _openFullScreen(context, widget.photoUrls, 0),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          url,
-          width: double.infinity,
-          height: 160,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _photoErrorWidget(),
-          loadingBuilder: _photoLoadingBuilder,
+        child: WatermarkedPhoto(
+          time: _timeAt(0),
+          child: Image.network(
+            url,
+            width: double.infinity,
+            height: 160,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _photoErrorWidget(),
+            loadingBuilder: _photoLoadingBuilder,
+          ),
         ),
       ),
     );
@@ -3946,13 +3960,16 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
       onTap: () => _openFullScreen(context, widget.photoUrls, index),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: Image.network(
-          url,
-          width: double.infinity,
-          height: 160,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _photoErrorWidget(),
-          loadingBuilder: _photoLoadingBuilder,
+        child: WatermarkedPhoto(
+          time: _timeAt(index),
+          child: Image.network(
+            url,
+            width: double.infinity,
+            height: 160,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _photoErrorWidget(),
+            loadingBuilder: _photoLoadingBuilder,
+          ),
         ),
       ),
     );
@@ -3966,6 +3983,7 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
         barrierColor: Colors.black87,
         pageBuilder: (_, __, ___) => _FullScreenPhotoViewer(
           photoUrls: urls,
+          photoTimes: widget.photoTimes,
           initialIndex: initialIndex,
         ),
         transitionsBuilder: (_, animation, __, child) {
@@ -4013,10 +4031,12 @@ class _PhotoCarouselState extends State<_PhotoCarousel> {
 
 class _FullScreenPhotoViewer extends StatefulWidget {
   final List<String> photoUrls;
+  final List<DateTime?> photoTimes;
   final int initialIndex;
 
   const _FullScreenPhotoViewer({
     required this.photoUrls,
+    this.photoTimes = const [],
     this.initialIndex = 0,
   });
 
@@ -4045,6 +4065,9 @@ class _FullScreenPhotoViewerState extends State<_FullScreenPhotoViewer> {
   Widget build(BuildContext context) {
     final t = AppL10n.of(context);
     final total = widget.photoUrls.length;
+    final currentTime = _currentIndex < widget.photoTimes.length
+        ? widget.photoTimes[_currentIndex]
+        : null;
     return Scaffold(
       backgroundColor: Colors.black87,
       body: Stack(
@@ -4106,6 +4129,22 @@ class _FullScreenPhotoViewerState extends State<_FullScreenPhotoViewer> {
               ),
             ),
           ),
+          // 찍힌 시각 캡션 (상단 좌측) — 우상단 닫기 X 와 대칭, 상태바 아래로 오프셋.
+          if (currentTime != null)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 12,
+              left: 16,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: TimeWatermark(
+                    time: currentTime, color: Colors.white, large: true),
+              ),
+            ),
           if (total > 1)
             Positioned(
               bottom: MediaQuery.of(context).padding.bottom + 24,

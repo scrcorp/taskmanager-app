@@ -5,6 +5,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/my_schedule.dart';
+import '../models/photo_meta.dart';
 import '../models/schedule.dart';
 import 'api_client.dart';
 
@@ -282,16 +283,23 @@ class ScheduleService {
   }
 
   /// 체크리스트 항목 완료 처리 (새 API: POST /checklist-instances/{instanceId}/items/{idx}/complete)
+  ///
+  /// 사진은 [photos](키+촬영시각+출처)로 보낸다. photos 가 있으면 photo_urls 는 보내지 않는다
+  /// (서버 우선순위 photos > photo_urls). [photos] 없이 [photoUrls] 만 오면 레거시 경로.
   Future<void> completeChecklistItem(
     String instanceId,
     int itemIndex, {
     String? timezone,
+    List<PhotoMeta>? photos,
     List<String>? photoUrls,
     String? note,
   }) async {
     await _dio.post('/app/my/checklist-instances/$instanceId/items/$itemIndex/complete', data: {
       if (timezone != null) 'timezone': timezone,
-      if (photoUrls != null && photoUrls.isNotEmpty) 'photo_urls': photoUrls,
+      if (photos != null && photos.isNotEmpty)
+        'photos': photos.map((p) => p.toJson()).toList()
+      else if (photoUrls != null && photoUrls.isNotEmpty)
+        'photo_urls': photoUrls,
       if (note != null) 'note': note,
     });
   }
@@ -302,13 +310,17 @@ class ScheduleService {
     int itemIndex,
     bool isCompleted, {
     String? timezone,
+    List<PhotoMeta>? photos,
     List<String>? photoUrls,
     String? note,
   }) async {
     await _dio.patch('/app/my/schedules/$scheduleId/checklist/$itemIndex', data: {
       'is_completed': isCompleted,
       if (timezone != null) 'timezone': timezone,
-      if (photoUrls != null && photoUrls.isNotEmpty) 'photo_urls': photoUrls,
+      if (photos != null && photos.isNotEmpty)
+        'photos': photos.map((p) => p.toJson()).toList()
+      else if (photoUrls != null && photoUrls.isNotEmpty)
+        'photo_urls': photoUrls,
       if (note != null) 'note': note,
     });
   }
@@ -319,6 +331,7 @@ class ScheduleService {
     int itemIndex, {
     String? instanceId,
     String? responseComment,
+    List<PhotoMeta>? photos,
     List<String>? photoUrls,
     String? timezone,
   }) async {
@@ -327,14 +340,20 @@ class ScheduleService {
       await _dio.put('/app/my/checklist-instances/$instanceId/items/$itemIndex/resubmit', data: {
         if (timezone != null) 'client_timezone': timezone,
         if (responseComment != null) 'note': responseComment,
-        if (photoUrls != null && photoUrls.isNotEmpty) 'photo_urls': photoUrls,
+        if (photos != null && photos.isNotEmpty)
+          'photos': photos.map((p) => p.toJson()).toList()
+        else if (photoUrls != null && photoUrls.isNotEmpty)
+          'photo_urls': photoUrls,
       });
     } else {
       // 구 API fallback
       await _dio.patch('/app/my/schedules/$scheduleId/checklist/$itemIndex/respond', data: {
         if (timezone != null) 'timezone': timezone,
         if (responseComment != null) 'response_comment': responseComment,
-        if (photoUrls != null && photoUrls.isNotEmpty) 'photo_urls': photoUrls,
+        if (photos != null && photos.isNotEmpty)
+          'photos': photos.map((p) => p.toJson()).toList()
+        else if (photoUrls != null && photoUrls.isNotEmpty)
+          'photo_urls': photoUrls,
       });
     }
   }

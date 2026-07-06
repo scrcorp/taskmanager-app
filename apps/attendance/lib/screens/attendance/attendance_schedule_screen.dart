@@ -6,6 +6,7 @@
 /// 데이터: attendance_dashboard_provider (Main 과 공유).
 
 import 'dart:async';
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
@@ -31,13 +32,21 @@ class _AttendanceScheduleScreenState extends ConsumerState<AttendanceScheduleScr
   String? _selectedUserId;
   late Timer _clockTimer;
   DateTime _now = DateTime.now();
+  /// 초 단위 raw clock — 헤더의 초 단위 시계만 이걸 구독 (전체 rebuild 방지, Task 1).
+  final ValueNotifier<DateTime> _liveNow = ValueNotifier(DateTime.now());
 
   @override
   void initState() {
     super.initState();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      setState(() => _now = DateTime.now());
+      final prev = _now;
+      final next = DateTime.now();
+      _liveNow.value = next;
+      // 분 단위 표시(근무 경과시간 등)만 쓰는 나머지 화면은 분 경계에서만 rebuild.
+      if (prev.minute != next.minute || prev.hour != next.hour) {
+        setState(() => _now = next);
+      }
     });
     // dashboard polling 은 schedule 화면에 들어왔을 때만 활성.
     // 기존엔 main_screen 이 켰지만 새 PIN-first main 은 today-staff 안 씀.
@@ -50,6 +59,7 @@ class _AttendanceScheduleScreenState extends ConsumerState<AttendanceScheduleScr
   @override
   void dispose() {
     _clockTimer.cancel();
+    _liveNow.dispose();
     // polling 은 main 의 WORKING 사이드바도 사용하므로 schedule dispose 에서
     // stopPolling 호출하지 않는다 (Issue 3 H1 fix: 기존엔 여기서 stopPolling →
     // main 으로 돌아가도 initState 가 다시 안 불려 polling 영원히 멈추는 버그).
@@ -84,6 +94,8 @@ class _AttendanceScheduleScreenState extends ConsumerState<AttendanceScheduleScr
             _Header(
               storeName: device?.storeName ?? 'Store',
               now: storeNow,
+              liveNow: _liveNow,
+              offsetMinutes: device?.storeTimezoneOffsetMinutes,
               onClose: () => Navigator.of(context).pop(),
             ),
             Expanded(
@@ -170,10 +182,14 @@ class _AttendanceScheduleScreenState extends ConsumerState<AttendanceScheduleScr
 class _Header extends StatelessWidget {
   final String storeName;
   final DateTime now;
+  final ValueListenable<DateTime> liveNow;
+  final int? offsetMinutes;
   final VoidCallback onClose;
   const _Header({
     required this.storeName,
     required this.now,
+    required this.liveNow,
+    required this.offsetMinutes,
     required this.onClose,
   });
 
@@ -207,18 +223,24 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
-          // 가운데: 시계 (메인과 통일)
+          // 가운데: 시계 (메인과 통일, 초 단위 — 이 subtree 만 매초 rebuild)
           Expanded(
             child: Center(
-              child: Text(
-                DateFormat('HH:mm:ss').format(now),
-                style: const TextStyle(
-                  fontSize: 52,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.accent,
-                  fontFeatures: [FontFeature.tabularFigures()],
-                  height: 1.0,
-                ),
+              child: ValueListenableBuilder<DateTime>(
+                valueListenable: liveNow,
+                builder: (_, v, __) {
+                  final storeLive = toStoreClock(v, offsetMinutes);
+                  return Text(
+                    DateFormat('HH:mm:ss').format(storeLive),
+                    style: const TextStyle(
+                      fontSize: 52,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.accent,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                      height: 1.0,
+                    ),
+                  );
+                },
               ),
             ),
           ),

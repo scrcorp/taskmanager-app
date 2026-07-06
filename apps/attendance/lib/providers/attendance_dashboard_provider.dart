@@ -172,12 +172,16 @@ class AttendanceDashboardState {
   final List<TodayStaffRow> staff;
   final String? error;
   final DateTime? lastRefreshedAt;
+  /// today-staff 응답의 마지막 ETag — 다음 refresh() 의 If-None-Match 로 재사용
+  /// (Task 3: 304 시 body 전송 생략해 polling 전송량 절감).
+  final String? etag;
 
   const AttendanceDashboardState({
     this.loading = false,
     this.staff = const [],
     this.error,
     this.lastRefreshedAt,
+    this.etag,
   });
 
   AttendanceDashboardState copyWith({
@@ -185,6 +189,7 @@ class AttendanceDashboardState {
     List<TodayStaffRow>? staff,
     String? error,
     DateTime? lastRefreshedAt,
+    String? etag,
     bool clearError = false,
   }) {
     return AttendanceDashboardState(
@@ -192,6 +197,7 @@ class AttendanceDashboardState {
       staff: staff ?? this.staff,
       error: clearError ? null : (error ?? this.error),
       lastRefreshedAt: lastRefreshedAt ?? this.lastRefreshedAt,
+      etag: etag ?? this.etag,
     );
   }
 }
@@ -228,13 +234,26 @@ class AttendanceDashboardNotifier
   }
 
   /// 수동 refresh — today-staff 1 API.
+  ///
+  /// Task 3: If-None-Match 로 마지막 ETag 를 보내 변경 없으면 304(빈 바디) 를
+  /// 받는다 — 이 경우 staff 리스트는 그대로 두고 loading/lastRefreshedAt 만
+  /// 갱신한다 (기존 데이터를 절대 덮어쓰지 않음).
   Future<void> refresh() async {
     state = state.copyWith(loading: true, clearError: true);
     try {
-      final staffJson = await _service.getTodayStaff();
+      final result = await _service.getTodayStaff(ifNoneMatch: state.etag);
+      if (result.notModified) {
+        state = state.copyWith(
+          loading: false,
+          etag: result.etag,
+          lastRefreshedAt: DateTime.now(),
+        );
+        return;
+      }
       state = state.copyWith(
         loading: false,
-        staff: staffJson.map(TodayStaffRow.fromJson).toList(),
+        staff: result.data.map(TodayStaffRow.fromJson).toList(),
+        etag: result.etag,
         lastRefreshedAt: DateTime.now(),
       );
     } on DioException catch (e) {
