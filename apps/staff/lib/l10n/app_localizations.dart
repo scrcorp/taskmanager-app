@@ -1177,6 +1177,12 @@ abstract class AppL10n {
   /// **'Unknown'**
   String get commonUnknown;
 
+  /// No description provided for @watermarkNoTime.
+  ///
+  /// In en, this message translates to:
+  /// **'No time'**
+  String get watermarkNoTime;
+
   /// No description provided for @ojtTitle.
   ///
   /// In en, this message translates to:

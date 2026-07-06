@@ -627,6 +627,9 @@ class AppL10nEs extends AppL10n {
   String get commonUnknown => 'Desconocido';
 
   @override
+  String get watermarkNoTime => 'Sin hora';
+
+  @override
   String get ojtTitle => 'Capacitación OJT';
 
   @override

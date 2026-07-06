@@ -615,6 +615,9 @@ class AppL10nEn extends AppL10n {
   String get commonUnknown => 'Unknown';
 
   @override
+  String get watermarkNoTime => 'No time';
+
+  @override
   String get ojtTitle => 'OJT Training';
 
   @override

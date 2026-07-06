@@ -17,9 +17,11 @@ import 'package:htm_core/htm_core.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/checklist.dart';
 import '../../models/my_schedule.dart';
+import '../../models/photo_meta.dart';
 import '../../providers/my_schedule_provider.dart';
 import '../../services/storage_service.dart';
 import '../../utils/date_utils.dart';
+import '../../utils/photo_capture.dart';
 import '../../utils/toast_manager.dart';
 import '../../widgets/app_header.dart';
 import 'checklist_chat_screen.dart';
@@ -173,7 +175,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
             widget.id,
             item.index,
             responseComment: result.note,
-            photoUrls: result.photoUrls,
+            photos: result.photos.isEmpty ? null : result.photos,
           );
       if (mounted) {
         final t = AppL10n.of(context);
@@ -215,7 +217,7 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
             widget.id,
             item.index,
             true,
-            photoUrls: result.photoUrls.isEmpty ? null : result.photoUrls,
+            photos: result.photos.isEmpty ? null : result.photos,
             note: result.note,
           );
     } catch (e) {
@@ -1429,9 +1431,9 @@ class _SendReportBar extends StatelessWidget {
 
 /// 완료 다이얼로그 반환값
 class _CompletionResult {
-  final List<String> photoUrls;
+  final List<PhotoMeta> photos;
   final String? note;
-  _CompletionResult({required this.photoUrls, this.note});
+  _CompletionResult({required this.photos, this.note});
 }
 
 /// 자기완결형 완료 다이얼로그 — 사진 추가/삭제/미리보기 + 텍스트 입력 모두 내장
@@ -1459,15 +1461,15 @@ class _CompletionFormDialog extends StatefulWidget {
 
 class _CompletionFormDialogState extends State<_CompletionFormDialog> {
   final _noteController = TextEditingController();
-  final List<String> _photoUrls = [];
+  final List<PhotoMeta> _photos = [];
   bool _isUploading = false;
   bool _isSubmitting = false;
 
   ChecklistItem get item => widget.item;
   int get _minPhotos => item.minPhotos ?? (item.requiresPhoto ? 1 : 0);
   int get _maxPhotos => item.maxPhotos ?? 5;
-  bool get _photoMet => _photoUrls.length >= _minPhotos;
-  bool get _photoMaxReached => _photoUrls.length >= _maxPhotos;
+  bool get _photoMet => _photos.length >= _minPhotos;
+  bool get _photoMaxReached => _photos.length >= _maxPhotos;
   bool get _noteMet => !item.requiresComment || _noteController.text.trim().isNotEmpty;
   bool get _canSubmit => (_minPhotos == 0 || _photoMet) && _noteMet;
 
@@ -1494,14 +1496,11 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
       final raw = prefs.getString(_draftKey);
       if (raw != null) {
         final data = jsonDecode(raw) as Map<String, dynamic>;
-        final photos = (data['photoUrls'] as List<dynamic>?)
-                ?.map((e) => e.toString())
-                .toList() ??
-            [];
+        final photos = _photosFromDraft(data);
         final memo = data['memo'] as String? ?? '';
         if (mounted && (photos.isNotEmpty || memo.isNotEmpty)) {
           setState(() {
-            _photoUrls.addAll(photos);
+            _photos.addAll(photos);
             _noteController.text = memo;
           });
           return;
@@ -1510,11 +1509,12 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
     } catch (_) {}
 
     // draft가 없으면 이전 제출 내용으로 채움 (resubmit 시)
+    // 이전 제출 사진은 키만 있고 촬영시각 메타데이터가 없다(서버가 unknown 처리).
     if (widget.initialPhotoUrls != null || widget.initialNote != null) {
       if (mounted) {
         setState(() {
           if (widget.initialPhotoUrls != null) {
-            _photoUrls.addAll(widget.initialPhotoUrls!);
+            _photos.addAll(widget.initialPhotoUrls!.map((k) => PhotoMeta(key: k)));
           }
           if (widget.initialNote != null) {
             _noteController.text = widget.initialNote!;
@@ -1524,10 +1524,25 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
     }
   }
 
+  /// draft JSON → PhotoMeta 리스트. 신규 'photos' 우선, 레거시 'photoUrls'(문자열) 폴백.
+  List<PhotoMeta> _photosFromDraft(Map<String, dynamic> data) {
+    final newFmt = data['photos'] as List<dynamic>?;
+    if (newFmt != null) {
+      return newFmt
+          .map((e) => PhotoMeta.fromDraftJson(e as Map<String, dynamic>))
+          .toList();
+    }
+    final legacy = data['photoUrls'] as List<dynamic>?;
+    if (legacy != null) {
+      return legacy.map((e) => PhotoMeta(key: e.toString())).toList();
+    }
+    return [];
+  }
+
   void _saveDraft() {
     SharedPreferences.getInstance().then((prefs) {
       final data = jsonEncode({
-        'photoUrls': _photoUrls,
+        'photos': _photos.map((p) => p.toDraftJson()).toList(),
         'memo': _noteController.text,
       });
       prefs.setString(_draftKey, data);
@@ -1549,18 +1564,25 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
   Future<void> _addPhoto(ImageSource source) async {
     final picker = ImagePicker();
 
-    // Gallery → 여러 장 선택, Camera → 1장
-    final List<XFile> picked;
+    // 사전 리사이즈: 치수 상한 2048(긴 변), 고품질 유지(서버가 WebP q80/2048 로 최종 가공).
+    const maxDim = 2048.0;
+    const quality = 90;
+
+    // Gallery → 여러 장 한 번에, Camera → 취소할 때까지 연속 촬영(멀티샷).
+    final List<XFile> picked = [];
     if (source == ImageSource.gallery) {
-      picked = await picker.pickMultiImage(imageQuality: 80);
+      picked.addAll(await picker.pickMultiImage(maxWidth: maxDim, maxHeight: maxDim, imageQuality: quality));
     } else {
-      final single = await picker.pickImage(source: source, imageQuality: 80);
-      picked = single != null ? [single] : [];
+      while (_photos.length + picked.length < _maxPhotos) {
+        final shot = await picker.pickImage(source: source, maxWidth: maxDim, maxHeight: maxDim, imageQuality: quality);
+        if (shot == null) break; // 사용자가 카메라를 닫으면 멀티샷 종료
+        picked.add(shot);
+      }
     }
     if (picked.isEmpty) return;
 
     // Trim picked list to max allowed
-    final remaining = _maxPhotos - _photoUrls.length;
+    final remaining = _maxPhotos - _photos.length;
     if (remaining <= 0) return;
     final trimmed = picked.take(remaining).toList();
     if (trimmed.length < picked.length && mounted) {
@@ -1568,16 +1590,24 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
       ToastManager().info(context, t.checklistMorePhotosAllowed(remaining, _maxPhotos));
     }
 
+    final captureSource = captureSourceOf(source);
+
     setState(() => _isUploading = true);
     try {
       for (final file in trimmed) {
         final bytes = await file.readAsBytes();
+        // 촬영시각: 라이브=셔터(현재), 갤러리=EXIF. 워터마크는 이 시각을 표시한다.
+        final captureTime = await resolveCaptureTime(source, bytes);
         final filename = 'checklist_${DateTime.now().millisecondsSinceEpoch}.jpg';
         final urls = await widget.storageProvider.getPresignedUrl(filename, 'image/jpeg');
         await widget.storageProvider.uploadFile(urls['upload_url']!, bytes, 'image/jpeg');
         if (mounted) {
           setState(() {
-            _photoUrls.add(urls['file_url']!);
+            _photos.add(PhotoMeta(
+              key: urls['file_url']!,
+              captureTime: captureTime,
+              captureSource: captureSource,
+            ));
           });
         }
       }
@@ -1599,7 +1629,7 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
 
   void _removePhoto(int index) {
     setState(() {
-      _photoUrls.removeAt(index);
+      _photos.removeAt(index);
       _saveDraft();
     });
   }
@@ -1666,7 +1696,7 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
     final note = _noteController.text.trim();
     _clearDraft();
     Navigator.pop(context, _CompletionResult(
-      photoUrls: _photoUrls,
+      photos: _photos,
       note: note.isEmpty ? null : note,
     ));
   }
@@ -1759,7 +1789,7 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            t.checklistPhotoCount(_photoUrls.length, _minPhotos, _maxPhotos),
+                            t.checklistPhotoCount(_photos.length, _minPhotos, _maxPhotos),
                             style: TextStyle(
                               fontSize: 11, fontWeight: FontWeight.w600,
                               color: _photoMet ? AppColors.success : AppColors.warning,
@@ -1769,15 +1799,15 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
                       ),
                       const SizedBox(height: 10),
                       // Photo thumbnails or empty picker
-                      if (_photoUrls.isNotEmpty) ...[
+                      if (_photos.isNotEmpty) ...[
                         SizedBox(
                           height: 68,
                           child: ListView.separated(
                             scrollDirection: Axis.horizontal,
-                            itemCount: _photoMaxReached ? _photoUrls.length : _photoUrls.length + 1,
+                            itemCount: _photoMaxReached ? _photos.length : _photos.length + 1,
                             separatorBuilder: (_, __) => const SizedBox(width: 8),
                             itemBuilder: (ctx, i) {
-                              if (i == _photoUrls.length) {
+                              if (i == _photos.length) {
                                 return GestureDetector(
                                   onTap: _isUploading ? null : _showPhotoSource,
                                   child: Container(
@@ -1803,7 +1833,7 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
                                   ClipRRect(
                                     borderRadius: BorderRadius.circular(10),
                                     child: Image.network(
-                                      _photoUrls[i], width: 68, height: 68,
+                                      _photos[i].key, width: 68, height: 68,
                                       fit: BoxFit.cover,
                                       errorBuilder: (_, __, ___) => Container(
                                         width: 68, height: 68,
@@ -1931,7 +1961,7 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
             ],
 
             // ── Uploading indicator
-            if (_isUploading && _photoUrls.isNotEmpty)
+            if (_isUploading && _photos.isNotEmpty)
               const Padding(
                 padding: EdgeInsets.only(top: 8),
                 child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),

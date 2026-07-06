@@ -20,6 +20,12 @@ class ItemFile {
   final String fileType;
   final int sortOrder;
 
+  /// 찍힌 시점(클라 주장) — 라이브=셔터, 갤러리=EXIF. 워터마크 1순위 소스.
+  final DateTime? captureTime;
+
+  /// 서버 수신시각(신뢰 앵커) — captureTime 부재 시(레거시·EXIF없음) 워터마크 폴백.
+  final DateTime? receivedAt;
+
   const ItemFile({
     required this.id,
     required this.context,
@@ -27,7 +33,12 @@ class ItemFile {
     required this.fileUrl,
     required this.fileType,
     this.sortOrder = 0,
+    this.captureTime,
+    this.receivedAt,
   });
+
+  /// 워터마크 표시 시각: 찍힌 시점 우선, 없으면 수신시각 폴백.
+  DateTime? get watermarkTime => captureTime ?? receivedAt;
 
   factory ItemFile.fromJson(Map<String, dynamic> json) {
     return ItemFile(
@@ -37,8 +48,13 @@ class ItemFile {
       fileUrl: json['file_url'] ?? '',
       fileType: json['file_type'] ?? 'photo',
       sortOrder: json['sort_order'] ?? 0,
+      captureTime: _parseTime(json['capture_time']),
+      receivedAt: _parseTime(json['received_at']),
     );
   }
+
+  static DateTime? _parseTime(dynamic value) =>
+      value is String ? DateTime.tryParse(value) : null;
 }
 
 /// 항목 제출 이력 (직원 제출/재제출)
@@ -148,6 +164,10 @@ class ChecklistItemEvent {
   final String type;
   final String? comment;
   final List<String> photoUrls;
+
+  /// photoUrls 와 같은 순서로 정렬된 사진별 워터마크 시각(찍힌 시점 우선).
+  /// 항목별 null 가능(레거시·EXIF없음). 비어 있으면 워터마크 미표시.
+  final List<DateTime?> photoTimes;
   final String? by;
   final String? byName;
   final String? at;
@@ -156,6 +176,7 @@ class ChecklistItemEvent {
     required this.type,
     this.comment,
     this.photoUrls = const [],
+    this.photoTimes = const [],
     this.by,
     this.byName,
     this.at,
@@ -354,34 +375,46 @@ class ChecklistItem {
   bool get isPendingReReview => reviewResult == 'pending_re_review';
 
   // ── 파일/제출 computed getters ──
-  /// 최신 제출 사진 URL 목록 (최신 submission의 context_id로 필터)
-  List<String> get photoUrls {
+  /// 최신 제출 사진 파일 목록 (최신 submission의 context_id로 필터)
+  List<ItemFile> get _submissionFiles {
     final latestSub = submissions.isNotEmpty ? submissions.last : null;
     if (latestSub != null) {
       final filtered = files
           .where((f) => f.context == 'submission' && f.contextId == latestSub.id)
-          .map((f) => f.fileUrl)
           .toList();
       if (filtered.isNotEmpty) return filtered;
     }
     // fallback: 전체 submission 파일
-    return files
-        .where((f) => f.context == 'submission')
-        .map((f) => f.fileUrl)
-        .toList();
+    return files.where((f) => f.context == 'submission').toList();
   }
 
+  List<ItemFile> get _reviewFiles =>
+      files.where((f) => f.context == 'review').toList();
+
+  List<ItemFile> get _chatFiles =>
+      files.where((f) => f.context == 'chat').toList();
+
+  /// 최신 제출 사진 URL 목록
+  List<String> get photoUrls =>
+      _submissionFiles.map((f) => f.fileUrl).toList();
+
+  /// photoUrls 와 정렬 동일한 워터마크 시각 목록
+  List<DateTime?> get photoTimes =>
+      _submissionFiles.map((f) => f.watermarkTime).toList();
+
   /// 리뷰 사진 URL 목록 (context='review')
-  List<String> get reviewPhotoUrls => files
-      .where((f) => f.context == 'review')
-      .map((f) => f.fileUrl)
-      .toList();
+  List<String> get reviewPhotoUrls =>
+      _reviewFiles.map((f) => f.fileUrl).toList();
+
+  List<DateTime?> get reviewPhotoTimes =>
+      _reviewFiles.map((f) => f.watermarkTime).toList();
 
   /// 채팅 사진 URL 목록 (context='chat')
-  List<String> get chatPhotoUrls => files
-      .where((f) => f.context == 'chat')
-      .map((f) => f.fileUrl)
-      .toList();
+  List<String> get chatPhotoUrls =>
+      _chatFiles.map((f) => f.fileUrl).toList();
+
+  List<DateTime?> get chatPhotoTimes =>
+      _chatFiles.map((f) => f.watermarkTime).toList();
 
   bool get hasPhotos => photoUrls.isNotEmpty;
 
@@ -399,10 +432,12 @@ class ChecklistItem {
   // ── 호환성 alias (work_screen.dart 등에서 사용) ──
   String? get approvalComment => isApproved ? reviewComment : null;
   List<String> get approvalPhotoUrls => isApproved ? reviewPhotoUrls : [];
+  List<DateTime?> get approvalPhotoTimes => isApproved ? reviewPhotoTimes : [];
   String? get approvedBy => isApproved ? reviewerName : null;
   String? get approvedAt => isApproved ? reviewedAt : null;
   String? get rejectionComment => isRejected ? reviewComment : null;
   List<String> get rejectionPhotoUrls => isRejected ? reviewPhotoUrls : [];
+  List<DateTime?> get rejectionPhotoTimes => isRejected ? reviewPhotoTimes : [];
   String? get rejectedBy => isRejected ? reviewerName : null;
   String? get rejectedAt => isRejected ? reviewedAt : null;
   String? get rejectedAtDisplay => isRejected ? reviewedAtDisplay : null;
@@ -450,25 +485,22 @@ class ChecklistItem {
     // 제출 이력
     for (var i = 0; i < submissions.length; i++) {
       final sub = submissions[i];
-      final subPhotos = files
+      final subFiles = files
           .where((f) => f.context == 'submission' && f.contextId == sub.id)
-          .map((f) => f.fileUrl)
           .toList();
       // contextId 매칭이 없으면 첫 번째 제출에 모든 submission 파일 할당
-      final photos = subPhotos.isNotEmpty
-          ? subPhotos
+      final photoFiles = subFiles.isNotEmpty
+          ? subFiles
           : (i == 0
-              ? files
-                  .where((f) => f.context == 'submission')
-                  .map((f) => f.fileUrl)
-                  .toList()
-              : <String>[]);
+              ? files.where((f) => f.context == 'submission').toList()
+              : <ItemFile>[]);
       events.add(_TimedEvent(
         at: sub.submittedAt,
         event: ChecklistItemEvent(
           type: i == 0 ? 'submitted' : 'resubmitted',
           comment: sub.note,
-          photoUrls: photos,
+          photoUrls: photoFiles.map((f) => f.fileUrl).toList(),
+          photoTimes: photoFiles.map((f) => f.watermarkTime).toList(),
           by: sub.submittedBy,
           byName: sub.submittedByName,
           at: sub.submittedAt,
@@ -478,16 +510,15 @@ class ChecklistItem {
 
     // submissions가 없지만 완료된 항목 → fallback submitted 이벤트
     if (submissions.isEmpty && isCompleted) {
-      final fallbackPhotos = files
-          .where((f) => f.context == 'submission')
-          .map((f) => f.fileUrl)
-          .toList();
+      final fallbackFiles =
+          files.where((f) => f.context == 'submission').toList();
       events.add(_TimedEvent(
         at: completedAt,
         event: ChecklistItemEvent(
           type: 'submitted',
           comment: note,
-          photoUrls: fallbackPhotos,
+          photoUrls: fallbackFiles.map((f) => f.fileUrl).toList(),
+          photoTimes: fallbackFiles.map((f) => f.watermarkTime).toList(),
           by: completedBy,
           at: completedAt,
         ),
@@ -496,12 +527,10 @@ class ChecklistItem {
 
     // 리뷰 이력
     for (final log in reviewsLog) {
-      final logPhotos = files
+      final logFiles = files
           .where((f) => f.context == 'review' && f.contextId == log.id)
-          .map((f) => f.fileUrl)
           .toList();
-      final photos =
-          logPhotos.isNotEmpty ? logPhotos : reviewPhotoUrls;
+      final photoFiles = logFiles.isNotEmpty ? logFiles : _reviewFiles;
       final type = log.newResult == 'pass'
           ? 'approved'
           : log.newResult == 'fail'
@@ -512,7 +541,8 @@ class ChecklistItem {
         event: ChecklistItemEvent(
           type: type,
           comment: log.comment,
-          photoUrls: photos,
+          photoUrls: photoFiles.map((f) => f.fileUrl).toList(),
+          photoTimes: photoFiles.map((f) => f.watermarkTime).toList(),
           by: log.changedBy,
           byName: log.changedByName,
           at: log.createdAt,
@@ -546,6 +576,7 @@ class ChecklistItem {
         event: ChecklistItemEvent(
           type: 'message_photo',
           photoUrls: [f.fileUrl],
+          photoTimes: [f.watermarkTime],
           by: relatedMsg?.authorId,
           byName: relatedMsg?.authorName,
           at: relatedMsg?.createdAt,
