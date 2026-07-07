@@ -38,12 +38,12 @@ void main() {
   });
 
   group('TimeWatermark', () {
-    testWidgets('포맷된 시각 라벨 + 타임존을 표시한다 ("MMM d, h:mm a <tz>")', (tester) async {
+    testWidgets('포맷된 시각 라벨 + 연도 + 타임존을 표시한다 ("MMM d, yyyy, h:mm a <tz>")', (tester) async {
       await tester.pumpWidget(
         MaterialApp(home: TimeWatermark(time: DateTime(2026, 3, 5, 14, 30))),
       );
-      // 타임존 약어는 실행 환경마다 다르므로 날짜·시간 부분만 검증.
-      expect(find.textContaining('Mar 5, 2:30 PM'), findsOneWidget);
+      // 타임존 약어는 실행 환경마다 다르므로 날짜(연도 포함)·시간 부분만 검증.
+      expect(find.textContaining('Mar 5, 2026, 2:30 PM'), findsOneWidget);
     });
   });
 }

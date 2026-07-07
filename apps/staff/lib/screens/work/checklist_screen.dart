@@ -8,6 +8,7 @@
 /// 사진 업로드: StorageService presigned URL 방식 (다중 사진 지원).
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -1568,16 +1569,25 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
     const maxDim = 2048.0;
     const quality = 90;
 
-    // Gallery → 여러 장 한 번에, Camera → 취소할 때까지 연속 촬영(멀티샷).
+    // Gallery → 여러 장 한 번에.
+    // Camera → 네이티브는 취소할 때까지 연속 촬영(멀티샷 루프). 웹은 파일 피커가
+    // 반드시 유저 제스처에서 열려야 하므로, 프로그램이 두 번째 pickImage 를 호출하면
+    // 열리지 않고 걸린다(hang). 그래서 웹에서는 탭 한 번당 한 장만 촬영하고, 추가는
+    // "Take Photo" 를 다시 탭해서 최대 장수까지 쌓는다(단일샷·멀티샷 모두 동작).
     final List<XFile> picked = [];
-    if (source == ImageSource.gallery) {
-      picked.addAll(await picker.pickMultiImage(maxWidth: maxDim, maxHeight: maxDim, imageQuality: quality));
-    } else {
-      while (_photos.length + picked.length < _maxPhotos) {
-        final shot = await picker.pickImage(source: source, maxWidth: maxDim, maxHeight: maxDim, imageQuality: quality);
-        if (shot == null) break; // 사용자가 카메라를 닫으면 멀티샷 종료
-        picked.add(shot);
+    try {
+      if (source == ImageSource.gallery) {
+        picked.addAll(await picker.pickMultiImage(maxWidth: maxDim, maxHeight: maxDim, imageQuality: quality));
+      } else {
+        while (_photos.length + picked.length < _maxPhotos) {
+          final shot = await picker.pickImage(source: source, maxWidth: maxDim, maxHeight: maxDim, imageQuality: quality);
+          if (shot == null) break; // 사용자가 카메라를 닫으면 멀티샷 종료
+          picked.add(shot);
+          if (kIsWeb) break; // 웹: 제스처당 한 장 (재탭으로 추가)
+        }
       }
+    } catch (_) {
+      // 피커 자체 실패 — 이미 고른 사진이 있으면 아래에서 업로드, 없으면 조용히 종료
     }
     if (picked.isEmpty) return;
 
