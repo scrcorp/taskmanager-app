@@ -11,8 +11,8 @@ void main() {
       expect(photoWatermarkTime(capture, received), capture);
     });
 
-    test('capture_time 없으면 received_at 폴백', () {
-      expect(photoWatermarkTime(null, received), received);
+    test('capture_time 없으면 null (received_at 폴백 안 함)', () {
+      expect(photoWatermarkTime(null, received), isNull);
     });
 
     test('둘 다 없으면 null', () {
@@ -36,7 +36,7 @@ void main() {
       expect(f.watermarkTime, f.captureTime);
     });
 
-    test('capture_time 없으면 watermarkTime=received_at 폴백', () {
+    test('capture_time 없으면 watermarkTime=null (received_at 폴백 안 함)', () {
       final f = ItemFile.fromJson({
         'id': 'f1',
         'context': 'submission',
@@ -44,7 +44,7 @@ void main() {
         'received_at': '2026-03-05T10:00:00Z',
       });
       expect(f.captureTime, isNull);
-      expect(f.watermarkTime, DateTime.utc(2026, 3, 5, 10, 0));
+      expect(f.watermarkTime, isNull);
     });
 
     test('시간 정보 전혀 없으면 watermarkTime=null', () {
@@ -69,33 +69,59 @@ void main() {
 
   group('ChecklistItem photo times - index 정렬', () {
     ChecklistItem build() => ChecklistItem.fromJson({
-          'id': 'item-1',
-          'title': 'Test',
-          'is_completed': true,
-          'review_result': 'pass',
-          'reviewed_at': '2026-03-05T12:00:00',
-          'submissions': [
-            {'id': 's1', 'version': 1, 'submitted_at': '2026-03-05T09:00:00'},
-          ],
-          'reviews_log': [
-            {'id': 'l1', 'new_result': 'pass', 'created_at': '2026-03-05T12:00:00'},
-          ],
-          'files': [
-            // submission 2장: 하나는 capture, 하나는 received 폴백
-            {'id': 'f1', 'context': 'submission', 'context_id': 's1', 'file_url': 'http://x/sub1.webp', 'file_type': 'photo', 'sort_order': 0, 'capture_time': '2026-03-05T08:55:00Z', 'received_at': '2026-03-05T09:01:00Z'},
-            {'id': 'f2', 'context': 'submission', 'context_id': 's1', 'file_url': 'http://x/sub2.webp', 'file_type': 'photo', 'sort_order': 1, 'received_at': '2026-03-05T09:02:00Z'},
-            // review 1장
-            {'id': 'f3', 'context': 'review', 'file_url': 'http://x/rev1.webp', 'file_type': 'photo', 'capture_time': '2026-03-05T11:59:00Z'},
-          ],
-          'messages': [],
-        }, 0);
+      'id': 'item-1',
+      'title': 'Test',
+      'is_completed': true,
+      'review_result': 'pass',
+      'reviewed_at': '2026-03-05T12:00:00',
+      'submissions': [
+        {'id': 's1', 'version': 1, 'submitted_at': '2026-03-05T09:00:00'},
+      ],
+      'reviews_log': [
+        {'id': 'l1', 'new_result': 'pass', 'created_at': '2026-03-05T12:00:00'},
+      ],
+      'files': [
+        // submission 2장: 하나는 capture 있음, 하나는 capture 없음(→ No time)
+        {
+          'id': 'f1',
+          'context': 'submission',
+          'context_id': 's1',
+          'file_url': 'http://x/sub1.webp',
+          'file_type': 'photo',
+          'sort_order': 0,
+          'capture_time': '2026-03-05T08:55:00Z',
+          'received_at': '2026-03-05T09:01:00Z',
+        },
+        {
+          'id': 'f2',
+          'context': 'submission',
+          'context_id': 's1',
+          'file_url': 'http://x/sub2.webp',
+          'file_type': 'photo',
+          'sort_order': 1,
+          'received_at': '2026-03-05T09:02:00Z',
+        },
+        // review 1장
+        {
+          'id': 'f3',
+          'context': 'review',
+          'file_url': 'http://x/rev1.webp',
+          'file_type': 'photo',
+          'capture_time': '2026-03-05T11:59:00Z',
+        },
+      ],
+      'messages': [],
+    }, 0);
 
     test('photoUrls 와 photoTimes 길이/정렬 일치', () {
       final item = build();
       expect(item.photoUrls, ['http://x/sub1.webp', 'http://x/sub2.webp']);
       expect(item.photoTimes.length, item.photoUrls.length);
-      expect(item.photoTimes[0], DateTime.utc(2026, 3, 5, 8, 55)); // capture 우선
-      expect(item.photoTimes[1], DateTime.utc(2026, 3, 5, 9, 2)); // received 폴백
+      expect(item.photoTimes[0], DateTime.utc(2026, 3, 5, 8, 55)); // capture 표시
+      expect(
+        item.photoTimes[1],
+        isNull,
+      ); // capture 없음 → null(No time), received 폴백 안 함
     });
 
     test('reviewPhotoTimes 및 approvalPhotoTimes', () {
@@ -115,22 +141,44 @@ void main() {
         'title': 'Test',
         'is_completed': true,
         'submissions': [
-          {'id': 's1', 'version': 1, 'note': 'done', 'submitted_at': '2026-03-05T09:00:00'},
+          {
+            'id': 's1',
+            'version': 1,
+            'note': 'done',
+            'submitted_at': '2026-03-05T09:00:00',
+          },
         ],
         'reviews_log': [],
         'files': [
-          {'id': 'f1', 'context': 'submission', 'context_id': 's1', 'file_url': 'http://x/a.webp', 'file_type': 'photo', 'sort_order': 0, 'capture_time': '2026-03-05T08:55:00Z'},
-          {'id': 'f2', 'context': 'submission', 'context_id': 's1', 'file_url': 'http://x/b.webp', 'file_type': 'photo', 'sort_order': 1, 'received_at': '2026-03-05T09:01:00Z'},
+          {
+            'id': 'f1',
+            'context': 'submission',
+            'context_id': 's1',
+            'file_url': 'http://x/a.webp',
+            'file_type': 'photo',
+            'sort_order': 0,
+            'capture_time': '2026-03-05T08:55:00Z',
+          },
+          {
+            'id': 'f2',
+            'context': 'submission',
+            'context_id': 's1',
+            'file_url': 'http://x/b.webp',
+            'file_type': 'photo',
+            'sort_order': 1,
+            'received_at': '2026-03-05T09:01:00Z',
+          },
         ],
         'messages': [],
       }, 0);
 
-      final subEvent =
-          item.fullHistory.firstWhere((e) => e.photoUrls.isNotEmpty);
+      final subEvent = item.fullHistory.firstWhere(
+        (e) => e.photoUrls.isNotEmpty,
+      );
       expect(subEvent.photoUrls, ['http://x/a.webp', 'http://x/b.webp']);
       expect(subEvent.photoTimes.length, subEvent.photoUrls.length);
       expect(subEvent.photoTimes[0], DateTime.utc(2026, 3, 5, 8, 55));
-      expect(subEvent.photoTimes[1], DateTime.utc(2026, 3, 5, 9, 1));
+      expect(subEvent.photoTimes[1], isNull); // capture 없음 → null(No time)
     });
 
     test('photoTimes 기본값은 빈 리스트', () {
