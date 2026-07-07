@@ -4,6 +4,7 @@
 /// WorkScreen과 ChecklistScreen에서 사용 (기존 assignmentProvider 대체).
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/my_schedule.dart';
+import '../models/photo_meta.dart';
 import '../services/schedule_service.dart';
 
 /// 내 스케줄 상태 데이터
@@ -103,6 +104,7 @@ class MyScheduleNotifier extends StateNotifier<MyScheduleState> {
     String scheduleId,
     int itemIndex,
     bool isCompleted, {
+    List<PhotoMeta>? photos,
     List<String>? photoUrls,
     String? note,
   }) async {
@@ -113,6 +115,7 @@ class MyScheduleNotifier extends StateNotifier<MyScheduleState> {
         await _service.completeChecklistItem(
           instanceId,
           itemIndex,
+          photos: photos,
           photoUrls: photoUrls,
           note: note,
         );
@@ -122,6 +125,7 @@ class MyScheduleNotifier extends StateNotifier<MyScheduleState> {
           scheduleId,
           itemIndex,
           isCompleted,
+          photos: photos,
           photoUrls: photoUrls,
           note: note,
         );
@@ -132,6 +136,7 @@ class MyScheduleNotifier extends StateNotifier<MyScheduleState> {
         scheduleId,
         itemIndex,
         isCompleted,
+        photos: photos,
         photoUrls: photoUrls,
         note: note,
       );
@@ -146,6 +151,7 @@ class MyScheduleNotifier extends StateNotifier<MyScheduleState> {
     String scheduleId,
     int itemIndex, {
     String? responseComment,
+    List<PhotoMeta>? photos,
     List<String>? photoUrls,
   }) async {
     final instanceId = state.selected?.checklistInstanceId;
@@ -154,6 +160,7 @@ class MyScheduleNotifier extends StateNotifier<MyScheduleState> {
       itemIndex,
       instanceId: instanceId,
       responseComment: responseComment,
+      photos: photos,
       photoUrls: photoUrls,
     );
     await _reloadSchedule(scheduleId);

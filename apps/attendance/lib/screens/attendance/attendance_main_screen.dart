@@ -19,6 +19,7 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
@@ -54,6 +55,10 @@ class AttendanceMainScreen extends ConsumerStatefulWidget {
 class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
   late Timer _clockTimer;
   DateTime _now = DateTime.now();
+  /// 초 단위로 갱신되는 raw clock. 화면 전체를 매초 rebuild 하지 않기 위해
+  /// setState 가 아닌 ValueNotifier 로 전달 — 헤더의 초 단위 시계만 이걸 구독한다.
+  /// (배터리: 매초 setState 로 전체 화면 rebuild 하던 문제 fix, Task 1)
+  final ValueNotifier<DateTime> _liveNow = ValueNotifier(DateTime.now());
 
   MainFlowState _flow = MainFlowState.initial();
 
@@ -80,9 +85,13 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
       if (!mounted) return;
       final prev = _now;
       final next = DateTime.now();
-      setState(() => _now = next);
-      // 분 경계마다 device 정보 (work_date / tz) 재확인.
-      if (prev.minute != next.minute) {
+      // 초 단위 표시(헤더 시계)는 notifier 로만 갱신 — 화면 전체 rebuild 없음.
+      _liveNow.value = next;
+      // 분 경계에서만 화면 전체를 rebuild (WORKING 사이드바 경과시간 등은
+      // 분 단위 표시라 그 이상 자주 rebuild 할 필요 없음).
+      if (prev.minute != next.minute || prev.hour != next.hour) {
+        setState(() => _now = next);
+        // 분 경계마다 device 정보 (work_date / tz) 재확인.
         // ignore: unawaited_futures
         ref.read(attendanceDeviceProvider.notifier).softRefreshDevice();
       }
@@ -105,6 +114,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
   @override
   void dispose() {
     _clockTimer.cancel();
+    _liveNow.dispose();
     _hiddenTapResetTimer?.cancel();
     _kioskDialogTimer?.cancel();
     // dashboard polling 정지 — schedule/main 양쪽에서 켜는 구조라 어느 쪽 dispose 든 멈춰도 OK.
@@ -220,6 +230,11 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     final user = _flow.user!;
     final reasonText = _composeReasonText(_flow.earlyReason, _flow.earlyDetail);
 
+    // 열린 스케줄 없이 클락인 = 워크인. (오늘 스케줄 없음=null, 또는 이전 shift 퇴근완료=clocked_out)
+    // 서버에 walk_in=true 전달해 자동 스케줄 생성 경로 사용. 퇴근 후 재출근(하루 여러 shift) 지원.
+    final isWalkIn = action == AttendanceAction.clockIn &&
+        (user.todayStatus == null || user.todayStatus == 'clocked_out');
+
     final notifier = ref.read(attendanceDeviceProvider.notifier);
     final result = await notifier.performClockAction(
       action: action.apiKey,
@@ -227,7 +242,10 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
       pin: pin,
       breakType: action.breakType,
       reason: reasonText,
-      scheduleId: user.selectedScheduleId, // (Issue 8) 선택된 schedule
+      // 워크인(재)출근은 새 스케줄을 서버가 생성하므로 이전 shift 의 schedule_id 를
+      // 보내면 안 된다(clocked_out 재출근 시 "not available" 오거부 원인). null 로 보냄.
+      scheduleId: isWalkIn ? null : user.selectedScheduleId, // (Issue 8) 선택된 schedule
+      walkIn: isWalkIn,
     );
     if (!mounted) return;
 
@@ -329,6 +347,31 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     );
   }
 
+  /// Task 2: 수동 refresh — device 정보(walk_in_allowed 등) + today-staff 를
+  /// 즉시 재조회. 콘솔에서 walk_in_allowed 를 방금 켠 매니저가 폴링을 기다리지
+  /// 않도록.
+  bool _manualRefreshing = false;
+
+  Future<void> _onManualRefresh() async {
+    if (_manualRefreshing) return;
+    setState(() => _manualRefreshing = true);
+    try {
+      await Future.wait([
+        ref.read(attendanceDeviceProvider.notifier).softRefreshDevice(),
+        ref.read(attendanceDashboardProvider.notifier).refresh(),
+      ]);
+      if (!mounted) return;
+      final t = AppL10n.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(t.pfHeaderRefreshed), duration: const Duration(seconds: 2)),
+      );
+    } catch (_) {
+      // 실패해도 조용히 무시 — 다음 polling tick 이 backstop.
+    } finally {
+      if (mounted) setState(() => _manualRefreshing = false);
+    }
+  }
+
   // ─── build ───────────────────────────────────────────────────────────────
 
   @override
@@ -350,7 +393,11 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                 _Header(
                   storeName: storeName,
                   now: storeNow,
+                  liveNow: _liveNow,
+                  offsetMinutes: device?.storeTimezoneOffsetMinutes,
                   onStoreTap: _onHiddenTap,
+                  onRefresh: _onManualRefresh,
+                  refreshing: _manualRefreshing,
                 ),
                 Expanded(
                   child: Padding(
@@ -410,6 +457,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                 onYes: _onConfirmYes,
                 onClose: _onCloseIdentity,
                 now: _now,
+                walkInAllowed: device?.walkInAllowed ?? false,
               ),
             ),
           if (_flow.stage == MainFlowStage.choosingAction && _flow.user != null)
@@ -419,6 +467,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                 onPick: _onActionPicked,
                 onCancel: _onActionCancel,
                 now: _now,
+                walkInAllowed: device?.walkInAllowed ?? false,
               ),
             ),
           if (_flow.stage == MainFlowStage.earlyReason && _flow.user != null)
@@ -494,16 +543,26 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
 class _Header extends StatelessWidget {
   final String storeName;
   final DateTime now;
+  /// 초 단위로 갱신되는 clock — ValueListenableBuilder 로 이 subtree 만 rebuild.
+  final ValueListenable<DateTime> liveNow;
+  final int? offsetMinutes;
   final VoidCallback onStoreTap;
+  final VoidCallback onRefresh;
+  final bool refreshing;
 
   const _Header({
     required this.storeName,
     required this.now,
+    required this.liveNow,
+    required this.offsetMinutes,
     required this.onStoreTap,
+    required this.onRefresh,
+    required this.refreshing,
   });
 
   @override
   Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
       decoration: const BoxDecoration(
@@ -539,27 +598,57 @@ class _Header extends StatelessWidget {
               ),
             ),
           ),
-          // 가운데: 시계
+          // 가운데: 시계 (초 단위 — 이 subtree 만 매초 rebuild)
           Expanded(
             child: Center(
-              child: Text(
-                DateFormat('HH:mm:ss').format(now),
-                style: const TextStyle(
-                  fontSize: 48,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.accent,
-                  fontFeatures: [FontFeature.tabularFigures()],
-                  height: 1.0,
-                ),
+              child: ValueListenableBuilder<DateTime>(
+                valueListenable: liveNow,
+                builder: (_, v, __) {
+                  final storeLive = toStoreClock(v, offsetMinutes);
+                  return Text(
+                    DateFormat('HH:mm:ss').format(storeLive),
+                    style: const TextStyle(
+                      fontSize: 48,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.accent,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                      height: 1.0,
+                    ),
+                  );
+                },
               ),
             ),
           ),
-          // 우: 언어 버튼만
-          const SizedBox(
+          // 우: 수동 refresh + 언어 버튼
+          SizedBox(
             width: 260,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: LanguageSwitcher(size: 56),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Tooltip(
+                  message: t.pfHeaderRefreshTooltip,
+                  child: Material(
+                    color: AppColors.bg,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      customBorder: const CircleBorder(),
+                      onTap: refreshing ? null : onRefresh,
+                      child: SizedBox(
+                        width: 56,
+                        height: 56,
+                        child: refreshing
+                            ? const Padding(
+                                padding: EdgeInsets.all(16),
+                                child: CircularProgressIndicator(strokeWidth: 2.5),
+                              )
+                            : const Icon(Icons.refresh_rounded, color: AppColors.textSecondary, size: 28),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const LanguageSwitcher(size: 56),
+              ],
             ),
           ),
         ],

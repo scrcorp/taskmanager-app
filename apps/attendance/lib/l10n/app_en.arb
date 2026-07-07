@@ -51,6 +51,10 @@
   "attSettingsStoreLabel": "Store",
   "attSettingsStoreNotAssigned": "Not assigned",
   "attSettingsDeviceIdLabel": "Device ID",
+  "attSettingsAppLabel": "App",
+  "attSettingsVersionLabel": "Version",
+  "attSettingsCompanyLabel": "Company",
+  "attSettingsCompanyName": "Tigers Plus",
   "attSettingsLanguageLabel": "Language",
   "attSettingsLanguageEnglish": "English",
   "attSettingsLanguageSpanish": "Español",
@@ -292,12 +296,27 @@
   "attUpdateButton": "Update",
   "attUpdateDownloading": "Downloading",
   "attUpdateLaunchingInstaller": "Launching installer…",
+  "attUpdateReadyTitle": "Update Downloaded",
+  "attUpdateReadyMessage": "The update is ready to install. The screen will unlock briefly so the installer can run, then re-lock automatically.",
+  "attUpdateInstallNow": "Install Now",
+  "attSettingsCheckUpdate": "Check for updates",
+  "attSettingsUpToDate": "You're on the latest version.",
+  "attSettingsUpdateAvailable": "Update available: v{latest}",
+  "@attSettingsUpdateAvailable": {
+    "placeholders": {
+      "latest": { "type": "String" }
+    }
+  },
+  "attSettingsUpdateButton": "Update",
+  "attSettingsUpdateCheckFailed": "Couldn't check for updates. Check your connection and try again.",
 
   "@@_pin_first": "── PIN-first kiosk (Phase 5) ──",
 
   "pfStoreFallback": "Store",
   "pfHeaderSchedule": "Schedule",
   "pfHeaderSettings": "Settings",
+  "pfHeaderRefreshTooltip": "Refresh",
+  "pfHeaderRefreshed": "Updated",
   "pfPinHint": "Enter {min}~{max} digits, then tap Verify",
   "@pfPinHint": { "placeholders": { "min": { "type": "int" }, "max": { "type": "int" } } },
   "pfPinShow": "Show PIN",
@@ -321,6 +340,9 @@
   "pfIdClose": "Close",
   "pfIdNoShiftTitle": "NO SHIFT TODAY",
   "pfIdNoShiftBody": "You don't have a schedule today. Clock actions disabled.",
+  "pfIdWalkInTitle": "WALK-IN",
+  "pfIdWalkInBody": "No scheduled shift. Walk-in clock-in is enabled.",
+  "pfIdWalkInAgainBody": "Previous shift completed. You can clock in again.",
   "pfStaleWarnTitle": "{count} unfinished record(s)",
   "@pfStaleWarnTitle": { "placeholders": { "count": { "type": "int" } } },
   "pfStaleWarnBody": "You didn't clock out on these days. Please ask your manager.",

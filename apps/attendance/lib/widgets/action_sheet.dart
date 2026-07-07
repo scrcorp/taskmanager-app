@@ -33,6 +33,8 @@ class ActionSheet extends StatelessWidget {
   final ValueChanged<AttendanceAction> onPick;
   final VoidCallback onCancel;
   final DateTime? now;
+  /// 매장의 워크인 허용 여부 — 스케줄 없을 때 Clock In 활성화 여부 결정.
+  final bool walkInAllowed;
 
   const ActionSheet({
     super.key,
@@ -40,6 +42,7 @@ class ActionSheet extends StatelessWidget {
     required this.onPick,
     required this.onCancel,
     this.now,
+    this.walkInAllowed = false,
   });
 
   @override
@@ -62,7 +65,7 @@ class ActionSheet extends StatelessWidget {
                   _BreakInfo(user: user, now: n),
                 if (user.todayStatus == 'on_break' && user.currentBreak != null)
                   const SizedBox(height: 16),
-                _ActionsGrid(user: user, onPick: onPick, now: n),
+                _ActionsGrid(user: user, onPick: onPick, now: n, walkInAllowed: walkInAllowed),
                 const SizedBox(height: 16),
                 Text(
                   AppL10n.of(context).pfActionHint,
@@ -184,7 +187,8 @@ class _ActionsGrid extends StatelessWidget {
   final IdentifyResponse user;
   final ValueChanged<AttendanceAction> onPick;
   final DateTime now;
-  const _ActionsGrid({required this.user, required this.onPick, required this.now});
+  final bool walkInAllowed;
+  const _ActionsGrid({required this.user, required this.onPick, required this.now, this.walkInAllowed = false});
 
   @override
   Widget build(BuildContext context) {
@@ -216,6 +220,7 @@ class _ActionsGrid extends StatelessWidget {
                 action: e.action,
                 currentBreakType: br?.breakType,
                 currentBreakElapsedMinutes: elapsed,
+                walkInAllowed: walkInAllowed,
               ),
               breakLockedHint: _hintFor(t, e.action, br?.breakType, elapsed),
               onTap: () => onPick(e.action),

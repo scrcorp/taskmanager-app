@@ -12,9 +12,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../config/constants.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/locale_provider.dart';
+import '../../utils/toast_manager.dart';
 import '../../widgets/app_header.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -33,6 +36,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         return '🇰🇷 한국어';
       default:
         return '🇺🇸 English';
+    }
+  }
+
+  /// "What's New" — 홈페이지 공개 changelog 를 브라우저(웹은 새 탭)로 연다.
+  /// 앱 안에서 자체 목록을 렌더하지 않고 홈페이지 /changelog 를 단일 소스로 사용.
+  Future<void> _openWhatsNew() async {
+    final t = AppL10n.of(context);
+    final uri = Uri.parse(AppConstants.changelogUrl);
+    final ok = await launchUrl(
+      uri,
+      mode: LaunchMode.externalApplication,
+      webOnlyWindowName: '_blank',
+    );
+    if (!ok && mounted) {
+      ToastManager().error(context, t.changelogOpenError);
     }
   }
 
@@ -176,7 +194,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         const Divider(height: 1, color: AppColors.border),
                         _SettingsItem(
                           label: t.changelogTitle,
-                          onTap: () => context.push('/my/changelog'),
+                          onTap: _openWhatsNew,
                         ),
                       ],
                     ),

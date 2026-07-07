@@ -343,6 +343,30 @@ abstract class AppL10n {
   /// **'Device ID'**
   String get attSettingsDeviceIdLabel;
 
+  /// No description provided for @attSettingsAppLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'App'**
+  String get attSettingsAppLabel;
+
+  /// No description provided for @attSettingsVersionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get attSettingsVersionLabel;
+
+  /// No description provided for @attSettingsCompanyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Company'**
+  String get attSettingsCompanyLabel;
+
+  /// No description provided for @attSettingsCompanyName.
+  ///
+  /// In en, this message translates to:
+  /// **'Tigers Plus'**
+  String get attSettingsCompanyName;
+
   /// No description provided for @attSettingsLanguageLabel.
   ///
   /// In en, this message translates to:
@@ -1075,6 +1099,54 @@ abstract class AppL10n {
   /// **'Launching installer…'**
   String get attUpdateLaunchingInstaller;
 
+  /// No description provided for @attUpdateReadyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Downloaded'**
+  String get attUpdateReadyTitle;
+
+  /// No description provided for @attUpdateReadyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The update is ready to install. The screen will unlock briefly so the installer can run, then re-lock automatically.'**
+  String get attUpdateReadyMessage;
+
+  /// No description provided for @attUpdateInstallNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Install Now'**
+  String get attUpdateInstallNow;
+
+  /// No description provided for @attSettingsCheckUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates'**
+  String get attSettingsCheckUpdate;
+
+  /// No description provided for @attSettingsUpToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re on the latest version.'**
+  String get attSettingsUpToDate;
+
+  /// No description provided for @attSettingsUpdateAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Update available: v{latest}'**
+  String attSettingsUpdateAvailable(String latest);
+
+  /// No description provided for @attSettingsUpdateButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get attSettingsUpdateButton;
+
+  /// No description provided for @attSettingsUpdateCheckFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t check for updates. Check your connection and try again.'**
+  String get attSettingsUpdateCheckFailed;
+
   /// No description provided for @pfStoreFallback.
   ///
   /// In en, this message translates to:
@@ -1092,6 +1164,18 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Settings'**
   String get pfHeaderSettings;
+
+  /// No description provided for @pfHeaderRefreshTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get pfHeaderRefreshTooltip;
+
+  /// No description provided for @pfHeaderRefreshed.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated'**
+  String get pfHeaderRefreshed;
 
   /// No description provided for @pfPinHint.
   ///
@@ -1206,6 +1290,24 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'You don\'t have a schedule today. Clock actions disabled.'**
   String get pfIdNoShiftBody;
+
+  /// No description provided for @pfIdWalkInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'WALK-IN'**
+  String get pfIdWalkInTitle;
+
+  /// No description provided for @pfIdWalkInBody.
+  ///
+  /// In en, this message translates to:
+  /// **'No scheduled shift. Walk-in clock-in is enabled.'**
+  String get pfIdWalkInBody;
+
+  /// No description provided for @pfIdWalkInAgainBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous shift completed. You can clock in again.'**
+  String get pfIdWalkInAgainBody;
 
   /// No description provided for @pfStaleWarnTitle.
   ///

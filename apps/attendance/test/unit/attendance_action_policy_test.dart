@@ -32,12 +32,39 @@ String? _hint(
       currentBreakElapsedMinutes: elapsed,
     );
 
+bool _allowedWalkIn(
+  String? status,
+  AttendanceAction action, {
+  String? breakType,
+  int elapsed = 0,
+}) =>
+    isActionAllowed(
+      todayStatus: status,
+      action: action,
+      currentBreakType: breakType,
+      currentBreakElapsedMinutes: elapsed,
+      walkInAllowed: true,
+    );
+
 void main() {
-  group('isActionAllowed — todayStatus null', () {
+  group('isActionAllowed — todayStatus null (walkInAllowed=false, 기본)', () {
     test('어떤 action 이든 false', () {
       for (final a in AttendanceAction.values) {
         expect(_allowed(null, a), false, reason: a.name);
       }
+    });
+  });
+
+  group('isActionAllowed — todayStatus null + walkInAllowed=true (워크인)', () {
+    test('Clock In 만 true', () {
+      expect(_allowedWalkIn(null, AttendanceAction.clockIn), true);
+    });
+
+    test('Clock Out / Break 종류 모두 false (아직 출근 안 함)', () {
+      expect(_allowedWalkIn(null, AttendanceAction.clockOut), false);
+      expect(_allowedWalkIn(null, AttendanceAction.breakShortPaid), false);
+      expect(_allowedWalkIn(null, AttendanceAction.breakLongUnpaid), false);
+      expect(_allowedWalkIn(null, AttendanceAction.breakEnd), false);
     });
   });
 
@@ -146,11 +173,23 @@ void main() {
     });
   });
 
-  group('isActionAllowed — clocked_out', () {
+  group('isActionAllowed — clocked_out (walkInAllowed=false)', () {
     test('모든 action 비활성', () {
       for (final a in AttendanceAction.values) {
         expect(_allowed('clocked_out', a), false, reason: a.name);
       }
+    });
+  });
+
+  group('isActionAllowed — clocked_out + walkInAllowed=true (재출근)', () {
+    test('Clock In 만 허용 (퇴근 후 새 워크인 shift)', () {
+      expect(_allowedWalkIn('clocked_out', AttendanceAction.clockIn), true);
+    });
+    test('그 외 action 비활성', () {
+      expect(_allowedWalkIn('clocked_out', AttendanceAction.clockOut), false);
+      expect(_allowedWalkIn('clocked_out', AttendanceAction.breakShortPaid), false);
+      expect(_allowedWalkIn('clocked_out', AttendanceAction.breakLongUnpaid), false);
+      expect(_allowedWalkIn('clocked_out', AttendanceAction.breakEnd), false);
     });
   });
 

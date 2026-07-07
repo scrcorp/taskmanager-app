@@ -51,6 +51,10 @@
   "attSettingsStoreLabel": "Tienda",
   "attSettingsStoreNotAssigned": "Sin asignar",
   "attSettingsDeviceIdLabel": "ID del dispositivo",
+  "attSettingsAppLabel": "Aplicación",
+  "attSettingsVersionLabel": "Versión",
+  "attSettingsCompanyLabel": "Empresa",
+  "attSettingsCompanyName": "Tigers Plus",
   "attSettingsLanguageLabel": "Idioma",
   "attSettingsLanguageEnglish": "English",
   "attSettingsLanguageSpanish": "Español",
@@ -292,12 +296,27 @@
   "attUpdateButton": "Actualizar",
   "attUpdateDownloading": "Descargando",
   "attUpdateLaunchingInstaller": "Abriendo instalador…",
+  "attUpdateReadyTitle": "Actualización descargada",
+  "attUpdateReadyMessage": "La actualización está lista para instalar. La pantalla se desbloqueará brevemente para ejecutar el instalador y luego se volverá a bloquear automáticamente.",
+  "attUpdateInstallNow": "Instalar ahora",
+  "attSettingsCheckUpdate": "Buscar actualizaciones",
+  "attSettingsUpToDate": "Tienes la última versión.",
+  "attSettingsUpdateAvailable": "Actualización disponible: v{latest}",
+  "@attSettingsUpdateAvailable": {
+    "placeholders": {
+      "latest": { "type": "String" }
+    }
+  },
+  "attSettingsUpdateButton": "Actualizar",
+  "attSettingsUpdateCheckFailed": "No se pudo buscar actualizaciones. Revisa tu conexión e inténtalo de nuevo.",
 
   "@@_pin_first": "── Quiosco PIN-first (Fase 5) ──",
 
   "pfStoreFallback": "Tienda",
   "pfHeaderSchedule": "Horario",
   "pfHeaderSettings": "Ajustes",
+  "pfHeaderRefreshTooltip": "Actualizar",
+  "pfHeaderRefreshed": "Actualizado",
   "pfPinHint": "Ingresa {min}~{max} dígitos y toca Verificar",
   "pfPinShow": "Mostrar PIN",
   "pfPinHide": "Ocultar PIN",
@@ -318,6 +337,9 @@
   "pfIdClose": "Cerrar",
   "pfIdNoShiftTitle": "SIN TURNO HOY",
   "pfIdNoShiftBody": "No tienes turno hoy. Acciones de reloj desactivadas.",
+  "pfIdWalkInTitle": "ENTRADA LIBRE",
+  "pfIdWalkInBody": "Sin turno programado. Registro de entrada libre habilitado.",
+  "pfIdWalkInAgainBody": "Turno anterior completado. Puede registrar entrada de nuevo.",
   "pfStaleWarnTitle": "{count} registro(s) sin finalizar",
   "@pfStaleWarnTitle": { "placeholders": { "count": { "type": "int" } } },
   "pfStaleWarnBody": "No fichaste la salida estos días. Consulta con tu gerente.",

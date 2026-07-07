@@ -807,8 +807,18 @@ class _DailyReportDetailScreenState
   }
 
   /// Period selector — driven by the store's effective report types.
-  /// Falls back to lunch/dinner before a store/types are loaded.
+  /// Period 는 매장별 설정이므로 매장 선택 전에는 옵션을 표시하지 않는다
+  /// (선택 전 lunch/dinner placeholder 가 morning 등 매장 설정과 달라 혼란을 줬음).
   Widget _buildPeriodSelector(AppL10n t) {
+    if (_selectedStore == null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Text(
+          t.drSelectStorePrompt,
+          style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+        ),
+      );
+    }
     if (_loadingTypes) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 4),

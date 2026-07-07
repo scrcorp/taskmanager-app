@@ -20,6 +20,12 @@ class ItemFile {
   final String fileType;
   final int sortOrder;
 
+  /// 찍힌 시점(클라 주장) — 라이브=셔터, 갤러리=EXIF. 워터마크 1순위 소스.
+  final DateTime? captureTime;
+
+  /// 서버 수신시각(신뢰 앵커) — 워터마크엔 쓰지 않음(업로드 시각). 사기신호(주장 vs 수신)용으로만 보존.
+  final DateTime? receivedAt;
+
   const ItemFile({
     required this.id,
     required this.context,
@@ -27,7 +33,13 @@ class ItemFile {
     required this.fileUrl,
     required this.fileType,
     this.sortOrder = 0,
+    this.captureTime,
+    this.receivedAt,
   });
+
+  /// 워터마크 표시 시각: 찍힌 시점(captureTime)만. 없으면 null → "No time".
+  /// 업로드 시각(receivedAt)으로 폴백하지 않는다 — 촬영 검증에 업로드 시각은 무의미.
+  DateTime? get watermarkTime => captureTime;
 
   factory ItemFile.fromJson(Map<String, dynamic> json) {
     return ItemFile(
@@ -37,8 +49,13 @@ class ItemFile {
       fileUrl: json['file_url'] ?? '',
       fileType: json['file_type'] ?? 'photo',
       sortOrder: json['sort_order'] ?? 0,
+      captureTime: _parseTime(json['capture_time']),
+      receivedAt: _parseTime(json['received_at']),
     );
   }
+
+  static DateTime? _parseTime(dynamic value) =>
+      value is String ? DateTime.tryParse(value) : null;
 }
 
 /// 항목 제출 이력 (직원 제출/재제출)
@@ -148,6 +165,10 @@ class ChecklistItemEvent {
   final String type;
   final String? comment;
   final List<String> photoUrls;
+
+  /// photoUrls 와 같은 순서로 정렬된 사진별 워터마크 시각(찍힌 시점 우선).
+  /// 항목별 null 가능(레거시·EXIF없음). 비어 있으면 워터마크 미표시.
+  final List<DateTime?> photoTimes;
   final String? by;
   final String? byName;
   final String? at;
@@ -156,6 +177,7 @@ class ChecklistItemEvent {
     required this.type,
     this.comment,
     this.photoUrls = const [],
+    this.photoTimes = const [],
     this.by,
     this.byName,
     this.at,
@@ -212,8 +234,7 @@ class ChecklistSnapshot {
   bool get isAllCompleted => totalItems > 0 && completedItems == totalItems;
 
   /// 모든 항목 리뷰 통과 여부
-  bool get isAllPassed =>
-      totalItems > 0 && items.every((i) => i.isApproved);
+  bool get isAllPassed => totalItems > 0 && items.every((i) => i.isApproved);
 
   /// 반려된 항목 수
   int get rejectedItems => items.where((i) => i.isRejected).length;
@@ -238,7 +259,8 @@ class ChecklistSnapshot {
       templateName: json['template_name'],
       snapshotAt: json['snapshot_at'],
       reportedAt: json['reported_at'],
-      items: rawItems
+      items:
+          rawItems
               ?.asMap()
               .entries
               .map((e) => ChecklistItem.fromJson(e.value, e.key))
@@ -354,34 +376,46 @@ class ChecklistItem {
   bool get isPendingReReview => reviewResult == 'pending_re_review';
 
   // ── 파일/제출 computed getters ──
-  /// 최신 제출 사진 URL 목록 (최신 submission의 context_id로 필터)
-  List<String> get photoUrls {
+  /// 최신 제출 사진 파일 목록 (최신 submission의 context_id로 필터)
+  List<ItemFile> get _submissionFiles {
     final latestSub = submissions.isNotEmpty ? submissions.last : null;
     if (latestSub != null) {
       final filtered = files
-          .where((f) => f.context == 'submission' && f.contextId == latestSub.id)
-          .map((f) => f.fileUrl)
+          .where(
+            (f) => f.context == 'submission' && f.contextId == latestSub.id,
+          )
           .toList();
       if (filtered.isNotEmpty) return filtered;
     }
     // fallback: 전체 submission 파일
-    return files
-        .where((f) => f.context == 'submission')
-        .map((f) => f.fileUrl)
-        .toList();
+    return files.where((f) => f.context == 'submission').toList();
   }
 
+  List<ItemFile> get _reviewFiles =>
+      files.where((f) => f.context == 'review').toList();
+
+  List<ItemFile> get _chatFiles =>
+      files.where((f) => f.context == 'chat').toList();
+
+  /// 최신 제출 사진 URL 목록
+  List<String> get photoUrls => _submissionFiles.map((f) => f.fileUrl).toList();
+
+  /// photoUrls 와 정렬 동일한 워터마크 시각 목록
+  List<DateTime?> get photoTimes =>
+      _submissionFiles.map((f) => f.watermarkTime).toList();
+
   /// 리뷰 사진 URL 목록 (context='review')
-  List<String> get reviewPhotoUrls => files
-      .where((f) => f.context == 'review')
-      .map((f) => f.fileUrl)
-      .toList();
+  List<String> get reviewPhotoUrls =>
+      _reviewFiles.map((f) => f.fileUrl).toList();
+
+  List<DateTime?> get reviewPhotoTimes =>
+      _reviewFiles.map((f) => f.watermarkTime).toList();
 
   /// 채팅 사진 URL 목록 (context='chat')
-  List<String> get chatPhotoUrls => files
-      .where((f) => f.context == 'chat')
-      .map((f) => f.fileUrl)
-      .toList();
+  List<String> get chatPhotoUrls => _chatFiles.map((f) => f.fileUrl).toList();
+
+  List<DateTime?> get chatPhotoTimes =>
+      _chatFiles.map((f) => f.watermarkTime).toList();
 
   bool get hasPhotos => photoUrls.isNotEmpty;
 
@@ -389,8 +423,7 @@ class ChecklistItem {
   String? get photoUrl => photoUrls.isNotEmpty ? photoUrls.first : null;
 
   /// 최신 제출의 노트
-  String? get note =>
-      submissions.isNotEmpty ? submissions.last.note : null;
+  String? get note => submissions.isNotEmpty ? submissions.last.note : null;
 
   /// 최신 리뷰 로그의 코멘트
   String? get reviewComment =>
@@ -399,10 +432,12 @@ class ChecklistItem {
   // ── 호환성 alias (work_screen.dart 등에서 사용) ──
   String? get approvalComment => isApproved ? reviewComment : null;
   List<String> get approvalPhotoUrls => isApproved ? reviewPhotoUrls : [];
+  List<DateTime?> get approvalPhotoTimes => isApproved ? reviewPhotoTimes : [];
   String? get approvedBy => isApproved ? reviewerName : null;
   String? get approvedAt => isApproved ? reviewedAt : null;
   String? get rejectionComment => isRejected ? reviewComment : null;
   List<String> get rejectionPhotoUrls => isRejected ? reviewPhotoUrls : [];
+  List<DateTime?> get rejectionPhotoTimes => isRejected ? reviewPhotoTimes : [];
   String? get rejectedBy => isRejected ? reviewerName : null;
   String? get rejectedAt => isRejected ? reviewedAt : null;
   String? get rejectedAtDisplay => isRejected ? reviewedAtDisplay : null;
@@ -429,8 +464,9 @@ class ChecklistItem {
     }
     if (lastFailAt == null) return false;
     // fail 이후에 생성된 submission이 있으면 해결된 것
-    return submissions.any((s) =>
-        s.submittedAt != null && s.submittedAt!.compareTo(lastFailAt!) > 0);
+    return submissions.any(
+      (s) => s.submittedAt != null && s.submittedAt!.compareTo(lastFailAt!) > 0,
+    );
   }
 
   /// 미해결 반려 상태인지 (반려됐지만 아직 재응답 안 함)
@@ -450,88 +486,92 @@ class ChecklistItem {
     // 제출 이력
     for (var i = 0; i < submissions.length; i++) {
       final sub = submissions[i];
-      final subPhotos = files
+      final subFiles = files
           .where((f) => f.context == 'submission' && f.contextId == sub.id)
-          .map((f) => f.fileUrl)
           .toList();
       // contextId 매칭이 없으면 첫 번째 제출에 모든 submission 파일 할당
-      final photos = subPhotos.isNotEmpty
-          ? subPhotos
+      final photoFiles = subFiles.isNotEmpty
+          ? subFiles
           : (i == 0
-              ? files
-                  .where((f) => f.context == 'submission')
-                  .map((f) => f.fileUrl)
-                  .toList()
-              : <String>[]);
-      events.add(_TimedEvent(
-        at: sub.submittedAt,
-        event: ChecklistItemEvent(
-          type: i == 0 ? 'submitted' : 'resubmitted',
-          comment: sub.note,
-          photoUrls: photos,
-          by: sub.submittedBy,
-          byName: sub.submittedByName,
+                ? files.where((f) => f.context == 'submission').toList()
+                : <ItemFile>[]);
+      events.add(
+        _TimedEvent(
           at: sub.submittedAt,
+          event: ChecklistItemEvent(
+            type: i == 0 ? 'submitted' : 'resubmitted',
+            comment: sub.note,
+            photoUrls: photoFiles.map((f) => f.fileUrl).toList(),
+            photoTimes: photoFiles.map((f) => f.watermarkTime).toList(),
+            by: sub.submittedBy,
+            byName: sub.submittedByName,
+            at: sub.submittedAt,
+          ),
         ),
-      ));
+      );
     }
 
     // submissions가 없지만 완료된 항목 → fallback submitted 이벤트
     if (submissions.isEmpty && isCompleted) {
-      final fallbackPhotos = files
+      final fallbackFiles = files
           .where((f) => f.context == 'submission')
-          .map((f) => f.fileUrl)
           .toList();
-      events.add(_TimedEvent(
-        at: completedAt,
-        event: ChecklistItemEvent(
-          type: 'submitted',
-          comment: note,
-          photoUrls: fallbackPhotos,
-          by: completedBy,
+      events.add(
+        _TimedEvent(
           at: completedAt,
+          event: ChecklistItemEvent(
+            type: 'submitted',
+            comment: note,
+            photoUrls: fallbackFiles.map((f) => f.fileUrl).toList(),
+            photoTimes: fallbackFiles.map((f) => f.watermarkTime).toList(),
+            by: completedBy,
+            at: completedAt,
+          ),
         ),
-      ));
+      );
     }
 
     // 리뷰 이력
     for (final log in reviewsLog) {
-      final logPhotos = files
+      final logFiles = files
           .where((f) => f.context == 'review' && f.contextId == log.id)
-          .map((f) => f.fileUrl)
           .toList();
-      final photos =
-          logPhotos.isNotEmpty ? logPhotos : reviewPhotoUrls;
+      final photoFiles = logFiles.isNotEmpty ? logFiles : _reviewFiles;
       final type = log.newResult == 'pass'
           ? 'approved'
           : log.newResult == 'fail'
-              ? 'rejected'
-              : 'pending_re_review';
-      events.add(_TimedEvent(
-        at: log.createdAt,
-        event: ChecklistItemEvent(
-          type: type,
-          comment: log.comment,
-          photoUrls: photos,
-          by: log.changedBy,
-          byName: log.changedByName,
+          ? 'rejected'
+          : 'pending_re_review';
+      events.add(
+        _TimedEvent(
           at: log.createdAt,
+          event: ChecklistItemEvent(
+            type: type,
+            comment: log.comment,
+            photoUrls: photoFiles.map((f) => f.fileUrl).toList(),
+            photoTimes: photoFiles.map((f) => f.watermarkTime).toList(),
+            by: log.changedBy,
+            byName: log.changedByName,
+            at: log.createdAt,
+          ),
         ),
-      ));
+      );
     }
 
     // 채팅 메시지
     for (final msg in messages) {
-      events.add(_TimedEvent(
-        at: msg.createdAt,
-        event: ChecklistItemEvent(
-          type: 'message',
-          comment: msg.content,
-          by: msg.authorId,
-          byName: msg.authorName,
+      events.add(
+        _TimedEvent(
           at: msg.createdAt,
+          event: ChecklistItemEvent(
+            type: 'message',
+            comment: msg.content,
+            by: msg.authorId,
+            byName: msg.authorName,
+            at: msg.createdAt,
+          ),
         ),
-      ));
+      );
     }
 
     // 채팅 사진 — messages 목록에서 photo 콘텐츠와 매칭하여 작성자/시간 포함
@@ -541,16 +581,19 @@ class ChecklistItem {
         (m) => m != null && f.contextId != null && m.id == f.contextId,
         orElse: () => null,
       );
-      events.add(_TimedEvent(
-        at: relatedMsg?.createdAt,
-        event: ChecklistItemEvent(
-          type: 'message_photo',
-          photoUrls: [f.fileUrl],
-          by: relatedMsg?.authorId,
-          byName: relatedMsg?.authorName,
+      events.add(
+        _TimedEvent(
           at: relatedMsg?.createdAt,
+          event: ChecklistItemEvent(
+            type: 'message_photo',
+            photoUrls: [f.fileUrl],
+            photoTimes: [f.watermarkTime],
+            by: relatedMsg?.authorId,
+            byName: relatedMsg?.authorName,
+            at: relatedMsg?.createdAt,
+          ),
         ),
-      ));
+      );
     }
 
     // 시간순 정렬
@@ -638,19 +681,23 @@ class ChecklistItem {
       reviewerId: json['reviewer_id'],
       reviewerName: json['reviewer_name'],
       reviewedAt: json['reviewed_at'],
-      files: (json['files'] as List<dynamic>?)
+      files:
+          (json['files'] as List<dynamic>?)
               ?.map((e) => ItemFile.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      submissions: (json['submissions'] as List<dynamic>?)
+      submissions:
+          (json['submissions'] as List<dynamic>?)
               ?.map((e) => ItemSubmission.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      reviewsLog: (json['reviews_log'] as List<dynamic>?)
+      reviewsLog:
+          (json['reviews_log'] as List<dynamic>?)
               ?.map((e) => ItemReviewLog.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      messages: (json['messages'] as List<dynamic>?)
+      messages:
+          (json['messages'] as List<dynamic>?)
               ?.map((e) => ItemMessage.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],

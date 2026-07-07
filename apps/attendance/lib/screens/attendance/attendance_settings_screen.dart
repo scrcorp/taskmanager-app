@@ -8,9 +8,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/attendance_device_provider.dart';
 import '../../providers/locale_provider.dart';
+import '../../services/attendance_device_service.dart';
+import '../../utils/app_version_gate.dart';
 import '../../utils/attendance_device_storage.dart';
 import 'attendance_access_code_screen.dart';
 import 'attendance_manage_pin_screen.dart';
@@ -29,10 +32,20 @@ class _AttendanceSettingsScreenState
   bool _kioskOn = true;
   bool _kioskLoaded = false;
 
+  // ── 앱 업데이트 확인/설치 상태 ──
+  AppVersionStatus? _versionStatus;
+  bool _checkingUpdate = false;
+  bool _updateChecked = false;
+  bool _updateCheckFailed = false;
+  double? _updateProgress; // null=idle, 0.0~1.0=다운로드 중, 1.0=설치 관리자 호출 중
+
   @override
   void initState() {
     super.initState();
     _loadKioskState();
+    // 설정 진입 시 자동으로 최신 버전 확인 — 상단 배너를 없앤 대신 여기서 바로
+    // "최신입니다 / 업데이트 있음" 을 보여준다.
+    Future.microtask(_checkForUpdates);
     // escape 게스처/타이머 등 다른 경로에서 toggle 상태가 바뀌어도 즉시 반영
     KioskIntent.stateNotifier.addListener(_onIntentChanged);
   }
@@ -58,6 +71,123 @@ class _AttendanceSettingsScreenState
       _kioskOn = on;
       _kioskLoaded = true;
     });
+  }
+
+  /// 서버에 최신 버전을 물어 현재 버전과 비교 상태를 갱신한다.
+  Future<void> _checkForUpdates() async {
+    setState(() {
+      _checkingUpdate = true;
+      _updateCheckFailed = false;
+    });
+    final status = await fetchAppVersionStatus(
+      ref.read(attendanceDeviceServiceProvider),
+    );
+    if (!mounted) return;
+    setState(() {
+      _checkingUpdate = false;
+      _updateChecked = true;
+      _updateCheckFailed = status == null; // null = 네트워크/미인증 실패
+      _versionStatus = status;
+    });
+  }
+
+  /// 확인된 최신 버전으로 업데이트 실행 (다운로드→확인→자동 잠금해제→설치).
+  Future<void> _runUpdate() async {
+    final url = _versionStatus?.downloadUrl;
+    if (url == null || url.isEmpty) return;
+    try {
+      await runUpdateInstall(
+        context,
+        url: url,
+        onProgress: (p) {
+          if (!mounted) return;
+          setState(() => _updateProgress = p);
+        },
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _updateProgress = null);
+      if (!context.mounted) return;
+      final t = AppL10n.of(context);
+      await AppModal.show(
+        context,
+        title: t.attUpdateCannotOpenTitle,
+        message: '${t.attUpdateCannotOpenMessage}\n\n$e',
+        type: ModalType.info,
+      );
+    }
+  }
+
+  /// 버전 확인 결과 UI (진행중 / 실패 / 업데이트 있음+버튼 / 최신).
+  Widget _buildUpdateStatus(AppL10n t) {
+    final progress = _updateProgress;
+    if (progress != null) {
+      return Row(
+        children: [
+          Expanded(
+            child: LinearProgressIndicator(
+              value: progress >= 1.0 ? null : progress,
+              minHeight: 6,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            progress >= 1.0
+                ? t.attUpdateLaunchingInstaller
+                : '${(progress * 100).toStringAsFixed(0)}%',
+            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+        ],
+      );
+    }
+    if (_updateCheckFailed) {
+      return Row(
+        children: [
+          const Icon(Icons.cloud_off_rounded, size: 18, color: AppColors.textMuted),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              t.attSettingsUpdateCheckFailed,
+              style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+            ),
+          ),
+        ],
+      );
+    }
+    final status = _versionStatus;
+    if (status != null && status.hasUpdate) {
+      return Row(
+        children: [
+          const Icon(Icons.system_update_alt, size: 18, color: AppColors.accent),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              t.attSettingsUpdateAvailable(status.latestVersion ?? '?'),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppColors.text,
+              ),
+            ),
+          ),
+          FilledButton(
+            onPressed: _runUpdate,
+            child: Text(t.attSettingsUpdateButton),
+          ),
+        ],
+      );
+    }
+    return Row(
+      children: [
+        const Icon(Icons.check_circle_rounded, size: 18, color: AppColors.success),
+        const SizedBox(width: 8),
+        Text(
+          t.attSettingsUpToDate,
+          style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+        ),
+      ],
+    );
   }
 
   Future<void> _onToggleKiosk(bool next) async {
@@ -176,6 +306,67 @@ class _AttendanceSettingsScreenState
                       monospace: true,
                     ),
                   ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // ── App info card (앱 이름 / 버전 / 회사) ──
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.border),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _InfoRow(
+                    icon: Icons.apps_rounded,
+                    label: t.attSettingsAppLabel,
+                    value: t.appTitle,
+                  ),
+                  const SizedBox(height: 12),
+                  FutureBuilder<PackageInfo>(
+                    future: PackageInfo.fromPlatform(),
+                    builder: (context, snap) => _InfoRow(
+                      icon: Icons.info_outline_rounded,
+                      label: t.attSettingsVersionLabel,
+                      value: snap.hasData
+                          ? currentVersionString(snap.data!)
+                          : '—',
+                      monospace: true,
+                      trailing: _checkingUpdate
+                          ? const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            )
+                          : IconButton(
+                              onPressed: _updateProgress != null
+                                  ? null
+                                  : _checkForUpdates,
+                              icon: const Icon(Icons.refresh_rounded),
+                              tooltip: t.attSettingsCheckUpdate,
+                            ),
+                    ),
+                  ),
+                  // 버전 확인 결과 / 업데이트 실행
+                  if (_updateChecked) ...[
+                    const SizedBox(height: 12),
+                    _buildUpdateStatus(t),
+                  ],
+                  const SizedBox(height: 12),
+                  _InfoRow(
+                    icon: Icons.business_rounded,
+                    label: t.attSettingsCompanyLabel,
+                    value: t.attSettingsCompanyName,
+                  ),
                 ],
               ),
             ),
@@ -493,11 +684,13 @@ class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
   final bool monospace;
+  final Widget? trailing;
   const _InfoRow({
     required this.icon,
     required this.label,
     required this.value,
     this.monospace = false,
+    this.trailing,
   });
 
   @override
@@ -539,6 +732,7 @@ class _InfoRow extends StatelessWidget {
             ],
           ),
         ),
+        if (trailing != null) trailing!,
       ],
     );
   }

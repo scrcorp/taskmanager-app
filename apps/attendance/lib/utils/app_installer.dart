@@ -31,12 +31,15 @@ typedef DownloadProgress = void Function(double progress);
 class AppInstaller {
   AppInstaller._();
 
-  /// APK 를 다운받아 PackageInstaller 로 띄운다.
+  /// APK 를 app cache dir 로 다운로드하고 로컬 파일 경로를 반환한다.
+  ///
+  /// 설치와 분리돼 있다 — 다운로드 완료 후 "설치할래?" 확인 + (필요 시) 키오스크
+  /// 해제를 거친 뒤 [installApk] 를 호출하는 흐름을 UI 가 오케스트레이션한다.
   ///
   /// [url] : 다운로드 가능한 직접 URL (서버 발급 pre-signed URL).
   /// [onProgress] : 0.0 ~ 1.0 진행률 콜백. content-length 헤더가 없으면 발사 안 됨.
-  /// throws : DioException / IOException / [AppInstallerException]
-  static Future<void> downloadAndInstall(
+  /// throws : DioException / IOException
+  static Future<String> downloadApk(
     String url, {
     DownloadProgress? onProgress,
   }) async {
@@ -62,9 +65,17 @@ class AppInstaller {
         receiveTimeout: const Duration(minutes: 3),
       ),
     );
+    return apkFile.path;
+  }
 
+  /// 다운로드된 APK 로 OS PackageInstaller 를 띄운다 (ACTION_VIEW intent).
+  ///
+  /// 주의: 키오스크 lock-task 가 켜져 있으면 설치 관리자가 포그라운드로 못 오므로,
+  /// 호출 전에 반드시 lock-task 를 해제해야 한다 (UI 흐름에서 처리).
+  /// throws : [AppInstallerException]
+  static Future<void> installApk(String apkPath) async {
     final result = await OpenFilex.open(
-      apkFile.path,
+      apkPath,
       type: 'application/vnd.android.package-archive',
     );
     if (result.type != ResultType.done) {

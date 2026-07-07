@@ -627,6 +627,9 @@ class AppL10nEs extends AppL10n {
   String get commonUnknown => 'Desconocido';
 
   @override
+  String get watermarkNoTime => 'Sin hora';
+
+  @override
   String get ojtTitle => 'Capacitación OJT';
 
   @override
@@ -2560,11 +2563,5 @@ class AppL10nEs extends AppL10n {
   String get changelogTitle => 'Novedades';
 
   @override
-  String get changelogEmpty => 'Aún no hay novedades';
-
-  @override
-  String get changelogLoadError => 'No se pudieron cargar las novedades';
-
-  @override
-  String get changelogRetry => 'Reintentar';
+  String get changelogOpenError => 'No se pudo abrir Novedades';
 }

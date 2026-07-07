@@ -30,7 +30,6 @@ class AttendanceShellScreen extends ConsumerStatefulWidget {
 
 class _AttendanceShellScreenState extends ConsumerState<AttendanceShellScreen> {
   AppVersionStatus? _versionStatus;
-  bool _bannerDismissed = false;
   String? _currentAppVersion;  // PackageInfo cache
   Timer? _versionPollTimer;
   AttendanceDeviceService? _watchedService;
@@ -84,11 +83,6 @@ class _AttendanceShellScreenState extends ConsumerState<AttendanceShellScreen> {
         downloadUrl: b.downloadUrl,
         releaseNotes: _versionStatus?.releaseNotes,  // 헤더엔 release notes 없음 — 직전 fetch 값 유지
       );
-      // 새 latestVersion 이 떴으면 dismiss 리셋해서 배너 다시 표시
-      if (b.latestVersion != null &&
-          _versionStatus!.hasUpdate) {
-        _bannerDismissed = false;
-      }
     });
   }
 
@@ -159,26 +153,10 @@ class _AttendanceShellScreenState extends ConsumerState<AttendanceShellScreen> {
         break;
     }
 
-    final showBanner = _versionStatus != null &&
-        !_versionStatus!.blocking &&
-        _versionStatus!.hasUpdate &&
-        !_bannerDismissed;
-
-    return Scaffold(
-      backgroundColor: AppColors.bg,
-      body: SafeArea(
-        child: Column(
-          children: [
-            if (showBanner)
-              UpdateAvailableBanner(
-                status: _versionStatus!,
-                onDismiss: () => setState(() => _bannerDismissed = true),
-              ),
-            Expanded(child: child),
-          ],
-        ),
-      ),
-    );
+    // optional 업데이트(min_version ≤ current < latest)는 상단 배너로 알리지 않는다
+    // (상시 노출이 거슬림) → 설정 화면에서 확인/설치. 강제 업데이트(current < min_version)만
+    // 위에서 전체화면 blocker 로 앱을 멈춘다.
+    return child;
   }
 }
 

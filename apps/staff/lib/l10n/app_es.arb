@@ -253,6 +253,7 @@
 
   "commonComingSoon": "Próximamente",
   "commonUnknown": "Desconocido",
+  "watermarkNoTime": "Sin hora",
 
   "ojtTitle": "Capacitación OJT",
   "ojtSubtitle": "Aquí estarán disponibles los módulos de capacitación.",
@@ -1030,7 +1031,5 @@
   "warningDocCcValue": "Empleado / Gerente / Recursos Humanos / Expediente Personal",
   "warningDocNone": "—",
   "changelogTitle": "Novedades",
-  "changelogEmpty": "Aún no hay novedades",
-  "changelogLoadError": "No se pudieron cargar las novedades",
-  "changelogRetry": "Reintentar"
+  "changelogOpenError": "No se pudo abrir Novedades"
 }

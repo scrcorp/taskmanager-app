@@ -140,6 +140,18 @@ class AppL10nEs extends AppL10n {
   String get attSettingsDeviceIdLabel => 'ID del dispositivo';
 
   @override
+  String get attSettingsAppLabel => 'Aplicación';
+
+  @override
+  String get attSettingsVersionLabel => 'Versión';
+
+  @override
+  String get attSettingsCompanyLabel => 'Empresa';
+
+  @override
+  String get attSettingsCompanyName => 'Tigers Plus';
+
+  @override
   String get attSettingsLanguageLabel => 'Idioma';
 
   @override
@@ -571,6 +583,34 @@ class AppL10nEs extends AppL10n {
   String get attUpdateLaunchingInstaller => 'Abriendo instalador…';
 
   @override
+  String get attUpdateReadyTitle => 'Actualización descargada';
+
+  @override
+  String get attUpdateReadyMessage =>
+      'La actualización está lista para instalar. La pantalla se desbloqueará brevemente para ejecutar el instalador y luego se volverá a bloquear automáticamente.';
+
+  @override
+  String get attUpdateInstallNow => 'Instalar ahora';
+
+  @override
+  String get attSettingsCheckUpdate => 'Buscar actualizaciones';
+
+  @override
+  String get attSettingsUpToDate => 'Tienes la última versión.';
+
+  @override
+  String attSettingsUpdateAvailable(String latest) {
+    return 'Actualización disponible: v$latest';
+  }
+
+  @override
+  String get attSettingsUpdateButton => 'Actualizar';
+
+  @override
+  String get attSettingsUpdateCheckFailed =>
+      'No se pudo buscar actualizaciones. Revisa tu conexión e inténtalo de nuevo.';
+
+  @override
   String get pfStoreFallback => 'Tienda';
 
   @override
@@ -578,6 +618,12 @@ class AppL10nEs extends AppL10n {
 
   @override
   String get pfHeaderSettings => 'Ajustes';
+
+  @override
+  String get pfHeaderRefreshTooltip => 'Actualizar';
+
+  @override
+  String get pfHeaderRefreshed => 'Actualizado';
 
   @override
   String pfPinHint(int min, int max) {
@@ -644,6 +690,17 @@ class AppL10nEs extends AppL10n {
   @override
   String get pfIdNoShiftBody =>
       'No tienes turno hoy. Acciones de reloj desactivadas.';
+
+  @override
+  String get pfIdWalkInTitle => 'ENTRADA LIBRE';
+
+  @override
+  String get pfIdWalkInBody =>
+      'Sin turno programado. Registro de entrada libre habilitado.';
+
+  @override
+  String get pfIdWalkInAgainBody =>
+      'Turno anterior completado. Puede registrar entrada de nuevo.';
 
   @override
   String pfStaleWarnTitle(int count) {

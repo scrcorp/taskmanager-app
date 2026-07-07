@@ -139,6 +139,18 @@ class AppL10nEn extends AppL10n {
   String get attSettingsDeviceIdLabel => 'Device ID';
 
   @override
+  String get attSettingsAppLabel => 'App';
+
+  @override
+  String get attSettingsVersionLabel => 'Version';
+
+  @override
+  String get attSettingsCompanyLabel => 'Company';
+
+  @override
+  String get attSettingsCompanyName => 'Tigers Plus';
+
+  @override
   String get attSettingsLanguageLabel => 'Language';
 
   @override
@@ -566,6 +578,34 @@ class AppL10nEn extends AppL10n {
   String get attUpdateLaunchingInstaller => 'Launching installer…';
 
   @override
+  String get attUpdateReadyTitle => 'Update Downloaded';
+
+  @override
+  String get attUpdateReadyMessage =>
+      'The update is ready to install. The screen will unlock briefly so the installer can run, then re-lock automatically.';
+
+  @override
+  String get attUpdateInstallNow => 'Install Now';
+
+  @override
+  String get attSettingsCheckUpdate => 'Check for updates';
+
+  @override
+  String get attSettingsUpToDate => 'You\'re on the latest version.';
+
+  @override
+  String attSettingsUpdateAvailable(String latest) {
+    return 'Update available: v$latest';
+  }
+
+  @override
+  String get attSettingsUpdateButton => 'Update';
+
+  @override
+  String get attSettingsUpdateCheckFailed =>
+      'Couldn\'t check for updates. Check your connection and try again.';
+
+  @override
   String get pfStoreFallback => 'Store';
 
   @override
@@ -573,6 +613,12 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get pfHeaderSettings => 'Settings';
+
+  @override
+  String get pfHeaderRefreshTooltip => 'Refresh';
+
+  @override
+  String get pfHeaderRefreshed => 'Updated';
 
   @override
   String pfPinHint(int min, int max) {
@@ -638,6 +684,17 @@ class AppL10nEn extends AppL10n {
   @override
   String get pfIdNoShiftBody =>
       'You don\'t have a schedule today. Clock actions disabled.';
+
+  @override
+  String get pfIdWalkInTitle => 'WALK-IN';
+
+  @override
+  String get pfIdWalkInBody =>
+      'No scheduled shift. Walk-in clock-in is enabled.';
+
+  @override
+  String get pfIdWalkInAgainBody =>
+      'Previous shift completed. You can clock in again.';
 
   @override
   String pfStaleWarnTitle(int count) {

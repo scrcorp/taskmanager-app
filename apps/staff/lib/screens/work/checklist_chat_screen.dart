@@ -25,9 +25,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:htm_core/htm_core.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/checklist.dart';
+import '../../models/photo_meta.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/my_schedule_provider.dart';
 import '../../services/storage_service.dart';
+import '../../utils/photo_capture.dart';
+import '../../widgets/time_watermark.dart';
+import '../../widgets/photo_viewer.dart';
 
 /// 체크리스트 항목 채팅 전체 화면 위젯
 class ChecklistChatScreen extends ConsumerStatefulWidget {
@@ -52,7 +56,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
   bool _isUploading = false;
 
   // 제출 카드 상태
-  List<String> _pendingPhotoUrls = [];
+  List<PhotoMeta> _pendingPhotos = [];
   final _memoController = TextEditingController();
   bool _submitCardExpanded = true;
   Timer? _draftSaveTimer;
@@ -102,18 +106,30 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
       final raw = prefs.getString(_draftKey);
       if (raw == null) return;
       final data = jsonDecode(raw) as Map<String, dynamic>;
-      final photos = (data['photoUrls'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          [];
+      final photos = _photosFromDraft(data);
       final memo = data['memo'] as String? ?? '';
       if (mounted) {
         setState(() {
-          _pendingPhotoUrls = photos;
+          _pendingPhotos = photos;
           _memoController.text = memo;
         });
       }
     } catch (_) {}
+  }
+
+  /// draft JSON → PhotoMeta 리스트. 신규 'photos' 우선, 레거시 'photoUrls'(문자열) 폴백.
+  List<PhotoMeta> _photosFromDraft(Map<String, dynamic> data) {
+    final newFmt = data['photos'] as List<dynamic>?;
+    if (newFmt != null) {
+      return newFmt
+          .map((e) => PhotoMeta.fromDraftJson(e as Map<String, dynamic>))
+          .toList();
+    }
+    final legacy = data['photoUrls'] as List<dynamic>?;
+    if (legacy != null) {
+      return legacy.map((e) => PhotoMeta(key: e.toString())).toList();
+    }
+    return [];
   }
 
   void _saveDraft() {
@@ -122,7 +138,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
       try {
         final prefs = await SharedPreferences.getInstance();
         final data = jsonEncode({
-          'photoUrls': _pendingPhotoUrls,
+          'photos': _pendingPhotos.map((p) => p.toDraftJson()).toList(),
           'memo': _memoController.text,
         });
         await prefs.setString(_draftKey, data);
@@ -155,29 +171,43 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
 
   Future<void> _addPhoto(ImageSource source) async {
     final picker = ImagePicker();
+    final maxPhotos = _item.maxPhotos ?? 5;
 
-    // Gallery → 여러 장 선택, Camera → 1장
-    final List<XFile> pickedList;
+    // 사전 리사이즈: 치수 상한 2048(긴 변), 고품질(서버가 WebP q80/2048 로 최종 가공).
+    const maxDim = 2048.0;
+    const quality = 90;
+
+    // Gallery → 여러 장 한 번에, Camera → 취소할 때까지 연속 촬영(멀티샷).
+    final List<XFile> pickedList = [];
     if (source == ImageSource.gallery) {
-      pickedList = await picker.pickMultiImage(imageQuality: 80);
+      pickedList.addAll(await picker.pickMultiImage(maxWidth: maxDim, maxHeight: maxDim, imageQuality: quality));
     } else {
-      final single = await picker.pickImage(source: source, imageQuality: 80);
-      pickedList = single != null ? [single] : [];
+      while (_pendingPhotos.length + pickedList.length < maxPhotos) {
+        final shot = await picker.pickImage(source: source, maxWidth: maxDim, maxHeight: maxDim, imageQuality: quality);
+        if (shot == null) break; // 사용자가 카메라를 닫으면 멀티샷 종료
+        pickedList.add(shot);
+      }
     }
     if (pickedList.isEmpty) return;
+
+    final captureSource = captureSourceOf(source);
 
     setState(() => _isUploading = true);
     try {
       final storage = ref.read(storageServiceProvider);
       for (final picked in pickedList) {
         final bytes = await picked.readAsBytes();
+        // 촬영시각: 라이브=셔터(현재), 갤러리=EXIF. 워터마크는 이 시각을 표시한다.
+        final captureTime = await resolveCaptureTime(source, bytes);
         final filename = 'checklist_${DateTime.now().millisecondsSinceEpoch}.jpg';
         const contentType = 'image/jpeg';
         final urls = await storage.getPresignedUrl(filename, contentType);
         await storage.uploadFile(urls['upload_url']!, bytes, contentType);
-        final fileUrl = urls['file_url']!;
         if (mounted) {
-          setState(() => _pendingPhotoUrls = [..._pendingPhotoUrls, fileUrl]);
+          setState(() => _pendingPhotos = [
+                ..._pendingPhotos,
+                PhotoMeta(key: urls['file_url']!, captureTime: captureTime, captureSource: captureSource),
+              ]);
         }
       }
       _saveDraft();
@@ -198,9 +228,9 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
 
   void _removePhoto(int index) {
     setState(() {
-      final list = List<String>.from(_pendingPhotoUrls);
+      final list = List<PhotoMeta>.from(_pendingPhotos);
       list.removeAt(index);
-      _pendingPhotoUrls = list;
+      _pendingPhotos = list;
     });
     _saveDraft();
   }
@@ -208,7 +238,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
   Future<void> _submit() async {
     final item = _item;
     // 사진 필요한데 없으면 안내
-    if (item.requiresPhoto && _pendingPhotoUrls.isEmpty) {
+    if (item.requiresPhoto && _pendingPhotos.isEmpty) {
       final t = AppL10n.of(context);
       await AppModal.show(
         context,
@@ -227,7 +257,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
               widget.scheduleId,
               item.index,
               true,
-              photoUrls: _pendingPhotoUrls.isEmpty ? null : _pendingPhotoUrls,
+              photos: _pendingPhotos.isEmpty ? null : _pendingPhotos,
               note: _memoController.text.trim().isEmpty
                   ? null
                   : _memoController.text.trim(),
@@ -240,12 +270,12 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
               responseComment: _memoController.text.trim().isEmpty
                   ? null
                   : _memoController.text.trim(),
-              photoUrls: _pendingPhotoUrls.isEmpty ? null : _pendingPhotoUrls,
+              photos: _pendingPhotos.isEmpty ? null : _pendingPhotos,
             );
       }
       // 제출 성공: 상태 초기화 + 드래프트 삭제
       setState(() {
-        _pendingPhotoUrls = [];
+        _pendingPhotos = [];
         _memoController.clear();
       });
       await _clearDraft();
@@ -612,7 +642,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
     final accentColor = isResubmit ? AppColors.danger : AppColors.accent;
     final minPhotos = item.minPhotos ?? 1;
     final photosFulfilled = !item.requiresPhoto ||
-        _pendingPhotoUrls.length >= minPhotos;
+        _pendingPhotos.length >= minPhotos;
     final canSubmit = photosFulfilled && !_isSubmitting && !_isUploading;
 
     return Container(
@@ -643,7 +673,7 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
                   if (item.requiresPhoto)
                     _RequirementRow(
                       label: t.chatPhotosLabel(minPhotos),
-                      isDone: _pendingPhotoUrls.length >= minPhotos,
+                      isDone: _pendingPhotos.length >= minPhotos,
                     ),
                   if (item.requiresComment)
                     _RequirementRow(
@@ -708,10 +738,10 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
                         size: 13, color: AppColors.textSecondary),
                     const SizedBox(width: 4),
                     Text(
-                      t.chatPhotosCount(_pendingPhotoUrls.length, minPhotos),
+                      t.chatPhotosCount(_pendingPhotos.length, minPhotos),
                       style: TextStyle(
                         fontSize: 12,
-                        color: _pendingPhotoUrls.length >= minPhotos
+                        color: _pendingPhotos.length >= minPhotos
                             ? AppColors.success
                             : AppColors.textSecondary,
                         fontWeight: FontWeight.w500,
@@ -721,17 +751,17 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
                 ),
               ),
               // Photo strip
-              if (_pendingPhotoUrls.isNotEmpty) ...[
+              if (_pendingPhotos.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 SizedBox(
                   height: 72,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _pendingPhotoUrls.length,
+                    itemCount: _pendingPhotos.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 6),
                     itemBuilder: (ctx, i) => _PhotoThumb(
-                      url: _pendingPhotoUrls[i],
+                      url: _pendingPhotos[i].key,
                       onRemove: () => _removePhoto(i),
                     ),
                   ),
@@ -1227,21 +1257,34 @@ class _SubmissionCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // First photo (full-width preview)
-                  Image.network(
-                    event.photoUrls.first,
-                    width: double.infinity,
-                    height: 120,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      width: double.infinity,
-                      height: 120,
-                      color: AppColors.accentBg,
-                      child: const Icon(Icons.image_rounded,
-                          color: AppColors.accent, size: 32),
+                  // First photo (full-width preview) — tap to zoom
+                  GestureDetector(
+                    onTap: () => openPhotoViewer(
+                      context,
+                      urls: event.photoUrls,
+                      times: event.photoTimes,
+                      initialIndex: 0,
+                    ),
+                    child: WatermarkedPhoto(
+                      time: event.photoTimes.isNotEmpty
+                          ? event.photoTimes.first
+                          : null,
+                      child: Image.network(
+                        event.photoUrls.first,
+                        width: double.infinity,
+                        height: 120,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: double.infinity,
+                          height: 120,
+                          color: AppColors.accentBg,
+                          child: const Icon(Icons.image_rounded,
+                              color: AppColors.accent, size: 32),
+                        ),
+                      ),
                     ),
                   ),
-                  // Additional photos (horizontal strip)
+                  // Additional photos (horizontal strip) — tap to zoom
                   if (event.photoUrls.length > 1)
                     SizedBox(
                       height: 56,
@@ -1250,19 +1293,27 @@ class _SubmissionCard extends StatelessWidget {
                         padding: const EdgeInsets.all(6),
                         itemCount: event.photoUrls.length - 1,
                         separatorBuilder: (_, __) => const SizedBox(width: 4),
-                        itemBuilder: (ctx, i) => ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: Image.network(
-                            event.photoUrls[i + 1],
-                            width: 44,
-                            height: 44,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
+                        itemBuilder: (ctx, i) => GestureDetector(
+                          onTap: () => openPhotoViewer(
+                            context,
+                            urls: event.photoUrls,
+                            times: event.photoTimes,
+                            initialIndex: i + 1,
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: Image.network(
+                              event.photoUrls[i + 1],
                               width: 44,
                               height: 44,
-                              color: AppColors.accentBg,
-                              child: const Icon(Icons.image_rounded,
-                                  color: AppColors.accent, size: 18),
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                width: 44,
+                                height: 44,
+                                color: AppColors.accentBg,
+                                child: const Icon(Icons.image_rounded,
+                                    color: AppColors.accent, size: 18),
+                              ),
                             ),
                           ),
                         ),
@@ -1423,29 +1474,40 @@ class _ChatPhotoBubble extends StatelessWidget {
           // Photo bubble
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 200),
-            child: ClipRRect(
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(16),
-                topRight: const Radius.circular(16),
-                bottomLeft: Radius.circular(isMine ? 16 : 4),
-                bottomRight: Radius.circular(isMine ? 4 : 16),
-              ),
-              child: event.photoUrls.isNotEmpty
-                  ? Image.network(
-                      event.photoUrls.first,
-                      width: 200,
-                      height: 200,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        width: 200,
-                        height: 120,
-                        color: AppColors.accentBg,
-                        child: const Icon(Icons.broken_image_rounded,
-                            color: AppColors.accent, size: 32),
+            child: event.photoUrls.isNotEmpty
+                ? GestureDetector(
+                    onTap: () => openPhotoViewer(
+                      context,
+                      urls: event.photoUrls,
+                      times: event.photoTimes,
+                      initialIndex: 0,
+                    ),
+                    child: WatermarkedPhoto(
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(16),
+                        topRight: const Radius.circular(16),
+                        bottomLeft: Radius.circular(isMine ? 16 : 4),
+                        bottomRight: Radius.circular(isMine ? 4 : 16),
                       ),
-                    )
-                  : const SizedBox.shrink(),
-            ),
+                      time: event.photoTimes.isNotEmpty
+                          ? event.photoTimes.first
+                          : null,
+                      child: Image.network(
+                        event.photoUrls.first,
+                        width: 200,
+                        height: 200,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 200,
+                          height: 120,
+                          color: AppColors.accentBg,
+                          child: const Icon(Icons.broken_image_rounded,
+                              color: AppColors.accent, size: 32),
+                        ),
+                      ),
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
           // Timestamp (right of other)
           if (!isMine && event.atDisplay != null)

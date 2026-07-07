@@ -39,6 +39,28 @@ class VersionBroadcast {
       downloadUrl == other.downloadUrl;
 }
 
+/// getTodayStaff() 결과 — 304(Not Modified) 와 신규 데이터를 구분하기 위한 타입.
+///
+/// [notModified] true 면 서버가 변경 없음(304)을 응답한 것이므로 [data] 는 항상
+/// 빈 리스트 — 호출부는 기존 state 를 그대로 유지해야 한다(덮어쓰기 금지).
+/// [etag] 는 다음 호출의 If-None-Match 로 재사용한다 (200/304 모두 응답에 실려온다).
+@immutable
+class TodayStaffResult {
+  final bool notModified;
+  final List<Map<String, dynamic>> data;
+  final String? etag;
+
+  const TodayStaffResult({
+    required this.notModified,
+    required this.data,
+    required this.etag,
+  });
+
+  factory TodayStaffResult.notModifiedResult({required String? etag}) {
+    return TodayStaffResult(notModified: true, data: const [], etag: etag);
+  }
+}
+
 /// Device 인증 전용 Dio 클라이언트
 class AttendanceDeviceService {
   late final Dio _dio;
@@ -121,16 +143,22 @@ class AttendanceDeviceService {
 
   /// Clock In — user_id + PIN(4~6) 으로 출근 기록.
   /// (Issue 8) scheduleId 지정 시 그 schedule 에 출근 (다중 schedule picker).
+  /// [walkIn] true 이면 스케줄 없이 워크인 클락인 — 서버가 자동 스케줄 생성.
   Future<Map<String, dynamic>> clockIn({
     required String userId,
     required String pin,
     String? scheduleId,
+    bool walkIn = false,
   }) async {
+    final extra = <String, dynamic>{
+      if (scheduleId != null) 'schedule_id': scheduleId,
+      if (walkIn) 'walk_in': true,
+    };
     return _postAction(
       '/attendance/clock-in',
       userId: userId,
       pin: pin,
-      extra: scheduleId != null ? {'schedule_id': scheduleId} : null,
+      extra: extra.isEmpty ? null : extra,
     );
   }
 
@@ -197,14 +225,30 @@ class AttendanceDeviceService {
 
   /// 오늘 매장 근무자 상태 조회 (device token)
   ///
-  /// 응답: 각 유저의 schedule + attendance 요약 리스트
-  Future<List<Map<String, dynamic>>> getTodayStaff() async {
-    final response = await _dio.get('/attendance/today-staff');
-    final data = response.data;
-    if (data is List) {
-      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  /// 응답: 각 유저의 schedule + attendance 요약 리스트.
+  ///
+  /// ETag/304 지원 (Task 3): [ifNoneMatch] 에 마지막으로 받은 ETag 를 넘기면
+  /// 서버가 변경 없을 시 304(빈 바디)를 반환 — polling 전송량 절감.
+  /// 304 도 정상 흐름이라 dio 가 예외를 던지지 않도록 validateStatus 로 허용한다.
+  Future<TodayStaffResult> getTodayStaff({String? ifNoneMatch}) async {
+    final response = await _dio.get(
+      '/attendance/today-staff',
+      options: Options(
+        headers: (ifNoneMatch != null && ifNoneMatch.isNotEmpty)
+            ? {'If-None-Match': ifNoneMatch}
+            : null,
+        validateStatus: (status) => status != null && (status == 200 || status == 304),
+      ),
+    );
+    final etag = response.headers.value('etag');
+    if (response.statusCode == 304) {
+      return TodayStaffResult.notModifiedResult(etag: etag);
     }
-    return const [];
+    final data = response.data;
+    final list = data is List
+        ? data.map((e) => Map<String, dynamic>.from(e as Map)).toList()
+        : <Map<String, dynamic>>[];
+    return TodayStaffResult(notModified: false, data: list, etag: etag);
   }
 
   /// 팁 분배 대상 후보 — PIN 인증 후 같은 매장/날/시간 겹친 staff 목록.

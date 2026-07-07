@@ -1177,6 +1177,12 @@ abstract class AppL10n {
   /// **'Unknown'**
   String get commonUnknown;
 
+  /// No description provided for @watermarkNoTime.
+  ///
+  /// In en, this message translates to:
+  /// **'No time'**
+  String get watermarkNoTime;
+
   /// No description provided for @ojtTitle.
   ///
   /// In en, this message translates to:
@@ -4699,23 +4705,11 @@ abstract class AppL10n {
   /// **'What\'s New'**
   String get changelogTitle;
 
-  /// No description provided for @changelogEmpty.
+  /// No description provided for @changelogOpenError.
   ///
   /// In en, this message translates to:
-  /// **'No updates yet'**
-  String get changelogEmpty;
-
-  /// No description provided for @changelogLoadError.
-  ///
-  /// In en, this message translates to:
-  /// **'Failed to load updates'**
-  String get changelogLoadError;
-
-  /// No description provided for @changelogRetry.
-  ///
-  /// In en, this message translates to:
-  /// **'Retry'**
-  String get changelogRetry;
+  /// **'Couldn\'t open What\'s New'**
+  String get changelogOpenError;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

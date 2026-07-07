@@ -140,6 +140,60 @@ void main() {
     expect(find.textContaining('unfinished record'), findsNothing);
   });
 
+  // 워크인 — walkInAllowed=true + todayStatus=null
+  testWidgets('walk-in 허용 + no shift → WALK-IN 패널 + Yes/Close', (tester) async {
+    var yesCount = 0;
+    await tester.pumpWidget(wrapForTest(IdentityConfirmDialog(
+      user: _user(status: null),
+      onYes: () => yesCount++,
+      onClose: () {},
+      walkInAllowed: true,
+    )));
+    expect(find.text('WALK-IN'), findsOneWidget);
+    expect(find.text("Yes, it's me"), findsOneWidget); // Yes 버튼 노출
+    expect(find.text('Close'), findsOneWidget);
+    expect(find.text('NO SHIFT TODAY'), findsNothing); // 기존 차단 패널 없음
+
+    await tester.tap(find.text("Yes, it's me"));
+    await tester.pump();
+    expect(yesCount, 1);
+  });
+
+  testWidgets('walk-in 비허용 + no shift → NO SHIFT TODAY + Close 만 (기존 동작 유지)', (tester) async {
+    await tester.pumpWidget(wrapForTest(IdentityConfirmDialog(
+      user: _user(status: null),
+      onYes: () {},
+      onClose: () {},
+      walkInAllowed: false,
+    )));
+    expect(find.text('NO SHIFT TODAY'), findsOneWidget);
+    expect(find.text("Yes, it's me"), findsNothing);
+    expect(find.text('WALK-IN'), findsNothing);
+  });
+
+  testWidgets('walk-in 허용 + clocked_out → WALK-IN 패널 + Yes/Close (퇴근 후 재출근)', (tester) async {
+    await tester.pumpWidget(wrapForTest(IdentityConfirmDialog(
+      user: _user(status: 'clocked_out'),
+      onYes: () {},
+      onClose: () {},
+      walkInAllowed: true,
+    )));
+    expect(find.text('WALK-IN'), findsOneWidget);
+    expect(find.text('Shift completed'), findsNothing);
+    expect(find.text("Yes, it's me"), findsOneWidget);
+  });
+
+  testWidgets('walk-in 비허용 + clocked_out → Shift completed + Close 만 (기존 동작)', (tester) async {
+    await tester.pumpWidget(wrapForTest(IdentityConfirmDialog(
+      user: _user(status: 'clocked_out'),
+      onYes: () {},
+      onClose: () {},
+      walkInAllowed: false,
+    )));
+    expect(find.text('Shift completed'), findsOneWidget);
+    expect(find.text("Yes, it's me"), findsNothing);
+  });
+
   testWidgets('stale 4건 → 3개 표시 + "+1 more"', (tester) async {
     await tester.pumpWidget(wrapForTest(IdentityConfirmDialog(
       user: _user(status: 'upcoming', stale: const [

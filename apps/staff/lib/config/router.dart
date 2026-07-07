@@ -17,8 +17,6 @@ import '../screens/auth/reset_password_screen.dart';
 import '../screens/my/change_password_screen.dart';
 import '../screens/my/alert_settings_screen.dart';
 import '../screens/my/settings_screen.dart';
-import '../screens/my/changelog_list_screen.dart';
-import '../screens/my/changelog_detail_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/my/my_page_screen.dart';
 import '../screens/warnings/warnings_list_screen.dart';
@@ -176,8 +174,6 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/my/change-password', builder: (_, __) => const ChangePasswordScreen()),
       GoRoute(path: '/my/alert-settings', builder: (_, __) => const AlertSettingsScreen()),
       GoRoute(path: '/my/settings', builder: (_, __) => const SettingsScreen()),
-      GoRoute(path: '/my/changelog', builder: (_, __) => const ChangelogListScreen()),
-      GoRoute(path: '/my/changelog/:slug', builder: (_, state) => ChangelogDetailScreen(slug: state.pathParameters['slug']!)),
       GoRoute(path: '/alerts', builder: (_, __) => const AlertScreen()),
 
       // ── Inventory screens (no bottom nav) ──
