@@ -21,13 +21,14 @@ String formatDate(DateTime date) => DateFormat('MMM d, yyyy').format(date.toLoca
 /// 감사 타임스탬프를 로컬 날짜+시간으로 포맷 — "Mar 5, 2:30 PM"
 String formatDateTime(DateTime date) => DateFormat('MMM d, h:mm a').format(date.toLocal());
 
-/// 워터마크용 — 로컬 날짜+시간 + 타임존 약어 — "Mar 5, 2:30 PM KST"
+/// 워터마크용 — 로컬 날짜(연도 포함)+시간 + 타임존 약어 — "Mar 5, 2026, 2:30 PM KST"
 ///
-/// 사진이 "언제" 찍혔는지 모호하지 않게 타임존 라벨(KST/PDT 등)을 붙인다.
+/// 사진이 "언제" 찍혔는지 모호하지 않게 연도와 타임존 라벨(KST/PDT 등)을 붙인다.
+/// 연도까지 넣는 이유: 작년 사진 등 오래된 촬영본을 구분할 수 있어야 한다.
 /// 타임존은 현재 기기/브라우저 로컬 기준(toLocal). (TODO: 매장 타임존 기준 표시)
 String formatDateTimeWithZone(DateTime date) {
   final local = date.toLocal();
-  return '${DateFormat('MMM d, h:mm a').format(local)} ${local.timeZoneName}';
+  return '${DateFormat('MMM d, yyyy, h:mm a').format(local)} ${local.timeZoneName}';
 }
 
 /// 요일만 포맷 — "Tuesday"
