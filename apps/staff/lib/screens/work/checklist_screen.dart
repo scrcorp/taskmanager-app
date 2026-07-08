@@ -25,6 +25,7 @@ import '../../utils/date_utils.dart';
 import '../../utils/photo_capture.dart';
 import '../../utils/toast_manager.dart';
 import '../../widgets/app_header.dart';
+import '../../widgets/photo_viewer.dart';
 import 'checklist_chat_screen.dart';
 
 /// 체크리스트 필터 탭
@@ -554,14 +555,22 @@ class _ChecklistScreenState extends ConsumerState<ChecklistScreen>
                     scrollDirection: Axis.horizontal,
                     itemCount: photos.length,
                     separatorBuilder: (_, __) => const SizedBox(width: 8),
-                    itemBuilder: (_, i) => ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.network(
-                        photos[i], width: 80, height: 80, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 80, height: 80,
-                          color: AppColors.bg,
-                          child: const Icon(Icons.broken_image, color: AppColors.textMuted),
+                    itemBuilder: (_, i) => GestureDetector(
+                      onTap: () => openPhotoViewer(
+                        context,
+                        urls: photos,
+                        times: item.photoTimes,
+                        initialIndex: i,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          photos[i], width: 80, height: 80, fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 80, height: 80,
+                            color: AppColors.bg,
+                            child: const Icon(Icons.broken_image, color: AppColors.textMuted),
+                          ),
                         ),
                       ),
                     ),
@@ -1840,19 +1849,27 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
                               return Stack(
                                 clipBehavior: Clip.none,
                                 children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Image.network(
-                                      _photos[i].key, width: 68, height: 68,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Container(
-                                        width: 68, height: 68,
-                                        decoration: BoxDecoration(
-                                          color: AppColors.bg,
-                                          borderRadius: BorderRadius.circular(10),
-                                          border: Border.all(color: AppColors.accent),
+                                  GestureDetector(
+                                    onTap: () => openPhotoViewer(
+                                      context,
+                                      urls: _photos.map((p) => p.key).toList(),
+                                      times: _photos.map((p) => p.captureTime).toList(),
+                                      initialIndex: i,
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Image.network(
+                                        _photos[i].key, width: 68, height: 68,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Container(
+                                          width: 68, height: 68,
+                                          decoration: BoxDecoration(
+                                            color: AppColors.bg,
+                                            borderRadius: BorderRadius.circular(10),
+                                            border: Border.all(color: AppColors.accent),
+                                          ),
+                                          child: const Icon(Icons.image, color: AppColors.accent),
                                         ),
-                                        child: const Icon(Icons.image, color: AppColors.accent),
                                       ),
                                     ),
                                   ),
