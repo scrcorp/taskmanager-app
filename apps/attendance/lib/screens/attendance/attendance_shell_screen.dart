@@ -156,7 +156,11 @@ class _AttendanceShellScreenState extends ConsumerState<AttendanceShellScreen> {
     // optional 업데이트(min_version ≤ current < latest)는 상단 배너로 알리지 않는다
     // (상시 노출이 거슬림) → 설정 화면에서 확인/설치. 강제 업데이트(current < min_version)만
     // 위에서 전체화면 blocker 로 앱을 멈춘다.
-    return child;
+    //
+    // 배너 제거(d2a14e4) 때 Scaffold 래핑도 함께 사라져, Scaffold 를 자체적으로 두지 않는
+    // 등록/스토어 선택 화면의 TextField 가 "No Material widget found" 로 크래시했다.
+    // 여기서 Material 조상을 보장한다(메인 화면은 자체 Scaffold 라 transparency 로 무해).
+    return Material(type: MaterialType.transparency, child: child);
   }
 }
 
