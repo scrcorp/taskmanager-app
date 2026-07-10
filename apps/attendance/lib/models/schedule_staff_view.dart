@@ -15,6 +15,9 @@ class ScheduleStaffView {
   final List<ManageBreak> breaks;
   final String? scheduledStart; // "HH:mm"
   final String? scheduledEnd;
+  // 벽시계 datetime(자정 넘김 정확) — soon 판정용. 없으면 scheduledStart HH:mm fallback.
+  final DateTime? startAt;
+  final DateTime? endAt;
   final String? clockIn; // "HH:mm"
   final String? clockOut;
 
@@ -27,6 +30,8 @@ class ScheduleStaffView {
     required this.breaks,
     required this.scheduledStart,
     required this.scheduledEnd,
+    this.startAt,
+    this.endAt,
     required this.clockIn,
     required this.clockOut,
   });
@@ -42,6 +47,8 @@ extension AdminScheduleRowView on AdminScheduleRow {
         breaks: breaks,
         scheduledStart: startHHmm,
         scheduledEnd: endHHmm,
+        startAt: startAt,
+        endAt: endAt,
         clockIn: clockInDisplay,
         clockOut: clockOutDisplay,
       );

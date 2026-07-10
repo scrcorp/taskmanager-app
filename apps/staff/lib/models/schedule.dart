@@ -2,6 +2,9 @@
 ///
 /// 업무역할(WorkRole), 스케줄 신청(Request), 확정 스케줄(Entry),
 /// 템플릿(Template)을 표현한다.
+library;
+
+import '../utils/date_utils.dart';
 
 /// 매장 업무역할 — shift + position 조합
 class WorkRole {
@@ -146,6 +149,12 @@ class ScheduleEntry {
   final String endTime;
   final String? breakStartTime;
   final String? breakEndTime;
+  // 전환기 벽시계 datetime 인코딩 — 있으면 우선, 없으면 위 String fallback.
+  final DateTime? operatingDay;
+  final DateTime? startAt;
+  final DateTime? endAt;
+  final DateTime? breakStartAt;
+  final DateTime? breakEndAt;
   final int netWorkMinutes;
   final String status;
   final String? note;
@@ -167,6 +176,11 @@ class ScheduleEntry {
     required this.endTime,
     this.breakStartTime,
     this.breakEndTime,
+    this.operatingDay,
+    this.startAt,
+    this.endAt,
+    this.breakStartAt,
+    this.breakEndAt,
     required this.netWorkMinutes,
     required this.status,
     this.note,
@@ -176,12 +190,30 @@ class ScheduleEntry {
     this.totalItems = 0,
   });
 
-  bool get hasBreak => breakStartTime != null && breakEndTime != null &&
-      breakStartTime!.isNotEmpty && breakEndTime!.isNotEmpty;
+  bool get hasBreak =>
+      (breakStartAt != null && breakEndAt != null) ||
+      (breakStartTime != null && breakEndTime != null &&
+          breakStartTime!.isNotEmpty && breakEndTime!.isNotEmpty);
 
-  String get timeRange => hasBreak
-      ? '$startTime–$breakStartTime · $breakEndTime–$endTime'
-      : '$startTime – $endTime';
+  String get _startHm => formatWallClockHm(startAt) ?? startTime;
+  String get _endHm => formatWallClockHm(endAt) ?? endTime;
+  String get _breakStartHm => formatWallClockHm(breakStartAt) ?? (breakStartTime ?? '');
+  String get _breakEndHm => formatWallClockHm(breakEndAt) ?? (breakEndTime ?? '');
+
+  /// 새벽 근무 — 실제 시작 달력일이 영업일(라벨)보다 뒤인지.
+  bool get startsNextDay {
+    if (startAt == null || operatingDay == null) return false;
+    final a = DateTime(startAt!.year, startAt!.month, startAt!.day);
+    final b = DateTime(operatingDay!.year, operatingDay!.month, operatingDay!.day);
+    return a.isAfter(b);
+  }
+
+  String get timeRange {
+    final suffix = startsNextDay ? ' (+1d)' : '';
+    return hasBreak
+        ? '$_startHm–$_breakStartHm · $_breakEndHm–$_endHm$suffix'
+        : '$_startHm – $_endHm$suffix';
+  }
 
   String get netWorkDisplay {
     final h = netWorkMinutes ~/ 60;
@@ -199,11 +231,16 @@ class ScheduleEntry {
       storeName: json['store_name'],
       workRoleId: json['work_role_id'],
       workRoleName: json['work_role_name'],
-      workDate: DateTime.parse(json['work_date']),
+      workDate: DateTime.parse(json['work_date'] ?? json['operating_day']),
       startTime: json['start_time'] ?? '',
       endTime: json['end_time'] ?? '',
       breakStartTime: json['break_start_time'],
       breakEndTime: json['break_end_time'],
+      operatingDay: parseWallClock(json['operating_day'] ?? json['work_date']),
+      startAt: parseWallClock(json['start_at']),
+      endAt: parseWallClock(json['end_at']),
+      breakStartAt: parseWallClock(json['break_start_at']),
+      breakEndAt: parseWallClock(json['break_end_at']),
       netWorkMinutes: json['net_work_minutes'] ?? 0,
       status: json['status'] ?? 'draft',
       note: json['note'],

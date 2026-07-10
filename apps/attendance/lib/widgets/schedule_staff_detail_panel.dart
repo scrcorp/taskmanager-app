@@ -76,7 +76,7 @@ class _Detail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stateC = manageStateColors(view.state);
-    final soon = isManageSoon(view.state, view.anomalies, view.scheduledStart, now);
+    final soon = isManageSoon(view.state, view.anomalies, view.scheduledStart, now, startAt: view.startAt);
     final hasActions = onActions != null || onEdit != null || onDelete != null;
 
     String? workedSub;

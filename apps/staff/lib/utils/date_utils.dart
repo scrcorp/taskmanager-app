@@ -84,6 +84,32 @@ DateTime getWorkDate(Map<String, String>? dayStartTime) {
   return DateTime(now.year, now.month, now.day);
 }
 
+/// 벽시계 ISO 문자열("YYYY-MM-DDTHH:MM" 또는 "YYYY-MM-DD", zone 없음)을 naive
+/// local DateTime으로 파싱. null-safe. **toLocal 금지** — device tz만큼 시프트됨.
+DateTime? parseWallClock(dynamic v) {
+  if (v == null || v is! String || v.isEmpty) return null;
+  return DateTime.tryParse(v);
+}
+
+/// naive local DateTime → "HH:mm" 표시 문자열. null → null.
+String? formatWallClockHm(DateTime? dt) =>
+    dt == null ? null : DateFormat('HH:mm').format(dt);
+
+/// raw JSON 값(ISO "YYYY-MM-DDTHH:MM" 또는 "HH:MM")에서 "HH:mm" 부분만 추출.
+/// 모델을 우회해 dict를 직접 읽는 표시 사이트용. null/비문자열 → null.
+String? hmFromIso(dynamic v) {
+  if (v == null || v is! String || v.isEmpty) return null;
+  if (v.contains('T')) {
+    final t = v.split('T').last;
+    return t.length >= 5 ? t.substring(0, 5) : t;
+  }
+  return v.length >= 5 ? v.substring(0, 5) : v;
+}
+
+/// 인스턴트 구간 근무 분 (start_at/end_at 기반, 자정 넘김이 값에 반영됨).
+int calculateShiftMinutesFromInstants(DateTime start, DateTime end) =>
+    end.difference(start).inMinutes;
+
 /// Cross-midnight shift 시간 계산 (분 단위).
 /// end < start이면 자정 넘김으로 처리.
 /// 예: "22:00" → "02:00" = 240분

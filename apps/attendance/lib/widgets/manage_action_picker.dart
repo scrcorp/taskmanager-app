@@ -41,7 +41,7 @@ class ManageActionPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final stateC = manageStateColors(row.state);
     final actions = adminActionsForState(row.state);
-    final soon = isManageSoon(row.state, row.anomalies, row.startHHmm, now);
+    final soon = isManageSoon(row.state, row.anomalies, row.startHHmm, now, startAt: row.startAt);
 
     return Dialog(
       backgroundColor: AppColors.white,
