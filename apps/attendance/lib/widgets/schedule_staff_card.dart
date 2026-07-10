@@ -18,7 +18,13 @@ int scheduleMinsSince(DateTime now, String? hhmm) {
   if (h == null || m == null) return 0;
   final start = DateTime(now.year, now.month, now.day, h, m);
   final diff = now.difference(start).inMinutes;
-  return diff < 0 ? 0 : diff;
+  // 자정 넘김: 이벤트(출근/휴식 시작)가 어제 밤이면 diff가 음수 —
+  // '0m'으로 클램프하지 말고 +24h wrap (24h 미만 근무 전제).
+  if (diff < 0) {
+    final wrapped = diff + 24 * 60;
+    return wrapped < 0 ? 0 : wrapped;
+  }
+  return diff;
 }
 
 String scheduleDurLabel(int mins) =>
@@ -66,7 +72,7 @@ class ScheduleStaffCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final stateC = manageStateColors(view.state);
     final showStateBadge = view.state == 'breaking';
-    final soon = isManageSoon(view.state, view.anomalies, view.scheduledStart, now);
+    final soon = isManageSoon(view.state, view.anomalies, view.scheduledStart, now, startAt: view.startAt);
 
     final chips = <Widget>[];
     if (showStateBadge) chips.add(_chip(manageStateLabel(view.state), stateC.bg, stateC.fg));
