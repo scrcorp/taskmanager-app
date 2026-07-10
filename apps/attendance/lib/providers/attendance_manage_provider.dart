@@ -85,6 +85,12 @@ class ManageBreak {
       );
 }
 
+/// 벽시계 ISO(zone 없음) → naive local DateTime. null-safe. toLocal 금지.
+DateTime? _tryDt(dynamic v) {
+  if (v == null || v is! String || v.isEmpty) return null;
+  return DateTime.tryParse(v);
+}
+
 class AdminScheduleRow {
   final String scheduleId;
   final String userId;
@@ -95,6 +101,10 @@ class AdminScheduleRow {
   final String? positionName;
   final String? startHHmm;
   final String? endHHmm;
+  // 전환기 벽시계 datetime 인코딩 — 있으면 우선(자정 넘김 정확), 없으면 HHmm fallback.
+  final DateTime? startAt;
+  final DateTime? endAt;
+  final DateTime? operatingDay;
   final String status;
   final String? attendanceId;
   // manage UI 재설계(Issue 10): clock 이벤트 기반 state + anomaly 분리 + breaks 리스트
@@ -116,6 +126,9 @@ class AdminScheduleRow {
     required this.positionName,
     required this.startHHmm,
     required this.endHHmm,
+    this.startAt,
+    this.endAt,
+    this.operatingDay,
     required this.status,
     required this.attendanceId,
     this.state = 'upcoming',
@@ -150,6 +163,9 @@ class AdminScheduleRow {
         positionName: json['position_name']?.toString(),
         startHHmm: json['start_time']?.toString(),
         endHHmm: json['end_time']?.toString(),
+        startAt: _tryDt(json['start_at']),
+        endAt: _tryDt(json['end_at']),
+        operatingDay: _tryDt(json['operating_day']),
         status: json['status']?.toString() ?? '',
         attendanceId: json['attendance_id']?.toString(),
         state: json['state']?.toString() ?? 'upcoming',

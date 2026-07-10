@@ -113,15 +113,25 @@ class _ScheduleSummaryCardState extends ConsumerState<ScheduleSummaryCard> {
     for (final e in futureEntries) {
       final eDate = _fmt(e.workDate);
       final startH = _parseHour(e.startTime);
-      if (eDate == todayStr && startH < currentHour) continue;
-      final isToday = eDate == todayStr;
-      final isTomorrow = eDate ==
+      // startAt(실제 순간)이 있으면 그것으로 과거 판정 — 새벽 근무(라벨=오늘,
+      // 실제=내일 02:00)를 시각 문자열만 보고 과거로 오판해 스킵하던 버그 수정.
+      final started = e.startAt != null
+          ? e.startAt!.isBefore(now)
+          : (eDate == todayStr && startH < currentHour);
+      if (started) continue;
+      // 표시 라벨은 실제 출근 달력일 기준 (직원이 "언제 나가야 하는지")
+      final actualDay = e.startAt != null
+          ? DateTime(e.startAt!.year, e.startAt!.month, e.startAt!.day)
+          : e.workDate;
+      final aDate = _fmt(actualDay);
+      final isToday = aDate == todayStr;
+      final isTomorrow = aDate ==
           _fmt(DateTime(now.year, now.month, now.day + 1));
       final dayLabel = isToday
           ? t.scheduleToday
           : isTomorrow
               ? t.homeTomorrow
-              : '${DateFormat.E(localeStr).format(e.workDate)} ${e.workDate.month}/${e.workDate.day}';
+              : '${DateFormat.E(localeStr).format(actualDay)} ${actualDay.month}/${actualDay.day}';
       nextShift = _NextShift(
         dayLabel: dayLabel,
         startTime: e.startTime,

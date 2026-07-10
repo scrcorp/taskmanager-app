@@ -126,6 +126,11 @@ class _ManageScheduleEditModalState extends ConsumerState<ManageScheduleEditModa
     setState(() => _saving = true);
     try {
       final service = ref.read(attendanceDeviceServiceProvider);
+      // 주의: 키오스크는 영업일 경계(day_start_time) 로직이 없어 business date를 로컬로
+      // 신뢰성 있게 계산할 수 없다. 서버가 get_work_date로 today를 정확히 판정하고
+      // start_at/end_at을 assemble하므로 여기선 HHmm만 보낸다(날짜 날조 방지).
+      // device service는 datetime 인코딩 파라미터를 수용하나(forward-compat), 앱이
+      // 경계 로직을 갖추기 전엔 전달하지 않는다.
       if (_isEdit) {
         await service.manageUpdateSchedule(
           scheduleId: widget.existing!.scheduleId,

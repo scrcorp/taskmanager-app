@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
 
 import '../../services/issue_report_service.dart';
+import '../../utils/date_utils.dart';
 
 class LinkValues {
   final List<String> scheduleIds;
@@ -196,12 +197,14 @@ class _IssueReportLinkPickerState extends ConsumerState<IssueReportLinkPicker> {
     // schedule 정렬 (work_date desc) + date / 검색 필터
     final sortedSchedules = [...schedules]
       ..sort((a, b) {
-        final da = (a['work_date'] ?? '') as String;
-        final db = (b['work_date'] ?? '') as String;
+        // 영업일 라벨 우선(operating_day), 없으면 work_date fallback
+        final da = (a['operating_day'] ?? a['work_date'] ?? '') as String;
+        final db = (b['operating_day'] ?? b['work_date'] ?? '') as String;
         return db.compareTo(da);
       });
     final filteredSchedules = sortedSchedules.where((s) {
-      if (_schedDate.isNotEmpty && s['work_date'] != _schedDate) return false;
+      final sd = (s['operating_day'] ?? s['work_date']) as String?;
+      if (_schedDate.isNotEmpty && sd != _schedDate) return false;
       if (_schedQuery.isEmpty) return true;
       final q = _schedQuery.toLowerCase();
       final fields = [
@@ -394,15 +397,15 @@ class _IssueReportLinkPickerState extends ConsumerState<IssueReportLinkPicker> {
             final progress = cl != null
                 ? '${cl['completed_items'] ?? 0}/${cl['total_items'] ?? 0} checklist'
                 : null;
+            final startHm = hmFromIso(s['start_at']) ?? s['start_time'] as String?;
+            final endHm = hmFromIso(s['end_at']) ?? s['end_time'] as String?;
             final timeRange =
-                (s['start_time'] != null && s['end_time'] != null)
-                    ? '${s['start_time']}–${s['end_time']}'
-                    : null;
+                (startHm != null && endHm != null) ? '$startHm–$endHm' : null;
             final role = s['work_role_name'] ??
                 s['work_role_name_snapshot'] ??
                 s['position_snapshot'];
             final label = _joinDot([
-              s['work_date'] as String?,
+              (s['operating_day'] ?? s['work_date']) as String?,
               role as String?,
               timeRange,
               s['user_name'] as String?,

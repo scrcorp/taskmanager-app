@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'store.dart';
 import 'checklist.dart';
+import '../utils/date_utils.dart';
 
 /// 체크리스트 카드 상태
 enum ChecklistCardStatus {
@@ -77,6 +78,13 @@ class MySchedule {
   final String? endTime;
   final String? breakStartTime;
   final String? breakEndTime;
+  // 전환기 벽시계 datetime 인코딩 — 있으면 우선 소비, 없으면 위 String 필드 fallback.
+  // start_at/end_at은 실제 순간(자정 넘김 시 end_at 날짜가 다음날). operating_day는 영업일 라벨.
+  final DateTime? operatingDay;
+  final DateTime? startAt;
+  final DateTime? endAt;
+  final DateTime? breakStartAt;
+  final DateTime? breakEndAt;
   final int netWorkMinutes;
   final int totalItems;
   final int completedItems;
@@ -101,6 +109,11 @@ class MySchedule {
     this.endTime,
     this.breakStartTime,
     this.breakEndTime,
+    this.operatingDay,
+    this.startAt,
+    this.endAt,
+    this.breakStartAt,
+    this.breakEndAt,
     this.netWorkMinutes = 0,
     this.totalItems = 0,
     this.completedItems = 0,
@@ -141,14 +154,33 @@ class MySchedule {
   /// "매장명 · 역할명" 형식의 라벨
   String get label => workRoleName.isNotEmpty ? '${store.name} · $workRoleName' : store.name;
 
-  bool get hasBreak => breakStartTime != null && breakEndTime != null &&
-      breakStartTime!.isNotEmpty && breakEndTime!.isNotEmpty;
+  bool get hasBreak =>
+      (breakStartAt != null && breakEndAt != null) ||
+      (breakStartTime != null && breakEndTime != null &&
+          breakStartTime!.isNotEmpty && breakEndTime!.isNotEmpty);
 
-  /// 시간 범위 표시 ("09:00~17:00" 또는 "09:00~12:00 · 13:00~17:00")
+  /// 표시용 시각 문자열 — start_at/end_at 있으면 그것의 HH:mm, 없으면 구 String fallback.
+  String? get _startHm => formatWallClockHm(startAt) ?? startTime;
+  String? get _endHm => formatWallClockHm(endAt) ?? endTime;
+  String? get _breakStartHm => formatWallClockHm(breakStartAt) ?? breakStartTime;
+  String? get _breakEndHm => formatWallClockHm(breakEndAt) ?? breakEndTime;
+
+  /// 새벽 근무 — 실제 시작 달력일이 영업일(라벨)보다 뒤인지.
+  bool get startsNextDay {
+    if (startAt == null || operatingDay == null) return false;
+    final a = DateTime(startAt!.year, startAt!.month, startAt!.day);
+    final b = DateTime(operatingDay!.year, operatingDay!.month, operatingDay!.day);
+    return a.isAfter(b);
+  }
+
+  /// 시간 범위 표시 ("09:00~17:00" 또는 "09:00~12:00 · 13:00~17:00").
+  /// 새벽 근무(+1d)는 " (+1d)" 표기로 당일 새벽 시작과 구분.
   String get timeRange {
-    if (startTime == null || endTime == null) return '';
-    if (hasBreak) return '$startTime~$breakStartTime · $breakEndTime~$endTime';
-    return '$startTime~$endTime';
+    final s = _startHm, e = _endHm;
+    if (s == null || e == null) return '';
+    final suffix = startsNextDay ? ' (+1d)' : '';
+    if (hasBreak) return '$s~$_breakStartHm · $_breakEndHm~$e$suffix';
+    return '$s~$e$suffix';
   }
 
   /// 실근무시간 (시간 단위)
@@ -166,24 +198,31 @@ class MySchedule {
     }
   }
 
-  /// 시작 시간 파싱
+  /// 시작 시간 파싱 (인스턴트 우선, 없으면 문자열 fallback)
   ({int hour, int minute})? get parsedStartTime {
+    if (startAt != null) return (hour: startAt!.hour, minute: startAt!.minute);
     if (startTime == null) return null;
     final parts = startTime!.split(':');
     if (parts.length < 2) return null;
     return (hour: int.parse(parts[0]), minute: int.parse(parts[1]));
   }
 
-  /// 종료 시간 파싱
+  /// 종료 시간 파싱 (인스턴트 우선, 없으면 문자열 fallback)
   ({int hour, int minute})? get parsedEndTime {
+    if (endAt != null) return (hour: endAt!.hour, minute: endAt!.minute);
     if (endTime == null) return null;
     final parts = endTime!.split(':');
     if (parts.length < 2) return null;
     return (hour: int.parse(parts[0]), minute: int.parse(parts[1]));
   }
 
-  /// 현재 시간이 근무시간 범위 내인지 확인
+  /// 현재 시간이 근무시간 범위 내인지 확인.
+  /// start_at/end_at 있으면 실제 순간 구간 비교(end_at이 익일 날짜를 실어 자정 넘김 정확).
+  /// 없으면 기존 분-of-day heuristic fallback.
   bool isWithinWorkHours(DateTime dateTime) {
+    if (startAt != null && endAt != null) {
+      return !dateTime.isBefore(startAt!) && !dateTime.isAfter(endAt!);
+    }
     final start = parsedStartTime;
     final end = parsedEndTime;
     if (start == null || end == null) return true;
@@ -214,11 +253,17 @@ class MySchedule {
       workRoleId: json['work_role_id'],
       workRoleName: json['work_role_name'] ?? '',
       status: json['status'] ?? 'confirmed',
-      workDate: DateTime.parse(json['work_date']),
+      workDate: DateTime.parse(json['work_date'] ?? json['operating_day']),
       startTime: json['start_time'],
       endTime: json['end_time'],
       breakStartTime: json['break_start_time'],
       breakEndTime: json['break_end_time'],
+      // 벽시계 ISO "YYYY-MM-DDTHH:MM" (zone 없음) → naive local DateTime. toLocal 금지.
+      operatingDay: parseWallClock(json['operating_day'] ?? json['work_date']),
+      startAt: parseWallClock(json['start_at']),
+      endAt: parseWallClock(json['end_at']),
+      breakStartAt: parseWallClock(json['break_start_at']),
+      breakEndAt: parseWallClock(json['break_end_at']),
       netWorkMinutes: json['net_work_minutes'] ?? 0,
       totalItems: json['total_items'] ?? checklist?.totalItems ?? 0,
       completedItems: json['completed_items'] ?? checklist?.completedItems ?? 0,

@@ -40,6 +40,32 @@ void main() {
     test('이미 시작 시각 지났으면 soon 아님', () {
       expect(isManageSoon('upcoming', const [], '14:00', now), isFalse);
     });
+
+    // startAt(벽시계 datetime) 분기 — 자정 넘김 정확
+    test('startAt 우선: 28분 후 시작 → soon', () {
+      expect(
+        isManageSoon('upcoming', const [], null, now,
+            startAt: DateTime(2026, 5, 29, 15, 50)),
+        isTrue,
+      );
+    });
+    test('startAt 우선: HHmm은 임박해 보여도 startAt이 익일이면 soon 아님', () {
+      // startHHmm "15:50"만 보면 soon이지만, 실제 startAt은 다음날 → 아님
+      final nowNight = DateTime(2026, 5, 29, 23, 40);
+      expect(
+        isManageSoon('upcoming', const [], '15:50', nowNight,
+            startAt: DateTime(2026, 5, 30, 15, 50)),
+        isFalse,
+      );
+    });
+    test('startAt 우선: 자정 직후 시작(익일 00:10)을 밤 23:50에 → soon', () {
+      final nowNight = DateTime(2026, 5, 29, 23, 50);
+      expect(
+        isManageSoon('upcoming', const [], null, nowNight,
+            startAt: DateTime(2026, 5, 30, 0, 10)),
+        isTrue,
+      );
+    });
   });
 
   group('labels', () {

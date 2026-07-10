@@ -439,11 +439,12 @@ class _IssueReportDetailScreenState
         parts.where((p) => p != null && p.trim().isNotEmpty).join(' · ');
 
     final scheduleLabels = labelMap('schedules', (s) {
-      final timeRange = (s['start_time'] != null && s['end_time'] != null)
-          ? '${s['start_time']}–${s['end_time']}'
-          : null;
+      final startHm = hmFromIso(s['start_at']) ?? s['start_time'] as String?;
+      final endHm = hmFromIso(s['end_at']) ?? s['end_time'] as String?;
+      final timeRange =
+          (startHm != null && endHm != null) ? '$startHm–$endHm' : null;
       return joinDot([
-        s['work_date'] as String?,
+        (s['operating_day'] ?? s['work_date']) as String?,
         timeRange,
         (s['work_role_name'] ?? s['position_snapshot']) as String?,
         s['user_name'] as String?,

@@ -15,6 +15,7 @@ import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
 
 import '../../services/api_client.dart';
+import '../../utils/date_utils.dart';
 import '../../services/tip_service.dart';
 
 /// 특정 날짜의 schedule 옵션 — entry 의 운영 단위.
@@ -214,8 +215,8 @@ class _TipEntryEditorScreenState
           storeName: e['store_name']?.toString() ?? '',
           workRoleId: e['work_role_id']?.toString(),
           workRoleName: e['work_role_name']?.toString(),
-          startTime: e['start_time']?.toString(),
-          endTime: e['end_time']?.toString(),
+          startTime: hmFromIso(e['start_at']) ?? e['start_time']?.toString(),
+          endTime: hmFromIso(e['end_at']) ?? e['end_time']?.toString(),
           alreadySubmitted: usedScheduleIds.contains(scheduleId),
         ));
       }

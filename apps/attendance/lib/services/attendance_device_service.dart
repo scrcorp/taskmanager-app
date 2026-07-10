@@ -381,12 +381,19 @@ class AttendanceDeviceService {
     String? workRoleId,
     required String startHHmm,
     required String endHHmm,
+    // 전환기 벽시계 datetime 인코딩 (있으면 함께 전송, 서버가 우선 사용)
+    String? operatingDay,
+    String? startAt,
+    String? endAt,
   }) async {
     final response = await _dio.post('/attendance/manage/schedules', data: {
       'user_id': userId,
       if (workRoleId != null) 'work_role_id': workRoleId,
       'start_time': startHHmm,
       'end_time': endHHmm,
+      if (operatingDay != null) 'operating_day': operatingDay,
+      if (startAt != null) 'start_at': startAt,
+      if (endAt != null) 'end_at': endAt,
     });
     return Map<String, dynamic>.from(response.data as Map);
   }
@@ -397,12 +404,18 @@ class AttendanceDeviceService {
     String? workRoleId,
     String? startHHmm,
     String? endHHmm,
+    String? operatingDay,
+    String? startAt,
+    String? endAt,
   }) async {
     final body = <String, dynamic>{
       if (userId != null) 'user_id': userId,
       if (workRoleId != null) 'work_role_id': workRoleId,
       if (startHHmm != null) 'start_time': startHHmm,
       if (endHHmm != null) 'end_time': endHHmm,
+      if (operatingDay != null) 'operating_day': operatingDay,
+      if (startAt != null) 'start_at': startAt,
+      if (endAt != null) 'end_at': endAt,
     };
     final response = await _dio.patch(
       '/attendance/manage/schedules/$scheduleId',

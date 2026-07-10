@@ -24,21 +24,30 @@ StaffSection sectionForManageState(String state) {
 }
 
 /// soon: upcoming 이고 late/no_show 아니며 시작이 now ~ now+threshold 이내.
+///
+/// startAt(벽시계 datetime, 자정 넘김 시 실제 날짜를 실음)이 있으면 그것으로 직접 비교
+/// (오늘 재조립 없이). 없으면 startHHmm 을 오늘 날짜에 합성하는 기존 heuristic.
 bool isManageSoon(
   String state,
   List<String> anomalies,
   String? startHHmm,
   DateTime now, {
   int thresholdMinutes = 60,
+  DateTime? startAt,
 }) {
   if (state != 'upcoming') return false;
   if (anomalies.contains('late') || anomalies.contains('no_show')) return false;
-  if (startHHmm == null || !startHHmm.contains(':')) return false;
-  final parts = startHHmm.split(':');
-  final h = int.tryParse(parts[0]);
-  final m = int.tryParse(parts[1]);
-  if (h == null || m == null) return false;
-  final start = DateTime(now.year, now.month, now.day, h, m);
+  DateTime? start;
+  if (startAt != null) {
+    start = startAt;
+  } else {
+    if (startHHmm == null || !startHHmm.contains(':')) return false;
+    final parts = startHHmm.split(':');
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null) return false;
+    start = DateTime(now.year, now.month, now.day, h, m);
+  }
   final diff = start.difference(now).inMinutes;
   return diff >= 0 && diff <= thresholdMinutes;
 }
