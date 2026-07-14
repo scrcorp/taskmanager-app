@@ -288,6 +288,18 @@
   "settingsLanguageFailed": "Failed to update language",
   "settingsUsernameSaved": "Username updated.",
   "settingsUsernameFailed": "Failed to update username",
+  "settingsSectionScheduling": "Scheduling",
+  "@settingsSectionScheduling": {
+    "description": "Section header on the Settings screen grouping scheduling-related items"
+  },
+  "settingsSectionGeneral": "General",
+  "@settingsSectionGeneral": {
+    "description": "Section header on the Settings screen grouping general app settings"
+  },
+  "settingsAvailabilityNotSet": "Not set",
+  "@settingsAvailabilityNotSet": {
+    "description": "Small badge on the Work Availability settings row when availability hasn't been set yet"
+  },
 
   "fieldCurrentPassword": "Current Password",
   "fieldConfirmNewPassword": "Confirm New Password",
@@ -1034,5 +1046,164 @@
   "warningDocCcValue": "Employee / Manager / Human Resources / Personnel File",
   "warningDocNone": "—",
   "changelogTitle": "What's New",
-  "changelogOpenError": "Couldn't open What's New"
+  "changelogOpenError": "Couldn't open What's New",
+
+  "workAvailabilityTitle": "Work Availability",
+  "@workAvailabilityTitle": {
+    "description": "Title of the read-only work availability screen and the Settings row that opens it"
+  },
+  "workAvailabilityIntro": "Your weekly availability, set by your manager. This is view-only.",
+  "@workAvailabilityIntro": {
+    "description": "Intro line explaining the availability screen is read-only"
+  },
+  "workAvailabilityOff": "Off",
+  "@workAvailabilityOff": {
+    "description": "Pill label for a day the staff member is not available"
+  },
+  "workAvailabilityFullDay": "Full day",
+  "@workAvailabilityFullDay": {
+    "description": "Pill label for a day available the whole day (open to close)"
+  },
+  "workAvailabilityNoticeTitle": "Doesn't look right?",
+  "@workAvailabilityNoticeTitle": {
+    "description": "Title of the notice banner at the bottom of the availability screen"
+  },
+  "workAvailabilityNoticeBody": "If this looks wrong, please see your manager or supervisor to have it updated.",
+  "@workAvailabilityNoticeBody": {
+    "description": "Body of the notice banner telling staff who to contact if availability is wrong"
+  },
+  "workAvailabilityLoadFailed": "Couldn't load your availability.",
+  "@workAvailabilityLoadFailed": {
+    "description": "Error message when the availability fails to load"
+  },
+  "workAvailabilitySummary": "{days, plural, =1{1 day} other{{days} days}} · {runs}",
+  "@workAvailabilitySummary": {
+    "description": "Compact summary under the availability preview strip, e.g. '4 days · Mon–Tue, Thu–Fri'",
+    "placeholders": {
+      "days": { "type": "int" },
+      "runs": { "type": "String" }
+    }
+  },
+  "workAvailabilityAllOff": "No days set",
+  "@workAvailabilityAllOff": {
+    "description": "Summary shown under the availability preview strip when every day is off"
+  },
+  "workAvailabilityLoading": "Loading availability…",
+  "@workAvailabilityLoading": {
+    "description": "Placeholder shown while the availability preview is loading"
+  },
+  "workAvailabilityTapToView": "Tap to view",
+  "@workAvailabilityTapToView": {
+    "description": "Fallback summary under the availability preview strip when it can't be loaded"
+  },
+  "workAvailabilityCardNotSet": "Not set — tap to set it up",
+  "@workAvailabilityCardNotSet": {
+    "description": "Prompt shown on the My Page availability card when the staff has no availability set yet"
+  },
+  "workAvailabilityEmptyTitle": "Not set up yet",
+  "@workAvailabilityEmptyTitle": {
+    "description": "Empty-state title on the availability screen when nothing is set and the staff cannot self-edit"
+  },
+  "workAvailabilityEmptyBody": "Ask your manager or supervisor to set up your weekly availability.",
+  "@workAvailabilityEmptyBody": {
+    "description": "Empty-state body telling staff to contact their manager to set up availability"
+  },
+  "workAvailabilityNotSetIntro": "You haven't set your weekly availability yet — every day shows as Off. Set it up below.",
+  "@workAvailabilityNotSetIntro": {
+    "description": "Intro shown on the availability screen when nothing is set yet (all days Off), above the week preview"
+  },
+  "workAvailabilitySetUp": "Set up my availability",
+  "@workAvailabilitySetUp": {
+    "description": "Primary button on the not-set availability screen that starts the first-time self setup"
+  },
+  "workAvailabilitySetUpNote": "You can set this up once. After that, ask your manager or supervisor to change it.",
+  "@workAvailabilitySetUpNote": {
+    "description": "Note under the Set up button explaining self setup is one-time only and changes go through a manager afterward"
+  },
+  "workAvailabilityEditIntro": "Your availability isn't set yet. Let your manager know when you can usually work.",
+  "@workAvailabilityEditIntro": {
+    "description": "Intro line on the self-edit availability screen"
+  },
+  "workAvailabilityEditFootnote": "After you save, changes go through your manager or supervisor.",
+  "@workAvailabilityEditFootnote": {
+    "description": "Footnote under the self-edit availability form"
+  },
+  "workAvailabilitySave": "Save my availability",
+  "@workAvailabilitySave": {
+    "description": "Primary button on the self-edit availability screen that saves the weekly availability"
+  },
+  "workAvailabilitySaved": "Availability saved",
+  "@workAvailabilitySaved": {
+    "description": "Success toast shown after the staff saves their availability"
+  },
+  "workAvailabilitySaveFailed": "Couldn't save your availability. Please try again.",
+  "@workAvailabilitySaveFailed": {
+    "description": "Error toast shown when saving availability fails"
+  },
+  "workAvailabilitySameTimeError": "{day}: start and end time can't be the same. Pick different times.",
+  "@workAvailabilitySameTimeError": {
+    "description": "Validation error shown before saving when a day's start and end times are identical",
+    "placeholders": {
+      "day": {
+        "type": "String",
+        "example": "Monday"
+      }
+    }
+  },
+  "workAvailabilityStateOff": "Off",
+  "@workAvailabilityStateOff": {
+    "description": "Off segment label in the Off/Time/Full availability editor"
+  },
+  "workAvailabilityStateTime": "Time",
+  "@workAvailabilityStateTime": {
+    "description": "Time-range segment label in the Off/Time/Full availability editor"
+  },
+  "workAvailabilityStateFull": "Full",
+  "@workAvailabilityStateFull": {
+    "description": "Full-day segment label in the Off/Time/Full availability editor"
+  },
+  "workAvailabilityStartTime": "Start time",
+  "@workAvailabilityStartTime": {
+    "description": "Title of the time picker sheet when choosing the start of a range"
+  },
+  "workAvailabilityEndTime": "End time",
+  "@workAvailabilityEndTime": {
+    "description": "Title of the time picker sheet when choosing the end of a range"
+  },
+  "weekdayShortSunday": "Sun",
+  "@weekdayShortSunday": {
+    "description": "Three-letter abbreviation for Sunday used in day-range summaries"
+  },
+  "weekdayShortMonday": "Mon",
+  "@weekdayShortMonday": {
+    "description": "Three-letter abbreviation for Monday used in day-range summaries"
+  },
+  "weekdayShortTuesday": "Tue",
+  "@weekdayShortTuesday": {
+    "description": "Three-letter abbreviation for Tuesday used in day-range summaries"
+  },
+  "weekdayShortWednesday": "Wed",
+  "@weekdayShortWednesday": {
+    "description": "Three-letter abbreviation for Wednesday used in day-range summaries"
+  },
+  "weekdayShortThursday": "Thu",
+  "@weekdayShortThursday": {
+    "description": "Three-letter abbreviation for Thursday used in day-range summaries"
+  },
+  "weekdayShortFriday": "Fri",
+  "@weekdayShortFriday": {
+    "description": "Three-letter abbreviation for Friday used in day-range summaries"
+  },
+  "weekdayShortSaturday": "Sat",
+  "@weekdayShortSaturday": {
+    "description": "Three-letter abbreviation for Saturday used in day-range summaries"
+  },
+
+  "weekdaySunday": "Sunday",
+  "weekdayMonday": "Monday",
+  "weekdayTuesday": "Tuesday",
+  "weekdayWednesday": "Wednesday",
+  "weekdayThursday": "Thursday",
+  "weekdayFriday": "Friday",
+  "weekdaySaturday": "Saturday"
 }
