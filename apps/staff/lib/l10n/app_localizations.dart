@@ -1321,6 +1321,24 @@ abstract class AppL10n {
   /// **'Failed to update username'**
   String get settingsUsernameFailed;
 
+  /// Section header on the Settings screen grouping scheduling-related items
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduling'**
+  String get settingsSectionScheduling;
+
+  /// Section header on the Settings screen grouping general app settings
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get settingsSectionGeneral;
+
+  /// Small badge on the Work Availability settings row when availability hasn't been set yet
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get settingsAvailabilityNotSet;
+
   /// No description provided for @fieldCurrentPassword.
   ///
   /// In en, this message translates to:
@@ -4710,6 +4728,258 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Couldn\'t open What\'s New'**
   String get changelogOpenError;
+
+  /// Title of the read-only work availability screen and the Settings row that opens it
+  ///
+  /// In en, this message translates to:
+  /// **'Work Availability'**
+  String get workAvailabilityTitle;
+
+  /// Intro line explaining the availability screen is read-only
+  ///
+  /// In en, this message translates to:
+  /// **'Your weekly availability, set by your manager. This is view-only.'**
+  String get workAvailabilityIntro;
+
+  /// Pill label for a day the staff member is not available
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get workAvailabilityOff;
+
+  /// Pill label for a day available the whole day (open to close)
+  ///
+  /// In en, this message translates to:
+  /// **'Full day'**
+  String get workAvailabilityFullDay;
+
+  /// Title of the notice banner at the bottom of the availability screen
+  ///
+  /// In en, this message translates to:
+  /// **'Doesn\'t look right?'**
+  String get workAvailabilityNoticeTitle;
+
+  /// Body of the notice banner telling staff who to contact if availability is wrong
+  ///
+  /// In en, this message translates to:
+  /// **'If this looks wrong, please see your manager or supervisor to have it updated.'**
+  String get workAvailabilityNoticeBody;
+
+  /// Error message when the availability fails to load
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load your availability.'**
+  String get workAvailabilityLoadFailed;
+
+  /// Compact summary under the availability preview strip, e.g. '4 days · Mon–Tue, Thu–Fri'
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, =1{1 day} other{{days} days}} · {runs}'**
+  String workAvailabilitySummary(int days, String runs);
+
+  /// Summary shown under the availability preview strip when every day is off
+  ///
+  /// In en, this message translates to:
+  /// **'No days set'**
+  String get workAvailabilityAllOff;
+
+  /// Placeholder shown while the availability preview is loading
+  ///
+  /// In en, this message translates to:
+  /// **'Loading availability…'**
+  String get workAvailabilityLoading;
+
+  /// Fallback summary under the availability preview strip when it can't be loaded
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to view'**
+  String get workAvailabilityTapToView;
+
+  /// Prompt shown on the My Page availability card when the staff has no availability set yet
+  ///
+  /// In en, this message translates to:
+  /// **'Not set — tap to set it up'**
+  String get workAvailabilityCardNotSet;
+
+  /// Empty-state title on the availability screen when nothing is set and the staff cannot self-edit
+  ///
+  /// In en, this message translates to:
+  /// **'Not set up yet'**
+  String get workAvailabilityEmptyTitle;
+
+  /// Empty-state body telling staff to contact their manager to set up availability
+  ///
+  /// In en, this message translates to:
+  /// **'Ask your manager or supervisor to set up your weekly availability.'**
+  String get workAvailabilityEmptyBody;
+
+  /// Intro shown on the availability screen when nothing is set yet (all days Off), above the week preview
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t set your weekly availability yet — every day shows as Off. Set it up below.'**
+  String get workAvailabilityNotSetIntro;
+
+  /// Primary button on the not-set availability screen that starts the first-time self setup
+  ///
+  /// In en, this message translates to:
+  /// **'Set up my availability'**
+  String get workAvailabilitySetUp;
+
+  /// Note under the Set up button explaining self setup is one-time only and changes go through a manager afterward
+  ///
+  /// In en, this message translates to:
+  /// **'You can set this up once. After that, ask your manager or supervisor to change it.'**
+  String get workAvailabilitySetUpNote;
+
+  /// Intro line on the self-edit availability screen
+  ///
+  /// In en, this message translates to:
+  /// **'Your availability isn\'t set yet. Let your manager know when you can usually work.'**
+  String get workAvailabilityEditIntro;
+
+  /// Footnote under the self-edit availability form
+  ///
+  /// In en, this message translates to:
+  /// **'After you save, changes go through your manager or supervisor.'**
+  String get workAvailabilityEditFootnote;
+
+  /// Primary button on the self-edit availability screen that saves the weekly availability
+  ///
+  /// In en, this message translates to:
+  /// **'Save my availability'**
+  String get workAvailabilitySave;
+
+  /// Success toast shown after the staff saves their availability
+  ///
+  /// In en, this message translates to:
+  /// **'Availability saved'**
+  String get workAvailabilitySaved;
+
+  /// Error toast shown when saving availability fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save your availability. Please try again.'**
+  String get workAvailabilitySaveFailed;
+
+  /// Validation error shown before saving when a day's start and end times are identical
+  ///
+  /// In en, this message translates to:
+  /// **'{day}: start and end time can\'t be the same. Pick different times.'**
+  String workAvailabilitySameTimeError(String day);
+
+  /// Off segment label in the Off/Time/Full availability editor
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get workAvailabilityStateOff;
+
+  /// Time-range segment label in the Off/Time/Full availability editor
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get workAvailabilityStateTime;
+
+  /// Full-day segment label in the Off/Time/Full availability editor
+  ///
+  /// In en, this message translates to:
+  /// **'Full'**
+  String get workAvailabilityStateFull;
+
+  /// Title of the time picker sheet when choosing the start of a range
+  ///
+  /// In en, this message translates to:
+  /// **'Start time'**
+  String get workAvailabilityStartTime;
+
+  /// Title of the time picker sheet when choosing the end of a range
+  ///
+  /// In en, this message translates to:
+  /// **'End time'**
+  String get workAvailabilityEndTime;
+
+  /// Three-letter abbreviation for Sunday used in day-range summaries
+  ///
+  /// In en, this message translates to:
+  /// **'Sun'**
+  String get weekdayShortSunday;
+
+  /// Three-letter abbreviation for Monday used in day-range summaries
+  ///
+  /// In en, this message translates to:
+  /// **'Mon'**
+  String get weekdayShortMonday;
+
+  /// Three-letter abbreviation for Tuesday used in day-range summaries
+  ///
+  /// In en, this message translates to:
+  /// **'Tue'**
+  String get weekdayShortTuesday;
+
+  /// Three-letter abbreviation for Wednesday used in day-range summaries
+  ///
+  /// In en, this message translates to:
+  /// **'Wed'**
+  String get weekdayShortWednesday;
+
+  /// Three-letter abbreviation for Thursday used in day-range summaries
+  ///
+  /// In en, this message translates to:
+  /// **'Thu'**
+  String get weekdayShortThursday;
+
+  /// Three-letter abbreviation for Friday used in day-range summaries
+  ///
+  /// In en, this message translates to:
+  /// **'Fri'**
+  String get weekdayShortFriday;
+
+  /// Three-letter abbreviation for Saturday used in day-range summaries
+  ///
+  /// In en, this message translates to:
+  /// **'Sat'**
+  String get weekdayShortSaturday;
+
+  /// No description provided for @weekdaySunday.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunday'**
+  String get weekdaySunday;
+
+  /// No description provided for @weekdayMonday.
+  ///
+  /// In en, this message translates to:
+  /// **'Monday'**
+  String get weekdayMonday;
+
+  /// No description provided for @weekdayTuesday.
+  ///
+  /// In en, this message translates to:
+  /// **'Tuesday'**
+  String get weekdayTuesday;
+
+  /// No description provided for @weekdayWednesday.
+  ///
+  /// In en, this message translates to:
+  /// **'Wednesday'**
+  String get weekdayWednesday;
+
+  /// No description provided for @weekdayThursday.
+  ///
+  /// In en, this message translates to:
+  /// **'Thursday'**
+  String get weekdayThursday;
+
+  /// No description provided for @weekdayFriday.
+  ///
+  /// In en, this message translates to:
+  /// **'Friday'**
+  String get weekdayFriday;
+
+  /// No description provided for @weekdaySaturday.
+  ///
+  /// In en, this message translates to:
+  /// **'Saturday'**
+  String get weekdaySaturday;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

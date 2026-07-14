@@ -690,6 +690,15 @@ class AppL10nEn extends AppL10n {
   String get settingsUsernameFailed => 'Failed to update username';
 
   @override
+  String get settingsSectionScheduling => 'Scheduling';
+
+  @override
+  String get settingsSectionGeneral => 'General';
+
+  @override
+  String get settingsAvailabilityNotSet => 'Not set';
+
+  @override
   String get fieldCurrentPassword => 'Current Password';
 
   @override
@@ -2539,4 +2548,148 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get changelogOpenError => 'Couldn\'t open What\'s New';
+
+  @override
+  String get workAvailabilityTitle => 'Work Availability';
+
+  @override
+  String get workAvailabilityIntro =>
+      'Your weekly availability, set by your manager. This is view-only.';
+
+  @override
+  String get workAvailabilityOff => 'Off';
+
+  @override
+  String get workAvailabilityFullDay => 'Full day';
+
+  @override
+  String get workAvailabilityNoticeTitle => 'Doesn\'t look right?';
+
+  @override
+  String get workAvailabilityNoticeBody =>
+      'If this looks wrong, please see your manager or supervisor to have it updated.';
+
+  @override
+  String get workAvailabilityLoadFailed => 'Couldn\'t load your availability.';
+
+  @override
+  String workAvailabilitySummary(int days, String runs) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days days',
+      one: '1 day',
+    );
+    return '$_temp0 · $runs';
+  }
+
+  @override
+  String get workAvailabilityAllOff => 'No days set';
+
+  @override
+  String get workAvailabilityLoading => 'Loading availability…';
+
+  @override
+  String get workAvailabilityTapToView => 'Tap to view';
+
+  @override
+  String get workAvailabilityCardNotSet => 'Not set — tap to set it up';
+
+  @override
+  String get workAvailabilityEmptyTitle => 'Not set up yet';
+
+  @override
+  String get workAvailabilityEmptyBody =>
+      'Ask your manager or supervisor to set up your weekly availability.';
+
+  @override
+  String get workAvailabilityNotSetIntro =>
+      'You haven\'t set your weekly availability yet — every day shows as Off. Set it up below.';
+
+  @override
+  String get workAvailabilitySetUp => 'Set up my availability';
+
+  @override
+  String get workAvailabilitySetUpNote =>
+      'You can set this up once. After that, ask your manager or supervisor to change it.';
+
+  @override
+  String get workAvailabilityEditIntro =>
+      'Your availability isn\'t set yet. Let your manager know when you can usually work.';
+
+  @override
+  String get workAvailabilityEditFootnote =>
+      'After you save, changes go through your manager or supervisor.';
+
+  @override
+  String get workAvailabilitySave => 'Save my availability';
+
+  @override
+  String get workAvailabilitySaved => 'Availability saved';
+
+  @override
+  String get workAvailabilitySaveFailed =>
+      'Couldn\'t save your availability. Please try again.';
+
+  @override
+  String workAvailabilitySameTimeError(String day) {
+    return '$day: start and end time can\'t be the same. Pick different times.';
+  }
+
+  @override
+  String get workAvailabilityStateOff => 'Off';
+
+  @override
+  String get workAvailabilityStateTime => 'Time';
+
+  @override
+  String get workAvailabilityStateFull => 'Full';
+
+  @override
+  String get workAvailabilityStartTime => 'Start time';
+
+  @override
+  String get workAvailabilityEndTime => 'End time';
+
+  @override
+  String get weekdayShortSunday => 'Sun';
+
+  @override
+  String get weekdayShortMonday => 'Mon';
+
+  @override
+  String get weekdayShortTuesday => 'Tue';
+
+  @override
+  String get weekdayShortWednesday => 'Wed';
+
+  @override
+  String get weekdayShortThursday => 'Thu';
+
+  @override
+  String get weekdayShortFriday => 'Fri';
+
+  @override
+  String get weekdayShortSaturday => 'Sat';
+
+  @override
+  String get weekdaySunday => 'Sunday';
+
+  @override
+  String get weekdayMonday => 'Monday';
+
+  @override
+  String get weekdayTuesday => 'Tuesday';
+
+  @override
+  String get weekdayWednesday => 'Wednesday';
+
+  @override
+  String get weekdayThursday => 'Thursday';
+
+  @override
+  String get weekdayFriday => 'Friday';
+
+  @override
+  String get weekdaySaturday => 'Saturday';
 }

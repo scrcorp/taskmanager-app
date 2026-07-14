@@ -16,9 +16,11 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../config/constants.dart';
 import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/availability_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../utils/toast_manager.dart';
 import '../../widgets/app_header.dart';
+import '../../widgets/availability_strip.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -155,7 +157,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // ── SCHEDULING ──
+                  _SectionHeader(t.settingsSectionScheduling),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: _AvailabilitySettingsRow(
+                      onTap: () => context.push('/my/work-availability'),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // ── GENERAL ──
+                  _SectionHeader(t.settingsSectionGeneral),
                   Container(
                     decoration: BoxDecoration(
                       color: AppColors.white,
@@ -204,6 +223,107 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 섹션 헤더 — 카드 위에 붙는 작은 대문자 muted 라벨 (mockup 규칙).
+class _SectionHeader extends StatelessWidget {
+  final String label;
+  const _SectionHeader(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+      child: Text(
+        label.toUpperCase(),
+        style: const TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.8,
+          color: AppColors.textMuted,
+        ),
+      ),
+    );
+  }
+}
+
+/// SCHEDULING 섹션의 "Work Availability" 행.
+///
+/// 설정 여부와 무관하게 미니 7칸 스트립으로 표시(미설정 = 전부 Off).
+/// 미설정이면 제목 옆 "Not set" 배지로만 구분한다. 탭하면 /my/work-availability 로 이동.
+class _AvailabilitySettingsRow extends ConsumerWidget {
+  final VoidCallback onTap;
+  const _AvailabilitySettingsRow({required this.onTap});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppL10n.of(context);
+    final async = ref.watch(myAvailabilityProvider);
+
+    // 데이터 로드 완료 + 미설정일 때만 "Not set" 배지를 보여준다.
+    final bool showNotSetBadge =
+        async.maybeWhen(data: (a) => !a.isSet, orElse: () => false);
+
+    // 제목 아래 본문: 설정됨(스트립) / 미설정(안내) / 로딩·실패(placeholder).
+    final Widget body = async.when(
+      loading: () => const AvailabilityStrip(days: null),
+      error: (_, __) => AvailabilityStrip(
+        days: null,
+        placeholderText: t.workAvailabilityTapToView,
+      ),
+      // 설정/미설정 모두 스트립으로 표시 (미설정 = 전부 Off). 구분은 "Not set" 배지.
+      data: (availability) => AvailabilityStrip(days: availability.days),
+    );
+
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        t.workAvailabilityTitle,
+                        style: const TextStyle(fontSize: 15, color: AppColors.text),
+                      ),
+                      if (showNotSetBadge) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.warningBg,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            t.settingsAvailabilityNotSet,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.warning,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  body,
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right, size: 20, color: AppColors.textMuted),
+          ],
+        ),
       ),
     );
   }
