@@ -21,14 +21,53 @@ String formatDate(DateTime date) => DateFormat('MMM d, yyyy').format(date.toLoca
 /// 감사 타임스탬프를 로컬 날짜+시간으로 포맷 — "Mar 5, 2:30 PM"
 String formatDateTime(DateTime date) => DateFormat('MMM d, h:mm a').format(date.toLocal());
 
-/// 워터마크용 — 로컬 날짜(연도 포함)+시간 + 타임존 약어 — "Mar 5, 2026, 2:30 PM KST"
+/// UTC 오프셋을 짧은 라벨로 — "GMT+9", "GMT-7", "GMT+5:30".
+String _gmtOffset(Duration offset) {
+  final sign = offset.isNegative ? '-' : '+';
+  final abs = offset.abs();
+  final h = abs.inHours;
+  final m = abs.inMinutes % 60;
+  return m == 0 ? 'GMT$sign$h' : 'GMT$sign$h:${m.toString().padLeft(2, '0')}';
+}
+
+/// 타임존 라벨을 짧게 — "Korea Standard Time" → "KST".
+///
+/// 플랫폼/로케일별로 [DateTime.timeZoneName] 이 다른 형태를 준다:
+/// - 네이티브(Android/iOS): 이미 약어("KST", "PDT") → 그대로 쓴다.
+/// - 웹 + 영어 로케일: 긴 이름("Korea Standard Time") → 첫 글자를 따 "KST".
+/// - 웹 + 비영어 로케일: 현지어 이름("대한민국 표준시") → 약어를 만들 수 없다.
+///
+/// 약어를 못 만드는 경우 긴 현지어 이름을 그대로 내보내지 않고 [offset] 기반
+/// "GMT+9" 로 폴백한다 — 짧고 모호하지 않은 게 워터마크에선 더 중요하다.
+String tzLabel(String name, Duration offset) {
+  // 공백 없고 ASCII 면 이미 약어("KST"/"PDT"/"UTC"/"GMT+9") → 그대로.
+  final isAscii = RegExp(r'^[\x00-\x7F]+$').hasMatch(name);
+  if (name.isNotEmpty && isAscii && !name.contains(' ')) return name;
+  // 첫 글자가 대문자인 단어만 약어에 넣는다("of"/"the" 같은 연결어 제외).
+  final initials = name
+      .split(RegExp(r'\s+'))
+      .where(
+        (w) =>
+            w.isNotEmpty &&
+            w[0] == w[0].toUpperCase() &&
+            w[0] != w[0].toLowerCase(),
+      )
+      .map((w) => w[0])
+      .join();
+  if (initials.length >= 2) return initials;
+  return _gmtOffset(offset); // 현지어 이름·미상 → 오프셋으로 폴백
+}
+
+/// 워터마크용 — 로컬 날짜(연도 포함)+시간 + 타임존 라벨 — "Mar 5, 2026, 2:30 PM KST"
 ///
 /// 사진이 "언제" 찍혔는지 모호하지 않게 연도와 타임존 라벨(KST/PDT 등)을 붙인다.
 /// 연도까지 넣는 이유: 작년 사진 등 오래된 촬영본을 구분할 수 있어야 한다.
+/// 존 라벨은 [tzLabel] 로 줄인다 — 웹에선 긴 이름이 오기 때문.
 /// 타임존은 현재 기기/브라우저 로컬 기준(toLocal). (TODO: 매장 타임존 기준 표시)
 String formatDateTimeWithZone(DateTime date) {
   final local = date.toLocal();
-  return '${DateFormat('MMM d, yyyy, h:mm a').format(local)} ${local.timeZoneName}';
+  final zone = tzLabel(local.timeZoneName, local.timeZoneOffset);
+  return '${DateFormat('MMM d, yyyy, h:mm a').format(local)} $zone';
 }
 
 /// 요일만 포맷 — "Tuesday"
