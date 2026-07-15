@@ -173,17 +173,16 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
     final picker = ImagePicker();
     final maxPhotos = _item.maxPhotos ?? 5;
 
-    // 사전 리사이즈: 치수 상한 2048(긴 변), 고품질(서버가 WebP q80/2048 로 최종 가공).
-    const maxDim = 2048.0;
-    const quality = 90;
+    // ⚠️ picker 에서 리사이즈하지 않는다 — EXIF 보존을 위해. 원본 픽 → EXIF 읽기 →
+    // resizeForUpload 순서(서버가 WebP q80/2048 로 최종 가공).
 
     // Gallery → 여러 장 한 번에, Camera → 취소할 때까지 연속 촬영(멀티샷).
     final List<XFile> pickedList = [];
     if (source == ImageSource.gallery) {
-      pickedList.addAll(await picker.pickMultiImage(maxWidth: maxDim, maxHeight: maxDim, imageQuality: quality));
+      pickedList.addAll(await picker.pickMultiImage());
     } else {
       while (_pendingPhotos.length + pickedList.length < maxPhotos) {
-        final shot = await picker.pickImage(source: source, maxWidth: maxDim, maxHeight: maxDim, imageQuality: quality);
+        final shot = await picker.pickImage(source: source);
         if (shot == null) break; // 사용자가 카메라를 닫으면 멀티샷 종료
         pickedList.add(shot);
       }
@@ -196,9 +195,11 @@ class _ChecklistChatScreenState extends ConsumerState<ChecklistChatScreen> {
     try {
       final storage = ref.read(storageServiceProvider);
       for (final picked in pickedList) {
-        final bytes = await picked.readAsBytes();
-        // 촬영시각: 라이브=셔터(현재), 갤러리=EXIF. 워터마크는 이 시각을 표시한다.
-        final captureTime = await resolveCaptureTime(source, bytes);
+        final original = await picked.readAsBytes();
+        // 촬영시각은 리사이즈 전 원본에서 읽는다(EXIF 우선 → 없으면 라이브만 현재시각).
+        final captureTime = await resolveCaptureTime(source, original);
+        // 업로드 바이트는 EXIF 를 읽은 뒤 리사이즈(EXIF 는 여기서 사라짐, orientation 은 bake).
+        final bytes = resizeForUpload(original);
         final filename = 'checklist_${DateTime.now().millisecondsSinceEpoch}.jpg';
         const contentType = 'image/jpeg';
         final urls = await storage.getPresignedUrl(filename, contentType);

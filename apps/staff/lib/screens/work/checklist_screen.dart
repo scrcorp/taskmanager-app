@@ -1574,9 +1574,9 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
   Future<void> _addPhoto(ImageSource source) async {
     final picker = ImagePicker();
 
-    // 사전 리사이즈: 치수 상한 2048(긴 변), 고품질 유지(서버가 WebP q80/2048 로 최종 가공).
-    const maxDim = 2048.0;
-    const quality = 90;
+    // ⚠️ picker 에서 리사이즈하지 않는다(maxWidth/maxHeight/imageQuality 미지정).
+    // 리사이즈하면 EXIF 가 사라져 촬영시각을 못 읽는다. 원본으로 픽 → EXIF 읽기 →
+    // resizeForUpload 로 앱에서 직접 리사이즈하는 순서를 지킨다.
 
     // Gallery → 여러 장 한 번에.
     // Camera → 네이티브는 취소할 때까지 연속 촬영(멀티샷 루프). 웹은 파일 피커가
@@ -1586,10 +1586,10 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
     final List<XFile> picked = [];
     try {
       if (source == ImageSource.gallery) {
-        picked.addAll(await picker.pickMultiImage(maxWidth: maxDim, maxHeight: maxDim, imageQuality: quality));
+        picked.addAll(await picker.pickMultiImage());
       } else {
         while (_photos.length + picked.length < _maxPhotos) {
-          final shot = await picker.pickImage(source: source, maxWidth: maxDim, maxHeight: maxDim, imageQuality: quality);
+          final shot = await picker.pickImage(source: source);
           if (shot == null) break; // 사용자가 카메라를 닫으면 멀티샷 종료
           picked.add(shot);
           if (kIsWeb) break; // 웹: 제스처당 한 장 (재탭으로 추가)
@@ -1614,9 +1614,11 @@ class _CompletionFormDialogState extends State<_CompletionFormDialog> {
     setState(() => _isUploading = true);
     try {
       for (final file in trimmed) {
-        final bytes = await file.readAsBytes();
-        // 촬영시각: 라이브=셔터(현재), 갤러리=EXIF. 워터마크는 이 시각을 표시한다.
-        final captureTime = await resolveCaptureTime(source, bytes);
+        final original = await file.readAsBytes();
+        // 촬영시각은 리사이즈 전 원본에서 읽는다(EXIF 우선 → 없으면 라이브만 현재시각).
+        final captureTime = await resolveCaptureTime(source, original);
+        // 업로드 바이트는 EXIF 를 읽은 뒤 리사이즈(EXIF 는 여기서 사라짐, orientation 은 bake).
+        final bytes = resizeForUpload(original);
         final filename = 'checklist_${DateTime.now().millisecondsSinceEpoch}.jpg';
         final urls = await widget.storageProvider.getPresignedUrl(filename, 'image/jpeg');
         await widget.storageProvider.uploadFile(urls['upload_url']!, bytes, 'image/jpeg');
