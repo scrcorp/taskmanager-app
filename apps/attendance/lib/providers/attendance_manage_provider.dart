@@ -188,12 +188,19 @@ class ManageSessionState {
   final DateTime? expiresAt;
   final String? error;
 
+  /// PIN 메뉴 노출 여부. manage 진입(SV+)보다 PIN 문턱(GM+ 기본)이 높아서,
+  /// 세션이 열렸다는 것만으로 Staff PINs 를 보여주면 안 된다.
+  final bool canReadPins;
+  final bool canUpdatePins;
+
   const ManageSessionState({
     this.active = false,
     this.managerUserId,
     this.managerName,
     this.expiresAt,
     this.error,
+    this.canReadPins = false,
+    this.canUpdatePins = false,
   });
 
   ManageSessionState copyWith({
@@ -202,6 +209,8 @@ class ManageSessionState {
     String? managerName,
     DateTime? expiresAt,
     String? error,
+    bool? canReadPins,
+    bool? canUpdatePins,
     bool clearError = false,
   }) {
     return ManageSessionState(
@@ -210,6 +219,8 @@ class ManageSessionState {
       managerName: managerName ?? this.managerName,
       expiresAt: expiresAt ?? this.expiresAt,
       error: clearError ? null : (error ?? this.error),
+      canReadPins: canReadPins ?? this.canReadPins,
+      canUpdatePins: canUpdatePins ?? this.canUpdatePins,
     );
   }
 }
@@ -237,6 +248,8 @@ class AttendanceManageSessionNotifier extends StateNotifier<ManageSessionState> 
         managerUserId: body['manager_user_id']?.toString(),
         managerName: body['manager_name']?.toString(),
         expiresAt: DateTime.tryParse(body['expires_at']?.toString() ?? ''),
+        canReadPins: body['can_read_pins'] == true,
+        canUpdatePins: body['can_update_pins'] == true,
       );
       return true;
     } on DioException catch (e) {

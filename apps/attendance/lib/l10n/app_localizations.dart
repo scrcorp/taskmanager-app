@@ -1788,6 +1788,162 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'OK'**
   String get pfErrorOk;
+
+  /// No description provided for @mgPinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Staff PINs'**
+  String get mgPinTitle;
+
+  /// No description provided for @mgPinSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'View or change clock-in PINs'**
+  String get mgPinSubtitle;
+
+  /// No description provided for @mgPinSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by name or EMPID'**
+  String get mgPinSearchHint;
+
+  /// No description provided for @mgPinWorksToday.
+  ///
+  /// In en, this message translates to:
+  /// **'TODAY'**
+  String get mgPinWorksToday;
+
+  /// No description provided for @mgPinNoPin.
+  ///
+  /// In en, this message translates to:
+  /// **'No PIN'**
+  String get mgPinNoPin;
+
+  /// No description provided for @mgPinReveal.
+  ///
+  /// In en, this message translates to:
+  /// **'Show PIN'**
+  String get mgPinReveal;
+
+  /// No description provided for @mgPinHideIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Hides in {seconds}s'**
+  String mgPinHideIn(int seconds);
+
+  /// No description provided for @mgPinEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get mgPinEdit;
+
+  /// No description provided for @mgPinRegenerate.
+  ///
+  /// In en, this message translates to:
+  /// **'New random PIN'**
+  String get mgPinRegenerate;
+
+  /// No description provided for @mgPinEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No employees assigned to this store'**
+  String get mgPinEmpty;
+
+  /// No description provided for @mgPinNoSearchResult.
+  ///
+  /// In en, this message translates to:
+  /// **'No employee matches \"{query}\"'**
+  String mgPinNoSearchResult(String query);
+
+  /// No description provided for @mgPinSetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set PIN for {name}'**
+  String mgPinSetTitle(String name);
+
+  /// No description provided for @mgPinSetHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter 4 to 6 digits'**
+  String get mgPinSetHelp;
+
+  /// No description provided for @mgPinSaveHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter 4~6 digits, then tap Save PIN'**
+  String get mgPinSaveHint;
+
+  /// No description provided for @mgPinSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save PIN'**
+  String get mgPinSave;
+
+  /// No description provided for @mgPinSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN updated'**
+  String get mgPinSaved;
+
+  /// No description provided for @mgPinRegenerateConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Issue a new PIN?'**
+  String get mgPinRegenerateConfirmTitle;
+
+  /// No description provided for @mgPinRegenerateConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} will need the new PIN to clock in. The current PIN stops working immediately.'**
+  String mgPinRegenerateConfirmBody(String name);
+
+  /// No description provided for @mgPinRegenerateConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Issue new PIN'**
+  String get mgPinRegenerateConfirm;
+
+  /// No description provided for @mgPinCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get mgPinCancel;
+
+  /// No description provided for @mgPinErrorTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'This PIN is already in use. Please enter a different number.'**
+  String get mgPinErrorTaken;
+
+  /// No description provided for @mgPinErrorConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'This PIN conflicts with another employee\'s PIN. Please enter a different number.'**
+  String get mgPinErrorConflict;
+
+  /// No description provided for @mgPinErrorForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have permission to manage PINs.'**
+  String get mgPinErrorForbidden;
+
+  /// No description provided for @mgPinErrorNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This employee is no longer assigned to this store.'**
+  String get mgPinErrorNotFound;
+
+  /// No description provided for @mgPinErrorLoad.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the employee list. Pull down to retry.'**
+  String get mgPinErrorLoad;
+
+  /// No description provided for @mgPinErrorGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save the PIN. Please try again.'**
+  String get mgPinErrorGeneric;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

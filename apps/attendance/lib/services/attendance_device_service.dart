@@ -366,6 +366,53 @@ class AttendanceDeviceService {
     return const [];
   }
 
+  // ── Manage 모드 — 직원 PIN 관리 ─────────────────────────────
+
+  /// 매장 직원 목록 (오늘 근무자 우선 → 이름순). 평문 PIN 은 포함되지 않는다.
+  Future<List<Map<String, dynamic>>> manageListStaffPins({String? query}) async {
+    final response = await _dio.get(
+      '/attendance/manage/staff-pins',
+      queryParameters: {
+        if (query != null && query.trim().isNotEmpty) 'q': query.trim(),
+      },
+    );
+    final data = response.data;
+    if (data is List) {
+      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    return const [];
+  }
+
+  /// 평문 PIN 1건 조회. **호출할 때마다 서버에 감사 로그가 남는다** —
+  /// 목록 렌더링 같은 곳에서 미리 당겨오지 말 것.
+  Future<String?> manageRevealStaffPin(String userId) async {
+    final response =
+        await _dio.get('/attendance/manage/staff-pins/$userId/reveal');
+    final body = Map<String, dynamic>.from(response.data as Map);
+    return body['clockin_pin'] as String?;
+  }
+
+  /// 직원 PIN 직접 지정 (4~6자리). 중복·prefix 충돌 시 409.
+  Future<String?> manageUpdateStaffPin({
+    required String userId,
+    required String pin,
+  }) async {
+    final response = await _dio.patch(
+      '/attendance/manage/staff-pins/$userId',
+      data: {'clockin_pin': pin},
+    );
+    final body = Map<String, dynamic>.from(response.data as Map);
+    return body['clockin_pin'] as String?;
+  }
+
+  /// 직원 PIN 랜덤 재발급 (6자리). 새 값을 그대로 돌려받아 바로 안내 가능.
+  Future<String?> manageRegenerateStaffPin(String userId) async {
+    final response = await _dio
+        .post('/attendance/manage/staff-pins/$userId/regenerate');
+    final body = Map<String, dynamic>.from(response.data as Map);
+    return body['clockin_pin'] as String?;
+  }
+
   /// 매장 work role 목록 (스케줄 생성 select).
   Future<List<Map<String, dynamic>>> manageListWorkRoles() async {
     final response = await _dio.get('/attendance/manage/work-roles');
