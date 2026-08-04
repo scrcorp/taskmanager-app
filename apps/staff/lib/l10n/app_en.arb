@@ -169,6 +169,27 @@
   "registerStoresLoadFailed": "Failed to load stores.",
   "registerSelectStoreRequired": "Please select at least one store.",
 
+  "claimSectionTitle": "Have a claim code? (Optional)",
+  "claimSectionSubtitle": "If your manager already set up an account for you, enter the code to take it over.",
+  "claimCodeHint": "Enter claim code",
+  "claimActionCheck": "Check",
+  "claimInvalid": "Please check the code and try again.",
+  "claimTakeoverName": "You'll take over {name}'s account.",
+  "@claimTakeoverName": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "claimRoleLabel": "Role",
+  "claimStoresLabel": "Stores",
+  "claimNoStores": "No stores assigned yet",
+  "claimActionUseDifferentCode": "Use a different code",
+  "claimStoresKeptNotice": "No need to pick stores — the stores already assigned to you will be kept.",
+  "claimConflictTitle": "An account may already exist",
+  "claimConflictMessage": "An account may already be set up for you. Ask your manager for the claim code, or continue with a new account.",
+  "claimConflictEnterCode": "Enter claim code",
+  "claimConflictContinueNew": "Create new account",
+
   "registerInfoHeading": "Tell us about yourself",
   "registerInfoSubheading": "Enter your basic information to get started.",
   "registerEnterName": "Please enter your name.",

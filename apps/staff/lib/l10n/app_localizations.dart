@@ -877,6 +877,96 @@ abstract class AppL10n {
   /// **'Please select at least one store.'**
   String get registerSelectStoreRequired;
 
+  /// No description provided for @claimSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Have a claim code? (Optional)'**
+  String get claimSectionTitle;
+
+  /// No description provided for @claimSectionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'If your manager already set up an account for you, enter the code to take it over.'**
+  String get claimSectionSubtitle;
+
+  /// No description provided for @claimCodeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter claim code'**
+  String get claimCodeHint;
+
+  /// No description provided for @claimActionCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Check'**
+  String get claimActionCheck;
+
+  /// No description provided for @claimInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Please check the code and try again.'**
+  String get claimInvalid;
+
+  /// No description provided for @claimTakeoverName.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll take over {name}\'s account.'**
+  String claimTakeoverName(String name);
+
+  /// No description provided for @claimRoleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Role'**
+  String get claimRoleLabel;
+
+  /// No description provided for @claimStoresLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Stores'**
+  String get claimStoresLabel;
+
+  /// No description provided for @claimNoStores.
+  ///
+  /// In en, this message translates to:
+  /// **'No stores assigned yet'**
+  String get claimNoStores;
+
+  /// No description provided for @claimActionUseDifferentCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Use a different code'**
+  String get claimActionUseDifferentCode;
+
+  /// No description provided for @claimStoresKeptNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'No need to pick stores — the stores already assigned to you will be kept.'**
+  String get claimStoresKeptNotice;
+
+  /// No description provided for @claimConflictTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'An account may already exist'**
+  String get claimConflictTitle;
+
+  /// No description provided for @claimConflictMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'An account may already be set up for you. Ask your manager for the claim code, or continue with a new account.'**
+  String get claimConflictMessage;
+
+  /// No description provided for @claimConflictEnterCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter claim code'**
+  String get claimConflictEnterCode;
+
+  /// No description provided for @claimConflictContinueNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Create new account'**
+  String get claimConflictContinueNew;
+
   /// No description provided for @registerInfoHeading.
   ///
   /// In en, this message translates to:

@@ -38,6 +38,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _storesLoading = false;
   String? _storesError;
 
+  // Step 2: Claim code (optional) — 관리자가 미리 만든 미가입 계정 인수
+  final _claimCodeCtrl = TextEditingController();
+  final _claimCodeFocus = FocusNode();
+  String? _claimCode; // 미리보기로 확정된 코드
+  ClaimPreview? _claimPreview;
+  String? _claimError;
+  bool _claimChecking = false;
+
+  /// 소프트 가드(409)에서 사용자가 "새 계정으로 계속"을 고른 경우 true
+  bool _skipClaimCheck = false;
+
   // Step 3: Info
   final _nameCtrl = TextEditingController();
   final _idCtrl = TextEditingController();
@@ -61,6 +72,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   void dispose() {
     _timer?.cancel();
     _storeSearchCtrl.dispose();
+    _claimCodeCtrl.dispose();
+    _claimCodeFocus.dispose();
     _emailCtrl.dispose();
     _codeCtrl.dispose();
     _nameCtrl.dispose();
@@ -129,8 +142,61 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }).toList();
   }
 
+  // Step 2: 인수 코드 확인 — 성공하면 코드를 상태에 보관하고 미리보기 카드 표시
+  Future<void> _checkClaimCode() async {
+    final t = AppL10n.of(context);
+    final code = _claimCodeCtrl.text.trim();
+    if (code.isEmpty) {
+      setState(() => _claimError = t.claimInvalid);
+      return;
+    }
+    FocusScope.of(context).unfocus();
+    setState(() { _claimChecking = true; _claimError = null; });
+    try {
+      final preview =
+          await ref.read(authServiceProvider).previewClaim(claimCode: code);
+      if (!mounted) return;
+      setState(() {
+        _claimChecking = false;
+        if (preview == null) {
+          _claimPreview = null;
+          _claimCode = null;
+          _claimError = t.claimInvalid;
+        } else {
+          _claimPreview = preview;
+          _claimCode = code;
+          _claimError = null;
+          _skipClaimCheck = false; // 코드를 쓰면 소프트 가드 우회는 불필요
+          // 서버가 기존 배정을 유지하므로 직접 고른 매장은 비운다
+          _selectedStoreIds.clear();
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _claimChecking = false;
+        _claimError = _parseApiError(e, t.claimInvalid);
+      });
+    }
+  }
+
+  /// 확정된 인수 코드 해제 → 일반 가입(매장 직접 선택)으로 되돌린다
+  void _clearClaim() {
+    setState(() {
+      _claimCode = null;
+      _claimPreview = null;
+      _claimError = null;
+      _claimCodeCtrl.clear();
+    });
+  }
+
   Future<void> _validateStep2() async {
     final t = AppL10n.of(context);
+    // 인수 코드가 확정되면 매장 선택은 건너뛴다 (서버가 기존 배정 유지)
+    if (_claimCode != null) {
+      _nextStep();
+      return;
+    }
     if (_selectedStoreIds.isEmpty) {
       await AppModal.show(
         context,
@@ -307,6 +373,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       );
       return;
     }
+    await _runRegister();
+  }
+
+  /// 실제 가입 호출 — 409 소프트 가드는 다이얼로그로 분기 처리
+  Future<void> _runRegister() async {
+    final t = AppL10n.of(context);
     setState(() => _isLoading = true);
     final success = await ref.read(authProvider.notifier).register(
       username: _idCtrl.text.trim(),
@@ -316,20 +388,55 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       verificationToken: _verificationToken!,
       storeIds: _selectedStoreIds.toList(),
       preferredLanguage: _preferredLanguage,
+      claimCode: _claimCode,
+      skipClaimCheck: _skipClaimCheck,
     );
     if (!mounted) return;
     setState(() => _isLoading = false);
     if (success) {
       _nextStep();
-    } else {
-      final error = ref.read(authProvider).error ?? t.registerFailedDefault;
-      AppModal.show(
-        context,
-        title: t.registerFailedTitle,
-        message: error,
-        type: ModalType.error,
-      );
+      return;
     }
+    final authState = ref.read(authProvider);
+    if (authState.errorCode == 'provisional_candidate_exists') {
+      await _handleProvisionalConflict();
+      return;
+    }
+    if (!mounted) return;
+    AppModal.show(
+      context,
+      title: t.registerFailedTitle,
+      message: authState.error ?? t.registerFailedDefault,
+      type: ModalType.error,
+    );
+  }
+
+  /// 409 provisional_candidate_exists — 인수 코드 입력 vs 새 계정으로 계속
+  Future<void> _handleProvisionalConflict() async {
+    final t = AppL10n.of(context);
+    final enterCode = await AppModal.show(
+      context,
+      title: t.claimConflictTitle,
+      message: t.claimConflictMessage,
+      type: ModalType.confirm,
+      confirmText: t.claimConflictEnterCode,
+      cancelText: t.claimConflictContinueNew,
+    );
+    if (!mounted) return;
+    if (enterCode == true) {
+      // 코드 입력 단계(Step 2)로 이동 후 입력란에 포커스
+      setState(() {
+        _currentStep = 1;
+        _claimError = null;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _claimCodeFocus.requestFocus();
+      });
+      return;
+    }
+    // 새 계정으로 계속 → 소프트 가드 우회 후 재요청
+    setState(() => _skipClaimCheck = true);
+    await _runRegister();
   }
 
   /// 서버 에러 응답에서 사용자 친화적 메시지 추출
@@ -539,6 +646,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             t.registerStoresSubheading,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
+          const SizedBox(height: 16),
+          _buildClaimSection(),
+          if (_claimCode != null) ...[
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.info_outline_rounded, size: 16, color: AppColors.textSecondary),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    t.claimStoresKeptNotice,
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+          ],
+          if (_claimCode == null) ...[
           if (_selectedStoreIds.isNotEmpty) ...[
             const SizedBox(height: 12),
             Container(
@@ -633,13 +760,133 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             },
                           ),
           ),
+          ],
           const SizedBox(height: 12),
           _BottomButton(
             label: t.actionContinue,
-            onPressed: _selectedStoreIds.isNotEmpty ? _validateStep2 : null,
+            onPressed: (_claimCode != null || _selectedStoreIds.isNotEmpty)
+                ? _validateStep2
+                : null,
           ),
         ],
       ),
+    );
+  }
+
+  // Step 2: 인수 코드 입력/미리보기 (선택)
+  Widget _buildClaimSection() {
+    final t = AppL10n.of(context);
+    final preview = _claimPreview;
+    if (_claimCode != null && preview != null) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.accentBg,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.accent, width: 1.5),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.badge_rounded, size: 18, color: AppColors.accent),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    t.claimTakeoverName(preview.fullName),
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.accent,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _ClaimDetailRow(label: t.claimRoleLabel, value: preview.roleName),
+            const SizedBox(height: 4),
+            _ClaimDetailRow(
+              label: t.claimStoresLabel,
+              value: preview.storeNames.isEmpty
+                  ? t.claimNoStores
+                  : preview.storeNames.join(', '),
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: GestureDetector(
+                onTap: _clearClaim,
+                child: Text(
+                  t.claimActionUseDifferentCode,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.accent,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _FormLabel(t.claimSectionTitle),
+        const SizedBox(height: 4),
+        Text(
+          t.claimSectionSubtitle,
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _claimCodeCtrl,
+                focusNode: _claimCodeFocus,
+                textInputAction: TextInputAction.done,
+                onSubmitted: (_) => _checkClaimCode(),
+                decoration: InputDecoration(hintText: t.claimCodeHint),
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _claimChecking ? null : _checkClaimCode,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accentBg,
+                  foregroundColor: AppColors.accent,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+                child: _claimChecking
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Text(t.claimActionCheck),
+              ),
+            ),
+          ],
+        ),
+        if (_claimError != null) ...[
+          const SizedBox(height: 6),
+          Text(
+            _claimError!,
+            style: const TextStyle(fontSize: 12, color: AppColors.danger),
+          ),
+        ],
+      ],
     );
   }
 
@@ -844,10 +1091,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Widget _buildStep5() {
     final t = AppL10n.of(context);
     final name = _nameCtrl.text.trim();
-    final selectedStoreNames = _stores
-        .where((s) => _selectedStoreIds.contains(s['id'] as String))
-        .map((s) => s['name'] as String? ?? '')
-        .toList();
+    // 인수 코드로 가입한 경우 기존 배정 매장을 보여준다
+    final selectedStoreNames = _claimPreview != null
+        ? _claimPreview!.storeNames
+        : _stores
+            .where((s) => _selectedStoreIds.contains(s['id'] as String))
+            .map((s) => s['name'] as String? ?? '')
+            .toList();
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
       child: Column(
@@ -1075,6 +1325,40 @@ class _FormLabel extends StatelessWidget {
     return Text(
       text,
       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.text),
+    );
+  }
+}
+
+/// 인수 코드 미리보기 카드의 한 줄 (라벨 · 값)
+class _ClaimDetailRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ClaimDetailRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 64,
+          child: Text(
+            label,
+            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.text,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

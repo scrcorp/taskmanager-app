@@ -24,13 +24,28 @@ class AuthState {
   final User? user;
   final String? error;
 
-  const AuthState({this.status = AuthStatus.initial, this.user, this.error});
+  /// 서버가 준 기계 판독용 에러 코드 (예: provisional_candidate_exists).
+  /// 화면이 에러 문구가 아니라 코드로 분기할 수 있게 한다.
+  final String? errorCode;
 
-  AuthState copyWith({AuthStatus? status, User? user, String? error}) {
+  const AuthState({
+    this.status = AuthStatus.initial,
+    this.user,
+    this.error,
+    this.errorCode,
+  });
+
+  AuthState copyWith({
+    AuthStatus? status,
+    User? user,
+    String? error,
+    String? errorCode,
+  }) {
     return AuthState(
       status: status ?? this.status,
       user: user ?? this.user,
       error: error,
+      errorCode: errorCode,
     );
   }
 }
@@ -110,6 +125,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     required String verificationToken,
     List<String> storeIds = const [],
     String preferredLanguage = 'en',
+    String? claimCode,
+    bool skipClaimCheck = false,
   }) async {
     state = state.copyWith(status: AuthStatus.loading, error: null);
     try {
@@ -121,6 +138,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         verificationToken: verificationToken,
         storeIds: storeIds,
         preferredLanguage: preferredLanguage,
+        claimCode: claimCode,
+        skipClaimCheck: skipClaimCheck,
       );
       final data = await _authService.getMe();
       final user = User.fromJson(data);
@@ -131,7 +150,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
       return true;
     } catch (e) {
-      state = AuthState(status: AuthStatus.unauthenticated, error: _parseError(e, 'Registration failed'));
+      state = AuthState(
+        status: AuthStatus.unauthenticated,
+        error: _parseError(e, 'Registration failed'),
+        errorCode: _parseErrorCode(e),
+      );
       return false;
     }
   }
@@ -180,6 +203,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// Dio 에러 응답을 사용자 친화적 메시지로 변환
   ///
   /// - 서버 에러: {"detail": "message"} → 메시지 직접 표시
+  /// - 구조화 에러: {"detail": {"message": "...", "code": "..."}} → message 표시
   /// - 422 유효성 에러: {"detail": [{"loc": [...], "msg": "..."}]} → 필드별 에러
   /// - 네트워크 에러: 타임아웃/연결 불가 시 안내 메시지
   String _parseError(Object e, String fallback) {
@@ -188,6 +212,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       if (data is Map<String, dynamic>) {
         final detail = data['detail'];
         if (detail is String) return detail;
+        if (detail is Map) {
+          final message = detail['message'];
+          if (message is String) return message;
+        }
         if (detail is List && detail.isNotEmpty) {
           return detail.map((d) {
             final loc = (d['loc'] as List?)?.where((l) => l != 'body').join(' > ') ?? '';
@@ -207,6 +235,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
     }
     return fallback;
+  }
+
+  /// 서버 에러 응답에서 기계 판독용 코드 추출
+  /// ({"detail": {"message": "...", "code": "..."}} 형태에서만 나온다)
+  String? _parseErrorCode(Object e) {
+    if (e is DioException && e.response?.data is Map) {
+      final detail = (e.response!.data as Map)['detail'];
+      if (detail is Map) {
+        final code = detail['code'];
+        if (code is String) return code;
+      }
+    }
+    return null;
   }
 
   /// 로그아웃: 서버에 refresh token 무효화 요청 후 로컬 토큰 삭제
