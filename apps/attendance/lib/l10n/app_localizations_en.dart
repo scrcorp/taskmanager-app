@@ -980,4 +980,95 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get pfErrorOk => 'OK';
+
+  @override
+  String get mgPinTitle => 'Staff PINs';
+
+  @override
+  String get mgPinSubtitle => 'View or change clock-in PINs';
+
+  @override
+  String get mgPinSearchHint => 'Search by name or EMPID';
+
+  @override
+  String get mgPinWorksToday => 'TODAY';
+
+  @override
+  String get mgPinNoPin => 'No PIN';
+
+  @override
+  String get mgPinReveal => 'Show PIN';
+
+  @override
+  String mgPinHideIn(int seconds) {
+    return 'Hides in ${seconds}s';
+  }
+
+  @override
+  String get mgPinEdit => 'Edit';
+
+  @override
+  String get mgPinRegenerate => 'New random PIN';
+
+  @override
+  String get mgPinEmpty => 'No employees assigned to this store';
+
+  @override
+  String mgPinNoSearchResult(String query) {
+    return 'No employee matches \"$query\"';
+  }
+
+  @override
+  String mgPinSetTitle(String name) {
+    return 'Set PIN for $name';
+  }
+
+  @override
+  String get mgPinSetHelp => 'Enter 4 to 6 digits';
+
+  @override
+  String get mgPinSaveHint => 'Enter 4~6 digits, then tap Save PIN';
+
+  @override
+  String get mgPinSave => 'Save PIN';
+
+  @override
+  String get mgPinSaved => 'PIN updated';
+
+  @override
+  String get mgPinRegenerateConfirmTitle => 'Issue a new PIN?';
+
+  @override
+  String mgPinRegenerateConfirmBody(String name) {
+    return '$name will need the new PIN to clock in. The current PIN stops working immediately.';
+  }
+
+  @override
+  String get mgPinRegenerateConfirm => 'Issue new PIN';
+
+  @override
+  String get mgPinCancel => 'Cancel';
+
+  @override
+  String get mgPinErrorTaken =>
+      'This PIN is already in use. Please enter a different number.';
+
+  @override
+  String get mgPinErrorConflict =>
+      'This PIN conflicts with another employee\'s PIN. Please enter a different number.';
+
+  @override
+  String get mgPinErrorForbidden =>
+      'You don\'t have permission to manage PINs.';
+
+  @override
+  String get mgPinErrorNotFound =>
+      'This employee is no longer assigned to this store.';
+
+  @override
+  String get mgPinErrorLoad =>
+      'Couldn\'t load the employee list. Pull down to retry.';
+
+  @override
+  String get mgPinErrorGeneric => 'Couldn\'t save the PIN. Please try again.';
 }

@@ -20,12 +20,22 @@ class PinNumpad extends StatefulWidget {
   final int maxLength;
   final bool enabled;
 
+  /// 확인 버튼 문구. 기본은 본인 확인 흐름의 "Verify Identity" 지만,
+  /// 매니저가 남의 PIN 을 지정하는 화면에선 "Save PIN" 처럼 바뀌어야 한다.
+  final String? submitLabel;
+
+  /// 확인 버튼 아래 안내 문구. 기본은 "Enter N~M digits, then tap Verify".
+  /// submitLabel 을 바꾸면 이 문구도 같이 바꿔야 말이 맞는다.
+  final String? hintText;
+
   const PinNumpad({
     super.key,
     required this.onSubmit,
     this.minLength = 4,
     this.maxLength = 6,
     this.enabled = true,
+    this.submitLabel,
+    this.hintText,
   });
 
   @override
@@ -74,7 +84,11 @@ class _PinNumpadState extends State<PinNumpad> {
   @override
   Widget build(BuildContext context) {
     final t = AppL10n.of(context);
-    final canSubmit = canSubmitPin(_pin, widget.minLength, enabled: widget.enabled);
+    final canSubmit = canSubmitPin(
+      _pin,
+      widget.minLength,
+      enabled: widget.enabled,
+    );
     return LayoutBuilder(
       builder: (ctx, constraints) {
         // 가용 height 에 따라 키 height 동적 계산 — 작은 viewport 에도 fit, 큰 화면에선 더 크게.
@@ -94,7 +108,10 @@ class _PinNumpadState extends State<PinNumpad> {
                 onPressed: _pin.isEmpty ? null : _toggleReveal,
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.accent,
-                  textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 child: Text(_reveal ? t.pfPinHide : t.pfPinShow),
               ),
@@ -116,19 +133,27 @@ class _PinNumpadState extends State<PinNumpad> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.accent,
                   foregroundColor: Colors.white,
-                  disabledBackgroundColor: AppColors.accent.withValues(alpha: 0.4),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  disabledBackgroundColor: AppColors.accent.withValues(
+                    alpha: 0.4,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   elevation: canSubmit ? 4 : 0,
                 ),
                 child: Text(
-                  t.pfPinVerify,
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                  widget.submitLabel ?? t.pfPinVerify,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 6),
             Text(
-              t.pfPinHint(widget.minLength, widget.maxLength),
+              widget.hintText ??
+                  t.pfPinHint(widget.minLength, widget.maxLength),
               style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
             ),
           ],
@@ -187,23 +212,39 @@ class _Numpad extends StatelessWidget {
   Widget build(BuildContext context) {
     final digitFont = (keyHeight * 0.45).clamp(28.0, 52.0);
     Widget keyN(String n) => _Key(
-          height: keyHeight,
-          onTap: () => onDigit(n),
-          child: Text(
-            n,
-            style: TextStyle(fontSize: digitFont, fontWeight: FontWeight.w700, color: AppColors.text),
-          ),
-        );
+      height: keyHeight,
+      onTap: () => onDigit(n),
+      child: Text(
+        n,
+        style: TextStyle(
+          fontSize: digitFont,
+          fontWeight: FontWeight.w700,
+          color: AppColors.text,
+        ),
+      ),
+    );
 
     return SizedBox(
       width: 560,
       child: Column(
         children: [
-          Row(children: [for (final d in ['1', '2', '3']) Expanded(child: keyN(d))]),
+          Row(
+            children: [
+              for (final d in ['1', '2', '3']) Expanded(child: keyN(d)),
+            ],
+          ),
           const SizedBox(height: 8),
-          Row(children: [for (final d in ['4', '5', '6']) Expanded(child: keyN(d))]),
+          Row(
+            children: [
+              for (final d in ['4', '5', '6']) Expanded(child: keyN(d)),
+            ],
+          ),
           const SizedBox(height: 8),
-          Row(children: [for (final d in ['7', '8', '9']) Expanded(child: keyN(d))]),
+          Row(
+            children: [
+              for (final d in ['7', '8', '9']) Expanded(child: keyN(d)),
+            ],
+          ),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -214,7 +255,11 @@ class _Numpad extends StatelessWidget {
                   onTap: enabledClearDel ? onClear : null,
                   child: Text(
                     AppL10n.of(context).pfPinClear,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.accent),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.accent,
+                    ),
                   ),
                 ),
               ),
@@ -224,7 +269,11 @@ class _Numpad extends StatelessWidget {
                   height: keyHeight,
                   variant: _KeyVariant.action,
                   onTap: enabledClearDel ? onBackspace : null,
-                  child: const Icon(Icons.backspace_outlined, size: 36, color: AppColors.accent),
+                  child: const Icon(
+                    Icons.backspace_outlined,
+                    size: 36,
+                    color: AppColors.accent,
+                  ),
                 ),
               ),
             ],
@@ -252,9 +301,7 @@ class _Key extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final disabled = onTap == null;
-    final bg = variant == _KeyVariant.action
-        ? AppColors.bg
-        : AppColors.white;
+    final bg = variant == _KeyVariant.action ? AppColors.bg : AppColors.white;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Material(
