@@ -458,5 +458,16 @@
   "mgPinErrorForbidden": "No tienes permiso para gestionar los PIN.",
   "mgPinErrorNotFound": "Este empleado ya no está asignado a esta tienda.",
   "mgPinErrorLoad": "No se pudo cargar la lista de empleados. Desliza hacia abajo para reintentar.",
-  "mgPinErrorGeneric": "No se pudo guardar el PIN. Inténtalo de nuevo."
+  "mgPinErrorGeneric": "No se pudo guardar el PIN. Inténtalo de nuevo.",
+
+  "attBatteryCharging": "Cargando",
+  "attBatteryFull": "Carga completa",
+  "attBatteryPluggedIn": "Conectado",
+  "attBatteryOnBattery": "Con batería",
+  "attBatteryLow": "Batería baja",
+  "attSettingsBatteryLabel": "Batería",
+  "attSettingsBrightnessTitle": "Brillo de pantalla",
+  "attSettingsBrightnessHelp": "Se aplica mientras esta app está en pantalla.",
+  "attSettingsBrightnessSystem": "Usar el brillo del sistema",
+  "attSettingsBrightnessFollowingSystem": "Siguiendo el brillo del sistema"
 }

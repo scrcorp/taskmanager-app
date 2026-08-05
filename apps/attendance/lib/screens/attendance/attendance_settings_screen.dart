@@ -10,11 +10,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../l10n/app_localizations.dart';
+import '../../models/battery_status.dart';
 import '../../providers/attendance_device_provider.dart';
+import '../../providers/device_power_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../services/attendance_device_service.dart';
+import '../../services/device_power_service.dart';
 import '../../utils/app_version_gate.dart';
 import '../../utils/attendance_device_storage.dart';
+import '../../utils/battery_display.dart';
 import 'attendance_access_code_screen.dart';
 import 'attendance_manage_pin_screen.dart';
 
@@ -306,9 +310,16 @@ class _AttendanceSettingsScreenState
                       monospace: true,
                     ),
                   ],
+                  const SizedBox(height: 12),
+                  const _BatteryInfoRow(),
                 ],
               ),
             ),
+            const SizedBox(height: 20),
+
+            // ── 화면 밝기 ──
+            // 앱 고정 상태에서는 시스템 빠른설정을 열 수 없어 여기서만 조절 가능.
+            const _BrightnessCard(),
             const SizedBox(height: 20),
 
             // ── App info card (앱 이름 / 버전 / 회사) ──
@@ -685,12 +696,17 @@ class _InfoRow extends StatelessWidget {
   final String value;
   final bool monospace;
   final Widget? trailing;
+
+  /// 아이콘 강조색. 기본은 accent — 배터리처럼 상태에 따라 색이 바뀌는 행만 지정.
+  final Color? iconColor;
+
   const _InfoRow({
     required this.icon,
     required this.label,
     required this.value,
     this.monospace = false,
     this.trailing,
+    this.iconColor,
   });
 
   @override
@@ -705,7 +721,7 @@ class _InfoRow extends StatelessWidget {
             color: AppColors.accentBg,
             borderRadius: BorderRadius.circular(10),
           ),
-          child: Icon(icon, color: AppColors.accent, size: 18),
+          child: Icon(icon, color: iconColor ?? AppColors.accent, size: 18),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -734,6 +750,141 @@ class _InfoRow extends StatelessWidget {
         ),
         if (trailing != null) trailing!,
       ],
+    );
+  }
+}
+
+/// 기기 정보 카드의 배터리 행 — 헤더 칩보다 자세히 (잔량 + 충전 상태 문구).
+class _BatteryInfoRow extends ConsumerWidget {
+  const _BatteryInfoRow();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppL10n.of(context);
+    final status =
+        ref.watch(batteryStatusProvider).valueOrNull ?? BatteryStatus.unknown;
+    // 안드로이드가 아니거나 아직 첫 브로드캐스트 전 — 값을 지어내지 않는다.
+    final unavailable = status.level == null && !status.powered;
+    return _InfoRow(
+      icon: batteryIconFor(status),
+      iconColor: batteryColorFor(status),
+      label: t.attSettingsBatteryLabel,
+      value: unavailable
+          ? '—'
+          : '${batteryLabelFor(status)} · ${batteryStateTextFor(t, status)}',
+    );
+  }
+}
+
+/// 화면 밝기 카드.
+///
+/// 앱 고정(lock task) 중에는 시스템 빠른설정을 내릴 수 없어 밝기를 바꿀 방법이
+/// 여기밖에 없다. 창(window) 밝기만 바꾸므로 앱을 벗어나면 시스템 밝기로 돌아간다.
+class _BrightnessCard extends ConsumerWidget {
+  const _BrightnessCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = AppL10n.of(context);
+    final state = ref.watch(screenBrightnessProvider);
+    final notifier = ref.read(screenBrightnessProvider.notifier);
+    final percent = (state.sliderValue * 100).round();
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppColors.accentBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.brightness_6_rounded,
+                  color: AppColors.accent,
+                  size: 18,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      t.attSettingsBrightnessTitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      state.usingSystem
+                          ? t.attSettingsBrightnessFollowingSystem
+                          : '$percent%',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.text,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // 되돌릴 길을 항상 남겨둔다 — 값을 한 번 정하면 시스템 밝기로
+              // 복귀할 방법이 앱 고정 상태에선 여기밖에 없다.
+              if (!state.usingSystem)
+                TextButton(
+                  onPressed: notifier.useSystemBrightness,
+                  child: Text(t.attSettingsBrightnessSystem),
+                ),
+            ],
+          ),
+          Row(
+            children: [
+              const Icon(
+                Icons.brightness_low,
+                size: 20,
+                color: AppColors.textMuted,
+              ),
+              Expanded(
+                child: Slider(
+                  value: state.sliderValue,
+                  min: DevicePower.minBrightness,
+                  max: DevicePower.maxBrightness,
+                  // 0.05 단위 (10% ~ 100%)
+                  divisions: 18,
+                  label: '$percent%',
+                  onChanged:
+                      state.loaded ? (v) => notifier.previewBrightness(v) : null,
+                  onChangeEnd: (v) => notifier.commitBrightness(v),
+                ),
+              ),
+              const Icon(
+                Icons.brightness_high,
+                size: 22,
+                color: AppColors.textMuted,
+              ),
+            ],
+          ),
+          Text(
+            t.attSettingsBrightnessHelp,
+            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+        ],
+      ),
     );
   }
 }

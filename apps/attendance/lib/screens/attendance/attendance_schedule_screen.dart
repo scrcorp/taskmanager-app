@@ -18,6 +18,7 @@ import '../../providers/attendance_dashboard_provider.dart';
 import '../../providers/attendance_device_provider.dart';
 import '../../utils/staff_status_utils.dart';
 import '../../utils/store_time.dart';
+import '../../widgets/battery_indicator.dart';
 import '../../widgets/schedule_staff_card.dart';
 import '../../widgets/schedule_staff_detail_panel.dart';
 
@@ -244,25 +245,32 @@ class _Header extends StatelessWidget {
               ),
             ),
           ),
-          // 우: Back to PIN
+          // 우: 배터리 + Back to PIN
           SizedBox(
             width: 280,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton.icon(
-                onPressed: onClose,
-                icon: const Icon(Icons.arrow_back_rounded, size: 20),
-                label: const Text('Back to PIN'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.white,
-                  foregroundColor: AppColors.accent,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
-                  side: const BorderSide(color: AppColors.border, width: 1.5),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                const BatteryIndicator(),
+                const SizedBox(width: 10),
+                ElevatedButton.icon(
+                  onPressed: onClose,
+                  icon: const Icon(Icons.arrow_back_rounded, size: 20),
+                  label: const Text('Back to PIN'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.white,
+                    foregroundColor: AppColors.accent,
+                    elevation: 0,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
+                    textStyle:
+                        const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                    side: const BorderSide(color: AppColors.border, width: 1.5),
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
         ],

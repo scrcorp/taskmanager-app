@@ -1071,4 +1071,36 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get mgPinErrorGeneric => 'Couldn\'t save the PIN. Please try again.';
+
+  @override
+  String get attBatteryCharging => 'Charging';
+
+  @override
+  String get attBatteryFull => 'Fully charged';
+
+  @override
+  String get attBatteryPluggedIn => 'Plugged in';
+
+  @override
+  String get attBatteryOnBattery => 'On battery';
+
+  @override
+  String get attBatteryLow => 'Battery low';
+
+  @override
+  String get attSettingsBatteryLabel => 'Battery';
+
+  @override
+  String get attSettingsBrightnessTitle => 'Screen Brightness';
+
+  @override
+  String get attSettingsBrightnessHelp =>
+      'Applies while this app is on screen.';
+
+  @override
+  String get attSettingsBrightnessSystem => 'Use system brightness';
+
+  @override
+  String get attSettingsBrightnessFollowingSystem =>
+      'Following system brightness';
 }

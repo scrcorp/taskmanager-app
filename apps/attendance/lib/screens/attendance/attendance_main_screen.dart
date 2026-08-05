@@ -36,6 +36,7 @@ import '../../utils/main_flow_state.dart';
 import '../../utils/main_flow_transitions.dart' as flow;
 import '../../utils/store_time.dart';
 import '../../widgets/action_sheet.dart';
+import '../../widgets/battery_indicator.dart';
 import '../../widgets/early_clock_out_dialog.dart';
 import '../../widgets/identity_confirm_dialog.dart';
 import '../../widgets/language_switcher.dart';
@@ -619,12 +620,14 @@ class _Header extends StatelessWidget {
               ),
             ),
           ),
-          // 우: 수동 refresh + 언어 버튼
+          // 우: 배터리 + 수동 refresh + 언어 버튼
           SizedBox(
             width: 260,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                const BatteryIndicator(),
+                const SizedBox(width: 4),
                 Tooltip(
                   message: t.pfHeaderRefreshTooltip,
                   child: Material(
