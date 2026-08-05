@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
 
 import 'l10n/app_localizations.dart';
+import 'providers/device_power_provider.dart';
 import 'providers/locale_provider.dart';
 import 'screens/attendance/attendance_shell_screen.dart';
 
@@ -23,6 +24,9 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // 키오스크 모드 초기화 — 영속된 임시해제 타이머 복구
   await KioskIntent.armTimerIfPending();
+  // 저장된 화면 밝기 복원 — window brightness 는 프로세스가 죽으면 사라지므로
+  // cold start 마다 다시 적용해야 매장에서 맞춰둔 밝기가 유지된다.
+  await restoreSavedBrightness();
   // 가로 고정 (태블릿 키오스크)
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,

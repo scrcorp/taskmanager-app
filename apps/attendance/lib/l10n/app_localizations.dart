@@ -1944,6 +1944,66 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Couldn\'t save the PIN. Please try again.'**
   String get mgPinErrorGeneric;
+
+  /// No description provided for @attBatteryCharging.
+  ///
+  /// In en, this message translates to:
+  /// **'Charging'**
+  String get attBatteryCharging;
+
+  /// No description provided for @attBatteryFull.
+  ///
+  /// In en, this message translates to:
+  /// **'Fully charged'**
+  String get attBatteryFull;
+
+  /// No description provided for @attBatteryPluggedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Plugged in'**
+  String get attBatteryPluggedIn;
+
+  /// No description provided for @attBatteryOnBattery.
+  ///
+  /// In en, this message translates to:
+  /// **'On battery'**
+  String get attBatteryOnBattery;
+
+  /// No description provided for @attBatteryLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Battery low'**
+  String get attBatteryLow;
+
+  /// No description provided for @attSettingsBatteryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Battery'**
+  String get attSettingsBatteryLabel;
+
+  /// No description provided for @attSettingsBrightnessTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen Brightness'**
+  String get attSettingsBrightnessTitle;
+
+  /// No description provided for @attSettingsBrightnessHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Applies while this app is on screen.'**
+  String get attSettingsBrightnessHelp;
+
+  /// No description provided for @attSettingsBrightnessSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'Use system brightness'**
+  String get attSettingsBrightnessSystem;
+
+  /// No description provided for @attSettingsBrightnessFollowingSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'Following system brightness'**
+  String get attSettingsBrightnessFollowingSystem;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

@@ -478,5 +478,16 @@
   "mgPinErrorForbidden": "You don't have permission to manage PINs.",
   "mgPinErrorNotFound": "This employee is no longer assigned to this store.",
   "mgPinErrorLoad": "Couldn't load the employee list. Pull down to retry.",
-  "mgPinErrorGeneric": "Couldn't save the PIN. Please try again."
+  "mgPinErrorGeneric": "Couldn't save the PIN. Please try again.",
+
+  "attBatteryCharging": "Charging",
+  "attBatteryFull": "Fully charged",
+  "attBatteryPluggedIn": "Plugged in",
+  "attBatteryOnBattery": "On battery",
+  "attBatteryLow": "Battery low",
+  "attSettingsBatteryLabel": "Battery",
+  "attSettingsBrightnessTitle": "Screen Brightness",
+  "attSettingsBrightnessHelp": "Applies while this app is on screen.",
+  "attSettingsBrightnessSystem": "Use system brightness",
+  "attSettingsBrightnessFollowingSystem": "Following system brightness"
 }
