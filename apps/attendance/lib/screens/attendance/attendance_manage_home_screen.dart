@@ -14,6 +14,7 @@ import '../../providers/attendance_manage_provider.dart';
 import '../../services/attendance_device_service.dart';
 import '../../utils/manage_status_utils.dart';
 import '../../utils/staff_status_utils.dart' show StaffSection;
+import '../../widgets/battery_indicator.dart';
 import '../../widgets/manage_action_picker.dart';
 import '../../widgets/manage_schedule_edit_modal.dart';
 import '../../widgets/schedule_staff_card.dart';
@@ -344,12 +345,14 @@ class _AttendanceManageHomeScreenState
             ),
           ),
         ),
-        // 우: 세션 타이머 + refresh + exit
+        // 우: 배터리 + 세션 타이머 + refresh + exit
         SizedBox(
           width: 320,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              const BatteryIndicator(iconSize: 18, fontSize: 13),
+              const SizedBox(width: 4),
               // 세션 카운트다운 (초 단위 — 이 subtree 만 매초 rebuild)
               ValueListenableBuilder<int>(
                 valueListenable: _sessionLeftNotifier,
