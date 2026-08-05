@@ -20,6 +20,7 @@ import '../../widgets/schedule_staff_card.dart';
 import '../../widgets/schedule_staff_detail_panel.dart';
 import '../../widgets/store_clock.dart';
 import 'attendance_manage_action_modal.dart';
+import 'attendance_manage_staff_pins_screen.dart';
 
 class AttendanceManageHomeScreen extends ConsumerStatefulWidget {
   const AttendanceManageHomeScreen({super.key});
@@ -37,15 +38,19 @@ class _AttendanceManageHomeScreenState
   List<AdminScheduleRow> _schedules = const [];
   String? _error;
   String? _selectedId;
+
   /// 스케줄 그리드/디테일 패널이 쓰는 now — 분 단위 표시라 분 경계에서만 rebuild.
   DateTime _now = DateTime.now();
   Timer? _clock;
+
   /// 헤더 매장 시계 + 세션 카운트다운은 매초 바뀌어야 하지만, 이 값들 때문에
   /// 화면 전체(스케줄 그리드 포함)를 매초 rebuild 할 필요는 없다.
   /// setState 대신 ValueNotifier 로 전달해 헤더 subtree 만 rebuild 시킨다.
   /// (배터리: 매초 setState 로 전체 화면 rebuild 하던 문제 fix, Task 1)
   final ValueNotifier<DateTime> _liveNow = ValueNotifier(DateTime.now());
-  final ValueNotifier<int> _sessionLeftNotifier = ValueNotifier(_sessionSeconds);
+  final ValueNotifier<int> _sessionLeftNotifier = ValueNotifier(
+    _sessionSeconds,
+  );
   int _sessionLeft = _sessionSeconds;
   bool _sessionExpired = false;
 
@@ -98,7 +103,8 @@ class _AttendanceManageHomeScreenState
     await AppModal.show(
       context,
       title: 'Manage Mode ended',
-      message: 'No activity for 5 minutes, so Manage Mode closed automatically to keep the device secure.',
+      message:
+          'No activity for 5 minutes, so Manage Mode closed automatically to keep the device secure.',
       type: ModalType.info,
     );
     await _exitAdminMode(silent: true);
@@ -163,11 +169,26 @@ class _AttendanceManageHomeScreenState
     if (saved) await _refresh();
   }
 
+  Future<void> _openStaffPins() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            AttendanceManageStaffPinsScreen(onActivity: _resetSession),
+      ),
+    );
+    if (!mounted) return;
+    _resetSession();
+  }
+
   Future<void> _openCardActions(AdminScheduleRow row) async {
     // Action Picker(중앙 모달) → 액션 선택 → Action Modal(시간/사유) → 적용.
     final action = await ManageActionPicker.show(context, row: row, now: _now);
     if (action == null || !mounted) return;
-    final applied = await AttendanceManageActionModal.show(context, action: action, row: row);
+    final applied = await AttendanceManageActionModal.show(
+      context,
+      action: action,
+      row: row,
+    );
     if (!mounted) return;
     if (applied) await _refresh();
   }
@@ -182,7 +203,8 @@ class _AttendanceManageHomeScreenState
     final ok = await AppModal.show(
       context,
       title: 'Delete Schedule?',
-      message: '${row.userName} · ${row.startHHmm ?? '?'} – ${row.endHHmm ?? '?'}',
+      message:
+          '${row.userName} · ${row.startHHmm ?? '?'} – ${row.endHHmm ?? '?'}',
       type: ModalType.confirm,
       confirmText: 'Delete',
     );
@@ -258,25 +280,50 @@ class _AttendanceManageHomeScreenState
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(color: AppColors.warningBg, borderRadius: BorderRadius.circular(999)),
-                child: const Text('MANAGE MODE',
-                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.warning, letterSpacing: 0.6)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.warningBg,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Text(
+                  'MANAGE MODE',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.warning,
+                    letterSpacing: 0.6,
+                  ),
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(storeName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.text)),
                     Text(
-                      [if (deviceName.isNotEmpty) deviceName, managerName].join(' · '),
+                      storeName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.text,
+                      ),
+                    ),
+                    Text(
+                      [
+                        if (deviceName.isNotEmpty) deviceName,
+                        managerName,
+                      ].join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
                     ),
                   ],
                 ),
@@ -289,7 +336,11 @@ class _AttendanceManageHomeScreenState
           child: Center(
             child: ValueListenableBuilder<DateTime>(
               valueListenable: _liveNow,
-              builder: (_, v, __) => StoreClock(now: v, offsetMinutes: offsetMinutes, tzLabel: tzLabel),
+              builder: (_, v, __) => StoreClock(
+                now: v,
+                offsetMinutes: offsetMinutes,
+                tzLabel: tzLabel,
+              ),
             ),
           ),
         ),
@@ -307,7 +358,10 @@ class _AttendanceManageHomeScreenState
                   final mm = (sessionLeft ~/ 60).toString();
                   final ss = (sessionLeft % 60).toString().padLeft(2, '0');
                   return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: sessionLow ? AppColors.dangerBg : AppColors.bg,
                       borderRadius: BorderRadius.circular(12),
@@ -315,23 +369,43 @@ class _AttendanceManageHomeScreenState
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.timer_outlined, size: 16, color: sessionLow ? AppColors.danger : AppColors.textSecondary),
+                        Icon(
+                          Icons.timer_outlined,
+                          size: 16,
+                          color: sessionLow
+                              ? AppColors.danger
+                              : AppColors.textSecondary,
+                        ),
                         const SizedBox(width: 6),
-                        Text('$mm:$ss',
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w800,
-                                color: sessionLow ? AppColors.danger : AppColors.textSecondary,
-                                fontFeatures: const [FontFeature.tabularFigures()])),
+                        Text(
+                          '$mm:$ss',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            color: sessionLow
+                                ? AppColors.danger
+                                : AppColors.textSecondary,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
                       ],
                     ),
                   );
                 },
               ),
               const SizedBox(width: 8),
-              _HeaderIconButton(icon: Icons.refresh_rounded, tooltip: 'Refresh', onTap: _refresh),
+              _HeaderIconButton(
+                icon: Icons.refresh_rounded,
+                tooltip: 'Refresh',
+                onTap: _refresh,
+              ),
               const SizedBox(width: 8),
-              _HeaderIconButton(icon: Icons.logout_rounded, tooltip: 'Exit', color: AppColors.danger, onTap: _confirmExit),
+              _HeaderIconButton(
+                icon: Icons.logout_rounded,
+                tooltip: 'Exit',
+                color: AppColors.danger,
+                onTap: _confirmExit,
+              ),
             ],
           ),
         ),
@@ -366,7 +440,9 @@ class _AttendanceManageHomeScreenState
         .where((r) => sectionForManageState(r.state) == StaffSection.clockedIn)
         .toList();
     final notClockedIn = _schedules
-        .where((r) => sectionForManageState(r.state) == StaffSection.notClockedIn)
+        .where(
+          (r) => sectionForManageState(r.state) == StaffSection.notClockedIn,
+        )
         .toList();
     final completed = _schedules
         .where((r) => sectionForManageState(r.state) == StaffSection.completed)
@@ -383,21 +459,62 @@ class _AttendanceManageHomeScreenState
                 children: [
                   const Text(
                     "Today's Schedules",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.text),
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.text,
+                    ),
                   ),
                   const Spacer(),
-                  _BigPrimaryButton(icon: Icons.add_rounded, label: 'Add Schedule', onTap: _openCreate),
+                  // PIN 메뉴는 manage 세션(SV+)만으로 열리면 안 된다 — 서버가 내려준
+                  // can_read_pins(GM+ 기본)일 때만 노출.
+                  if (ref
+                      .watch(attendanceManageSessionProvider)
+                      .canReadPins) ...[
+                    _BigPrimaryButton(
+                      icon: Icons.pin_rounded,
+                      label: 'Staff PINs',
+                      onTap: _openStaffPins,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  _BigPrimaryButton(
+                    icon: Icons.add_rounded,
+                    label: 'Add Schedule',
+                    onTap: _openCreate,
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
               Expanded(
                 child: Column(
                   children: [
-                    Expanded(child: _section('Working', AppColors.success, clockedIn, 'Nobody is working.')),
+                    Expanded(
+                      child: _section(
+                        'Working',
+                        AppColors.success,
+                        clockedIn,
+                        'Nobody is working.',
+                      ),
+                    ),
                     const SizedBox(height: 12),
-                    Expanded(child: _section('Upcoming', AppColors.warning, notClockedIn, 'Everyone has clocked in.')),
+                    Expanded(
+                      child: _section(
+                        'Upcoming',
+                        AppColors.warning,
+                        notClockedIn,
+                        'Everyone has clocked in.',
+                      ),
+                    ),
                     const SizedBox(height: 12),
-                    Expanded(child: _section('Done', AppColors.textSecondary, completed, 'Nobody has clocked out yet.')),
+                    Expanded(
+                      child: _section(
+                        'Done',
+                        AppColors.textSecondary,
+                        completed,
+                        'Nobody has clocked out yet.',
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -414,15 +531,23 @@ class _AttendanceManageHomeScreenState
               color: AppColors.white,
               borderRadius: BorderRadius.circular(24),
               boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 16, offset: const Offset(0, 4)),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
               ],
             ),
             child: ScheduleStaffDetailPanel(
               view: selected?.toView(),
               now: _now,
-              onActions: selected == null ? null : () => _openCardActions(selected),
+              onActions: selected == null
+                  ? null
+                  : () => _openCardActions(selected),
               onEdit: selected == null ? null : () => _openEditRow(selected),
-              onDelete: selected == null ? null : () => _confirmDelete(selected),
+              onDelete: selected == null
+                  ? null
+                  : () => _confirmDelete(selected),
             ),
           ),
         ),
@@ -430,14 +555,23 @@ class _AttendanceManageHomeScreenState
     );
   }
 
-  Widget _section(String title, Color accent, List<AdminScheduleRow> rows, String empty) {
+  Widget _section(
+    String title,
+    Color accent,
+    List<AdminScheduleRow> rows,
+    String empty,
+  ) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: AppColors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 12, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
@@ -447,16 +581,42 @@ class _AttendanceManageHomeScreenState
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
             child: Row(
               children: [
-                Container(width: 8, height: 8, decoration: BoxDecoration(color: accent, shape: BoxShape.circle)),
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: accent,
+                    shape: BoxShape.circle,
+                  ),
+                ),
                 const SizedBox(width: 8),
-                Text(title.toUpperCase(),
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.text, letterSpacing: 0.5)),
+                Text(
+                  title.toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.text,
+                    letterSpacing: 0.5,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: AppColors.bg, borderRadius: BorderRadius.circular(999)),
-                  child: Text('${rows.length}',
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textSecondary)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.bg,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '${rows.length}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -466,23 +626,31 @@ class _AttendanceManageHomeScreenState
             child: rows.isEmpty
                 ? Padding(
                     padding: const EdgeInsets.all(8),
-                    child: Text(empty, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                    child: Text(
+                      empty,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
                   )
                 : GridView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 2),
                     physics: const AlwaysScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 300,
-                      mainAxisExtent: 88,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 300,
+                          mainAxisExtent: 88,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                        ),
                     itemCount: rows.length,
                     itemBuilder: (_, i) => ScheduleStaffCard(
                       view: rows[i].toView(),
                       selected: _selectedId == rows[i].scheduleId,
                       now: _now,
-                      onTap: () => setState(() => _selectedId = rows[i].scheduleId),
+                      onTap: () =>
+                          setState(() => _selectedId = rows[i].scheduleId),
                     ),
                   ),
           ),
@@ -505,8 +673,11 @@ class _AttendanceManageHomeScreenState
                 color: AppColors.accentBg,
                 borderRadius: BorderRadius.circular(28),
               ),
-              child: const Icon(Icons.event_available_rounded,
-                  size: 48, color: AppColors.accent),
+              child: const Icon(
+                Icons.event_available_rounded,
+                size: 48,
+                color: AppColors.accent,
+              ),
             ),
             const SizedBox(height: 20),
             const Text(
@@ -524,10 +695,26 @@ class _AttendanceManageHomeScreenState
               style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
-            _BigPrimaryButton(
-              icon: Icons.add_rounded,
-              label: 'Add Schedule',
-              onTap: _openCreate,
+            // 빈 상태에도 Staff PINs 를 둔다. "오늘 스케줄이 없는 신입이 첫 출근"
+            // 이 바로 PIN 을 물어보는 대표 상황이라, 여기서 막히면 기능이 정작
+            // 필요한 순간에 닿지 않는다.
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _BigPrimaryButton(
+                  icon: Icons.add_rounded,
+                  label: 'Add Schedule',
+                  onTap: _openCreate,
+                ),
+                if (ref.watch(attendanceManageSessionProvider).canReadPins) ...[
+                  const SizedBox(width: 8),
+                  _BigPrimaryButton(
+                    icon: Icons.pin_rounded,
+                    label: 'Staff PINs',
+                    onTap: _openStaffPins,
+                  ),
+                ],
+              ],
             ),
           ],
         ),
@@ -619,7 +806,8 @@ String extractApiError(Object e, String fallback) {
   try {
     final resp = (e as dynamic).response;
     final data = resp?.data;
-    if (data is Map && data['detail'] is String) return data['detail'] as String;
+    if (data is Map && data['detail'] is String)
+      return data['detail'] as String;
   } catch (_) {}
   return fallback;
 }

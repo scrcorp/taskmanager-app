@@ -987,4 +987,95 @@ class AppL10nEs extends AppL10n {
 
   @override
   String get pfErrorOk => 'OK';
+
+  @override
+  String get mgPinTitle => 'PIN del personal';
+
+  @override
+  String get mgPinSubtitle => 'Ver o cambiar los PIN de fichaje';
+
+  @override
+  String get mgPinSearchHint => 'Buscar por nombre o EMPID';
+
+  @override
+  String get mgPinWorksToday => 'HOY';
+
+  @override
+  String get mgPinNoPin => 'Sin PIN';
+
+  @override
+  String get mgPinReveal => 'Mostrar PIN';
+
+  @override
+  String mgPinHideIn(int seconds) {
+    return 'Se oculta en $seconds s';
+  }
+
+  @override
+  String get mgPinEdit => 'Editar';
+
+  @override
+  String get mgPinRegenerate => 'PIN aleatorio nuevo';
+
+  @override
+  String get mgPinEmpty => 'No hay empleados asignados a esta tienda';
+
+  @override
+  String mgPinNoSearchResult(String query) {
+    return 'Ningún empleado coincide con \"$query\"';
+  }
+
+  @override
+  String mgPinSetTitle(String name) {
+    return 'Establecer PIN de $name';
+  }
+
+  @override
+  String get mgPinSetHelp => 'Introduce de 4 a 6 dígitos';
+
+  @override
+  String get mgPinSaveHint => 'Introduce de 4 a 6 dígitos y pulsa Guardar PIN';
+
+  @override
+  String get mgPinSave => 'Guardar PIN';
+
+  @override
+  String get mgPinSaved => 'PIN actualizado';
+
+  @override
+  String get mgPinRegenerateConfirmTitle => '¿Emitir un PIN nuevo?';
+
+  @override
+  String mgPinRegenerateConfirmBody(String name) {
+    return '$name necesitará el PIN nuevo para fichar. El PIN actual dejará de funcionar de inmediato.';
+  }
+
+  @override
+  String get mgPinRegenerateConfirm => 'Emitir PIN nuevo';
+
+  @override
+  String get mgPinCancel => 'Cancelar';
+
+  @override
+  String get mgPinErrorTaken =>
+      'Este PIN ya está en uso. Introduce otro número.';
+
+  @override
+  String get mgPinErrorConflict =>
+      'Este PIN entra en conflicto con el de otro empleado. Introduce otro número.';
+
+  @override
+  String get mgPinErrorForbidden => 'No tienes permiso para gestionar los PIN.';
+
+  @override
+  String get mgPinErrorNotFound =>
+      'Este empleado ya no está asignado a esta tienda.';
+
+  @override
+  String get mgPinErrorLoad =>
+      'No se pudo cargar la lista de empleados. Desliza hacia abajo para reintentar.';
+
+  @override
+  String get mgPinErrorGeneric =>
+      'No se pudo guardar el PIN. Inténtalo de nuevo.';
 }

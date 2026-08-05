@@ -442,6 +442,56 @@ class AppL10nEs extends AppL10n {
       'Por favor selecciona al menos una tienda.';
 
   @override
+  String get claimSectionTitle => '¿Tienes un código de reclamo? (Opcional)';
+
+  @override
+  String get claimSectionSubtitle =>
+      'Si tu supervisor ya creó una cuenta para ti, ingresa el código para tomarla.';
+
+  @override
+  String get claimCodeHint => 'Ingresa el código de reclamo';
+
+  @override
+  String get claimActionCheck => 'Verificar';
+
+  @override
+  String get claimInvalid => 'Por favor revisa el código e inténtalo de nuevo.';
+
+  @override
+  String claimTakeoverName(String name) {
+    return 'Tomarás la cuenta de $name.';
+  }
+
+  @override
+  String get claimRoleLabel => 'Rol';
+
+  @override
+  String get claimStoresLabel => 'Tiendas';
+
+  @override
+  String get claimNoStores => 'Aún no hay tiendas asignadas';
+
+  @override
+  String get claimActionUseDifferentCode => 'Usar otro código';
+
+  @override
+  String get claimStoresKeptNotice =>
+      'No necesitas elegir tiendas: se mantendrán las tiendas ya asignadas a ti.';
+
+  @override
+  String get claimConflictTitle => 'Puede que ya exista una cuenta';
+
+  @override
+  String get claimConflictMessage =>
+      'Es posible que ya haya una cuenta creada para ti. Pide el código de reclamo a tu supervisor o continúa con una cuenta nueva.';
+
+  @override
+  String get claimConflictEnterCode => 'Ingresar código';
+
+  @override
+  String get claimConflictContinueNew => 'Crear cuenta nueva';
+
+  @override
   String get registerInfoHeading => 'Cuéntanos sobre ti';
 
   @override
