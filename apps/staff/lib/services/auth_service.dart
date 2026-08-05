@@ -13,6 +13,33 @@ final authServiceProvider = Provider<AuthService>((ref) {
   return AuthService(ref.read(dioProvider));
 });
 
+/// 인수 코드(claim code) 미리보기 결과
+///
+/// 관리자가 미리 만들어 둔 "미가입 계정"의 요약 정보.
+/// 가입 시 이 계정을 그대로 이어받는다(empid·스케줄·매장 배정 유지).
+class ClaimPreview {
+  final String fullName;
+  final String roleName;
+  final List<String> storeNames;
+
+  const ClaimPreview({
+    required this.fullName,
+    required this.roleName,
+    this.storeNames = const [],
+  });
+
+  factory ClaimPreview.fromJson(Map<String, dynamic> json) {
+    return ClaimPreview(
+      fullName: json['full_name'] as String? ?? '',
+      roleName: json['role_name'] as String? ?? '',
+      storeNames: (json['store_names'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+    );
+  }
+}
+
 /// 인증 API 서비스 클래스
 class AuthService {
   final Dio _dio;
@@ -40,8 +67,33 @@ class AuthService {
     return List<Map<String, dynamic>>.from(response.data);
   }
 
+  /// 인수 코드 미리보기 — 코드에 연결된 미가입 계정 정보 조회
+  ///
+  /// 코드가 유효하지 않으면(404) null 반환. 그 외 오류는 그대로 던진다.
+  Future<ClaimPreview?> previewClaim({
+    required String claimCode,
+    String? companyCode,
+  }) async {
+    try {
+      final response = await _dio.post('/app/auth/claim/preview', data: {
+        'claim_code': claimCode,
+        'company_code': ?companyCode,
+      });
+      return ClaimPreview.fromJson(
+        Map<String, dynamic>.from(response.data as Map),
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      rethrow;
+    }
+  }
+
   /// 회원가입 — 단일 organization 자동 매칭으로 가입.
   /// 성공 시 자동 로그인되어 토큰이 저장됨.
+  ///
+  /// [claimCode]를 주면 새 계정을 만들지 않고 해당 미가입 계정을 인수한다.
+  /// [skipClaimCheck]는 서버의 소프트 가드(409 provisional_candidate_exists)를
+  /// 사용자가 "새 계정으로 계속"을 선택했을 때 우회하기 위한 플래그.
   Future<void> register({
     required String username,
     required String password,
@@ -50,6 +102,8 @@ class AuthService {
     required String verificationToken,
     List<String> storeIds = const [],
     String preferredLanguage = 'en',
+    String? claimCode,
+    bool skipClaimCheck = false,
   }) async {
     final response = await _dio.post('/app/auth/register', data: {
       'username': username,
@@ -59,6 +113,8 @@ class AuthService {
       'verification_token': verificationToken,
       'store_ids': storeIds,
       'preferred_language': preferredLanguage,
+      'claim_code': claimCode,
+      'skip_claim_check': skipClaimCheck,
     });
     await TokenStorage.setTokens(
       response.data['access_token'],

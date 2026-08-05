@@ -433,6 +433,56 @@ class AppL10nEn extends AppL10n {
   String get registerSelectStoreRequired => 'Please select at least one store.';
 
   @override
+  String get claimSectionTitle => 'Have a claim code? (Optional)';
+
+  @override
+  String get claimSectionSubtitle =>
+      'If your manager already set up an account for you, enter the code to take it over.';
+
+  @override
+  String get claimCodeHint => 'Enter claim code';
+
+  @override
+  String get claimActionCheck => 'Check';
+
+  @override
+  String get claimInvalid => 'Please check the code and try again.';
+
+  @override
+  String claimTakeoverName(String name) {
+    return 'You\'ll take over $name\'s account.';
+  }
+
+  @override
+  String get claimRoleLabel => 'Role';
+
+  @override
+  String get claimStoresLabel => 'Stores';
+
+  @override
+  String get claimNoStores => 'No stores assigned yet';
+
+  @override
+  String get claimActionUseDifferentCode => 'Use a different code';
+
+  @override
+  String get claimStoresKeptNotice =>
+      'No need to pick stores — the stores already assigned to you will be kept.';
+
+  @override
+  String get claimConflictTitle => 'An account may already exist';
+
+  @override
+  String get claimConflictMessage =>
+      'An account may already be set up for you. Ask your manager for the claim code, or continue with a new account.';
+
+  @override
+  String get claimConflictEnterCode => 'Enter claim code';
+
+  @override
+  String get claimConflictContinueNew => 'Create new account';
+
+  @override
   String get registerInfoHeading => 'Tell us about yourself';
 
   @override

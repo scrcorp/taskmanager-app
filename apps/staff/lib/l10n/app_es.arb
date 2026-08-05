@@ -166,6 +166,27 @@
   "registerStoresLoadFailed": "No se pudieron cargar las tiendas.",
   "registerSelectStoreRequired": "Por favor selecciona al menos una tienda.",
 
+  "claimSectionTitle": "¿Tienes un código de reclamo? (Opcional)",
+  "claimSectionSubtitle": "Si tu supervisor ya creó una cuenta para ti, ingresa el código para tomarla.",
+  "claimCodeHint": "Ingresa el código de reclamo",
+  "claimActionCheck": "Verificar",
+  "claimInvalid": "Por favor revisa el código e inténtalo de nuevo.",
+  "claimTakeoverName": "Tomarás la cuenta de {name}.",
+  "@claimTakeoverName": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "claimRoleLabel": "Rol",
+  "claimStoresLabel": "Tiendas",
+  "claimNoStores": "Aún no hay tiendas asignadas",
+  "claimActionUseDifferentCode": "Usar otro código",
+  "claimStoresKeptNotice": "No necesitas elegir tiendas: se mantendrán las tiendas ya asignadas a ti.",
+  "claimConflictTitle": "Puede que ya exista una cuenta",
+  "claimConflictMessage": "Es posible que ya haya una cuenta creada para ti. Pide el código de reclamo a tu supervisor o continúa con una cuenta nueva.",
+  "claimConflictEnterCode": "Ingresar código",
+  "claimConflictContinueNew": "Crear cuenta nueva",
+
   "registerInfoHeading": "Cuéntanos sobre ti",
   "registerInfoSubheading": "Ingresa tu información básica para comenzar.",
   "registerEnterName": "Por favor ingresa tu nombre.",
