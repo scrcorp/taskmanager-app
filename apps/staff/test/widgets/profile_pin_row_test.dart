@@ -7,7 +7,7 @@
 ///  - PIN 없을 때 → em dash + Edit 숨김
 ///  - Edit → 4자리 입력 → Save → updatePin 호출 + PIN 갱신
 ///  - Edit → 3자리 → Save 무반응
-///  - updatePin 실패 (pin_not_available) → "Not available" 모달
+///  - updatePin 실패 — 409 exact/prefix, 422 형식, 그 외 사유별 모달 문구
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,7 +21,9 @@ class _FakeService extends ClockinPinService {
   _FakeService() : super(Dio());
 
   String? currentPin;
-  bool throwNotAvailable = false;
+
+  /// updatePin 에서 던질 예외 (null 이면 성공)
+  Object? throwOnUpdate;
   int updateCount = 0;
   String? lastUpdatePin;
 
@@ -34,11 +36,22 @@ class _FakeService extends ClockinPinService {
   Future<Map<String, dynamic>> updatePin(String pin) async {
     updateCount++;
     lastUpdatePin = pin;
-    if (throwNotAvailable) throw Exception('pin_not_available');
+    if (throwOnUpdate != null) throw throwOnUpdate!;
     currentPin = pin;
     return {'user_id': 'u1', 'clockin_pin': pin};
   }
 }
+
+/// 409 pin_conflict 예외 헬퍼
+PinUpdateException _conflict(String reason) => PinUpdateException(
+      statusCode: 409,
+      detail: {
+        'code': 'pin_conflict',
+        'reason': reason,
+        'other_store': null,
+        'message': 'server message (not shown)',
+      },
+    );
 
 Widget _wrap(Widget child, _FakeService service) {
   return ProviderScope(
@@ -107,22 +120,83 @@ void main() {
     expect(fake.updateCount, 0);
   });
 
-  testWidgets('updatePin 실패 (pin_not_available) → Not available 모달', (tester) async {
-    final fake = _FakeService()
-      ..currentPin = '123456'
-      ..throwNotAvailable = true;
-    await tester.pumpWidget(_wrap(const ProfilePinRow(), fake));
-    await tester.pumpAndSettle();
-
+  Future<void> submitPin(WidgetTester tester, String pin) async {
     await tester.tap(find.byIcon(Icons.edit_outlined));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), '4321');
+    await tester.enterText(find.byType(TextField), pin);
     await tester.pump();
     await tester.tap(find.byIcon(Icons.check));
     await tester.pumpAndSettle();
+  }
+
+  testWidgets('409 exact 충돌 → in-use 문구 모달', (tester) async {
+    final fake = _FakeService()
+      ..currentPin = '123456'
+      ..throwOnUpdate = _conflict('exact');
+    await tester.pumpWidget(_wrap(const ProfilePinRow(), fake));
+    await tester.pumpAndSettle();
+
+    await submitPin(tester, '4321');
 
     expect(fake.updateCount, 1);
-    expect(find.text('Not available'), findsWidgets);
+    expect(find.text('Could not save PIN'), findsOneWidget);
+    expect(
+      find.text(
+          'This PIN is already in use by another employee. Enter a different number.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('409 prefix 충돌 → overlap 문구 모달', (tester) async {
+    final fake = _FakeService()
+      ..currentPin = '123456'
+      ..throwOnUpdate = _conflict('prefix');
+    await tester.pumpWidget(_wrap(const ProfilePinRow(), fake));
+    await tester.pumpAndSettle();
+
+    await submitPin(tester, '43210');
+
+    expect(fake.updateCount, 1);
+    expect(find.text('Could not save PIN'), findsOneWidget);
+    expect(
+      find.text(
+          "This PIN overlaps with another employee's PIN (numbers that start the same). Enter a different number."),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('422 형식 오류 → 4-6 digits 안내 모달', (tester) async {
+    final fake = _FakeService()
+      ..currentPin = '123456'
+      ..throwOnUpdate =
+          const PinUpdateException(statusCode: 422, detail: {});
+    await tester.pumpWidget(_wrap(const ProfilePinRow(), fake));
+    await tester.pumpAndSettle();
+
+    await submitPin(tester, '4321');
+
+    expect(fake.updateCount, 1);
+    expect(find.text('Could not save PIN'), findsOneWidget);
+    expect(find.text('PIN must be 4-6 digits.'), findsOneWidget);
+  });
+
+  testWidgets('그 외 오류 (네트워크 등) → 재시도 안내 모달', (tester) async {
+    final fake = _FakeService()
+      ..currentPin = '123456'
+      ..throwOnUpdate = Exception('network down');
+    await tester.pumpWidget(_wrap(const ProfilePinRow(), fake));
+    await tester.pumpAndSettle();
+
+    await submitPin(tester, '4321');
+
+    expect(fake.updateCount, 1);
+    expect(find.text('Could not save PIN'), findsOneWidget);
+    expect(
+      find.text('Something went wrong. Check your connection and try again.'),
+      findsOneWidget,
+    );
+    // raw 예외 문자열 노출 금지
+    expect(find.textContaining('network down'), findsNothing);
   });
 
   testWidgets('Edit → Cancel → 편집 종료, PIN 그대로', (tester) async {

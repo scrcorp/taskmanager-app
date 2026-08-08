@@ -23,10 +23,10 @@
   "commonUntitled": "Untitled",
 
   "attAccessCodeRegisterTitle": "Register This Device",
-  "attAccessCodeRegisterDescription": "Enter the 6-character access code provided by your manager.",
+  "attAccessCodeRegisterDescription": "Enter the access code provided by your manager.",
   "attAccessCodeRegisterButton": "Register Device",
   "attAccessCodeChangeStoreTitle": "Change Store",
-  "attAccessCodeChangeStoreDescription": "Enter a new 6-character access code to switch this device to a different store.",
+  "attAccessCodeChangeStoreDescription": "Enter a new access code to switch this device to a different store.",
   "attAccessCodeInvalid": "Invalid access code",
   "attAccessCodeRegisterFailedTitle": "Couldn't register device",
 
@@ -299,6 +299,18 @@
   "attUpdateReadyTitle": "Update Downloaded",
   "attUpdateReadyMessage": "The update is ready to install. The screen will unlock briefly so the installer can run, then re-lock automatically.",
   "attUpdateInstallNow": "Install Now",
+  "attUpdateConfirmTitle": "Download update?",
+  "attUpdateConfirmMessage": "Download version {version} now? You can keep using the app while it downloads.",
+  "@attUpdateConfirmMessage": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "attUpdateConfirmOk": "Download",
+  "attUpdateErrNetwork": "Download failed due to a network problem. Check the connection and tap Retry.",
+  "attUpdateErrDisk": "Not enough storage to download the update. Free up space and retry.",
+  "attUpdateErrInstaller": "Could not open the installer. Unlock kiosk mode and retry.",
+  "attUpdateErrUnknown": "Update failed. Tap Retry, or restart the app and try again.",
   "attSettingsCheckUpdate": "Check for updates",
   "attSettingsUpToDate": "You're on the latest version.",
   "attSettingsUpdateAvailable": "Update available: v{latest}",
@@ -475,6 +487,8 @@
   "mgPinCancel": "Cancel",
   "mgPinErrorTaken": "This PIN is already in use. Please enter a different number.",
   "mgPinErrorConflict": "This PIN conflicts with another employee's PIN. Please enter a different number.",
+  "mgPinErrorConflictOtherStore": "This PIN is already used by an employee at another store. Pick a different number.",
+  "mgPinErrorConflictPrefix": "This PIN overlaps with another PIN (numbers that start the same). Pick a different number.",
   "mgPinErrorForbidden": "You don't have permission to manage PINs.",
   "mgPinErrorNotFound": "This employee is no longer assigned to this store.",
   "mgPinErrorLoad": "Couldn't load the employee list. Pull down to retry.",

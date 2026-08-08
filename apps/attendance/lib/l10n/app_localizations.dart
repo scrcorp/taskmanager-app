@@ -220,7 +220,7 @@ abstract class AppL10n {
   /// No description provided for @attAccessCodeRegisterDescription.
   ///
   /// In en, this message translates to:
-  /// **'Enter the 6-character access code provided by your manager.'**
+  /// **'Enter the access code provided by your manager.'**
   String get attAccessCodeRegisterDescription;
 
   /// No description provided for @attAccessCodeRegisterButton.
@@ -238,7 +238,7 @@ abstract class AppL10n {
   /// No description provided for @attAccessCodeChangeStoreDescription.
   ///
   /// In en, this message translates to:
-  /// **'Enter a new 6-character access code to switch this device to a different store.'**
+  /// **'Enter a new access code to switch this device to a different store.'**
   String get attAccessCodeChangeStoreDescription;
 
   /// No description provided for @attAccessCodeInvalid.
@@ -1117,6 +1117,48 @@ abstract class AppL10n {
   /// **'Install Now'**
   String get attUpdateInstallNow;
 
+  /// No description provided for @attUpdateConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Download update?'**
+  String get attUpdateConfirmTitle;
+
+  /// No description provided for @attUpdateConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Download version {version} now? You can keep using the app while it downloads.'**
+  String attUpdateConfirmMessage(String version);
+
+  /// No description provided for @attUpdateConfirmOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Download'**
+  String get attUpdateConfirmOk;
+
+  /// No description provided for @attUpdateErrNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Download failed due to a network problem. Check the connection and tap Retry.'**
+  String get attUpdateErrNetwork;
+
+  /// No description provided for @attUpdateErrDisk.
+  ///
+  /// In en, this message translates to:
+  /// **'Not enough storage to download the update. Free up space and retry.'**
+  String get attUpdateErrDisk;
+
+  /// No description provided for @attUpdateErrInstaller.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the installer. Unlock kiosk mode and retry.'**
+  String get attUpdateErrInstaller;
+
+  /// No description provided for @attUpdateErrUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Update failed. Tap Retry, or restart the app and try again.'**
+  String get attUpdateErrUnknown;
+
   /// No description provided for @attSettingsCheckUpdate.
   ///
   /// In en, this message translates to:
@@ -1920,6 +1962,18 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'This PIN conflicts with another employee\'s PIN. Please enter a different number.'**
   String get mgPinErrorConflict;
+
+  /// No description provided for @mgPinErrorConflictOtherStore.
+  ///
+  /// In en, this message translates to:
+  /// **'This PIN is already used by an employee at another store. Pick a different number.'**
+  String get mgPinErrorConflictOtherStore;
+
+  /// No description provided for @mgPinErrorConflictPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'This PIN overlaps with another PIN (numbers that start the same). Pick a different number.'**
+  String get mgPinErrorConflictPrefix;
 
   /// No description provided for @mgPinErrorForbidden.
   ///

@@ -57,6 +57,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  /// 회원가입 링크 탭 — 앱 내 셀프 가입은 닫혀 있다.
+  /// 가입은 매니저가 보내주는 초대 링크(hiring / direct)로만 이뤄지므로,
+  /// 가입 화면으로 보내지 않고 다음 행동(매니저에게 문의)만 안내한다.
+  Future<void> _showRegisterUnavailable() async {
+    final t = AppL10n.of(context);
+    await AppModal.show(
+      context,
+      title: t.loginRegisterUnavailableTitle,
+      message: t.loginRegisterUnavailableMessage,
+      type: ModalType.info,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppL10n.of(context);
@@ -143,13 +156,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ],
               ),
               const SizedBox(height: 20),
-              // 회원가입 링크
+              // 회원가입 링크 — 셀프 가입 화면으로 보내지 않고 안내 모달만 띄운다.
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(t.loginNoAccountPrompt, style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
                   GestureDetector(
-                    onTap: () => context.go('/register'),
+                    onTap: _showRegisterUnavailable,
                     child: Text(t.loginRegisterAction, style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w700, fontSize: 14)),
                   ),
                 ],

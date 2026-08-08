@@ -2,7 +2,7 @@
 ///
 /// 본인 폰 전용 화면이라 PIN 마스킹/Show-Hide 없음 — 평문 그대로 표시.
 /// Edit (연필 아이콘) 으로 인라인 편집. 4~6 자리 숫자.
-/// unique 위반 (pin_not_available) → "Not available" 모달.
+/// 저장 실패 시 사유별 모달: 409 충돌(exact/prefix 구분), 422 형식, 그 외 재시도 안내.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
@@ -77,11 +77,21 @@ class ProfilePinRowState extends ConsumerState<ProfilePinRow> {
       if (!mounted) return;
       setState(() => _saving = false);
       final t = AppL10n.of(context);
-      final isConflict = e.toString().contains('pin_not_available');
+      // 사유별 안내: 409 pin_conflict(exact/prefix) / 422 형식 / 그 외(네트워크 등)
+      final String message;
+      if (e is PinUpdateException && e.isPinConflict) {
+        message = e.reason == 'prefix'
+            ? t.myPinConflictPrefix
+            : t.myPinConflictInUse;
+      } else if (e is PinUpdateException && e.isInvalidFormat) {
+        message = t.myPinInvalidFormat;
+      } else {
+        message = t.myPinSaveFailedRetry;
+      }
       await AppModal.show(
         context,
-        title: isConflict ? t.myPinNotAvailable : t.myPinSaveFailed,
-        message: isConflict ? t.myPinNotAvailable : t.myPinSaveFailed,
+        title: t.myPinSaveFailedTitle,
+        message: message,
         type: ModalType.error,
       );
     }
