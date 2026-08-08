@@ -70,7 +70,7 @@ class AppL10nEs extends AppL10n {
 
   @override
   String get attAccessCodeRegisterDescription =>
-      'Ingresa el código de acceso de 6 caracteres proporcionado por tu gerente.';
+      'Ingresa el código de acceso proporcionado por tu gerente.';
 
   @override
   String get attAccessCodeRegisterButton => 'Registrar dispositivo';
@@ -80,7 +80,7 @@ class AppL10nEs extends AppL10n {
 
   @override
   String get attAccessCodeChangeStoreDescription =>
-      'Ingresa un nuevo código de acceso de 6 caracteres para cambiar este dispositivo a otra tienda.';
+      'Ingresa un nuevo código de acceso para cambiar este dispositivo a otra tienda.';
 
   @override
   String get attAccessCodeInvalid => 'Código de acceso inválido';
@@ -593,6 +593,33 @@ class AppL10nEs extends AppL10n {
   String get attUpdateInstallNow => 'Instalar ahora';
 
   @override
+  String get attUpdateConfirmTitle => '¿Descargar la actualización?';
+
+  @override
+  String attUpdateConfirmMessage(String version) {
+    return '¿Descargar la versión $version ahora? Puedes seguir usando la app mientras se descarga.';
+  }
+
+  @override
+  String get attUpdateConfirmOk => 'Descargar';
+
+  @override
+  String get attUpdateErrNetwork =>
+      'La descarga falló por un problema de red. Revisa la conexión y toca Reintentar.';
+
+  @override
+  String get attUpdateErrDisk =>
+      'No hay espacio suficiente para descargar la actualización. Libera espacio y reintenta.';
+
+  @override
+  String get attUpdateErrInstaller =>
+      'No se pudo abrir el instalador. Desbloquea el modo quiosco y reintenta.';
+
+  @override
+  String get attUpdateErrUnknown =>
+      'La actualización falló. Toca Reintentar o reinicia la app e inténtalo de nuevo.';
+
+  @override
   String get attSettingsCheckUpdate => 'Buscar actualizaciones';
 
   @override
@@ -1063,6 +1090,14 @@ class AppL10nEs extends AppL10n {
   @override
   String get mgPinErrorConflict =>
       'Este PIN entra en conflicto con el de otro empleado. Introduce otro número.';
+
+  @override
+  String get mgPinErrorConflictOtherStore =>
+      'Este PIN ya lo usa un empleado de otra tienda. Elige otro número.';
+
+  @override
+  String get mgPinErrorConflictPrefix =>
+      'Este PIN se solapa con otro PIN (números que empiezan igual). Elige otro número.';
 
   @override
   String get mgPinErrorForbidden => 'No tienes permiso para gestionar los PIN.';

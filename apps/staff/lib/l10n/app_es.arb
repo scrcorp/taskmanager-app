@@ -955,8 +955,11 @@
   "invAddCreateProductFailedMessage": "No se pudo crear el producto",
   "myPinLabel": "PIN de registro",
   "myPinEdit": "Editar PIN",
-  "myPinNotAvailable": "No disponible",
-  "myPinSaveFailed": "No se pudo guardar el PIN",
+  "myPinSaveFailedTitle": "No se pudo guardar el PIN",
+  "myPinConflictInUse": "Este PIN ya está en uso por otro empleado. Ingresa un número diferente.",
+  "myPinConflictPrefix": "Este PIN coincide con el inicio del PIN de otro empleado (números que empiezan igual). Ingresa un número diferente.",
+  "myPinInvalidFormat": "El PIN debe tener de 4 a 6 dígitos.",
+  "myPinSaveFailedRetry": "Algo salió mal. Revisa tu conexión e inténtalo de nuevo.",
 
   "warningsHeader": "Advertencias",
   "warningsCardTitle": "Advertencias",

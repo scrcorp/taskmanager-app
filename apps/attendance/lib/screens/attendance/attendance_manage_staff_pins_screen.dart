@@ -136,10 +136,36 @@ class _AttendanceManageStaffPinsScreenState
       case 404:
         return t.mgPinErrorNotFound;
       case 409:
-        return t.mgPinErrorConflict;
+        return _conflictMessageFor(e, t);
       default:
         return fallback;
     }
+  }
+
+  /// 409 detail 이 구조화된 pin_conflict dict 면 사유별 문구 (2-C).
+  /// 서버는 사유 코드만 보내고 타인의 PIN/이름은 싣지 않는다 — 여기서도
+  /// "다른 매장 사용중 / 앞자리 겹침" 수준의 사유만 보여준다.
+  String _conflictMessageFor(Object e, AppL10n t) {
+    final detail = _detailOf(e);
+    if (detail is Map && detail['code'] == 'pin_conflict') {
+      if (detail['reason'] == 'prefix') return t.mgPinErrorConflictPrefix;
+      if (detail['other_store'] == true) {
+        return t.mgPinErrorConflictOtherStore;
+      }
+    }
+    // dict 가 아니거나(구버전 서버) exact + 같은 매장이면 기존 문구.
+    return t.mgPinErrorConflict;
+  }
+
+  Object? _detailOf(Object e) {
+    try {
+      final dynamic err = e;
+      final data = err.response?.data;
+      if (data is Map) return data['detail'];
+    } catch (_) {
+      // response/data 형태가 아니면 무시
+    }
+    return null;
   }
 
   int? _statusOf(Object e) {
@@ -236,8 +262,8 @@ class _AttendanceManageStaffPinsScreenState
       await _load();
     } catch (e) {
       if (!mounted) return;
-      // 409 는 중복/prefix 충돌 둘 다 'Not available' 로 오는데, 매니저가 할 일은
-      // 어느 쪽이든 "다른 번호를 넣는 것" 으로 같다.
+      // 409 는 detail dict(code=pin_conflict) 의 사유(다른 매장/앞자리 겹침)별로
+      // 문구를 나눠 보여준다 — 매니저가 왜 막혔는지 알아야 다음 번호를 고른다.
       _toast(_messageFor(e, t.mgPinErrorGeneric), danger: true);
     }
   }

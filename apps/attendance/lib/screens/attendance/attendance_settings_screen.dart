@@ -11,6 +11,7 @@ import 'package:htm_core/htm_core.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/battery_status.dart';
+import '../../providers/app_update_provider.dart';
 import '../../providers/attendance_device_provider.dart';
 import '../../providers/device_power_provider.dart';
 import '../../providers/locale_provider.dart';
@@ -19,6 +20,7 @@ import '../../services/device_power_service.dart';
 import '../../utils/app_version_gate.dart';
 import '../../utils/attendance_device_storage.dart';
 import '../../utils/battery_display.dart';
+import '../../widgets/app_update_banner.dart';
 import 'attendance_access_code_screen.dart';
 import 'attendance_manage_pin_screen.dart';
 
@@ -36,12 +38,13 @@ class _AttendanceSettingsScreenState
   bool _kioskOn = true;
   bool _kioskLoaded = false;
 
-  // ── 앱 업데이트 확인/설치 상태 ──
+  // ── 앱 업데이트 확인 상태 ──
+  // 다운로드/설치 진행은 화면 로컬이 아니라 appUpdateProvider(전역) 가 보유 —
+  // 화면을 벗어나도 계속 진행되고, 여기선 그 상태를 그리기만 한다.
   AppVersionStatus? _versionStatus;
   bool _checkingUpdate = false;
   bool _updateChecked = false;
   bool _updateCheckFailed = false;
-  double? _updateProgress; // null=idle, 0.0~1.0=다운로드 중, 1.0=설치 관리자 호출 중
 
   @override
   void initState() {
@@ -95,56 +98,102 @@ class _AttendanceSettingsScreenState
     });
   }
 
-  /// 확인된 최신 버전으로 업데이트 실행 (다운로드→확인→자동 잠금해제→설치).
+  /// 확인된 최신 버전으로 업데이트 시작 — 확인 모달 후 전역 다운로드.
+  /// 이후 진행/완료/에러는 provider 상태로 이 화면과 전역 배너에 표시된다.
   Future<void> _runUpdate() async {
-    final url = _versionStatus?.downloadUrl;
-    if (url == null || url.isEmpty) return;
-    try {
-      await runUpdateInstall(
-        context,
-        url: url,
-        onProgress: (p) {
-          if (!mounted) return;
-          setState(() => _updateProgress = p);
-        },
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _updateProgress = null);
-      if (!context.mounted) return;
-      final t = AppL10n.of(context);
-      await AppModal.show(
-        context,
-        title: t.attUpdateCannotOpenTitle,
-        message: '${t.attUpdateCannotOpenMessage}\n\n$e',
-        type: ModalType.info,
-      );
+    final status = _versionStatus;
+    if (status == null) return;
+    await confirmAndStartUpdateDownload(context, ref, status: status);
+  }
+
+  /// 버전 확인 결과 UI.
+  /// 전역 업데이트가 진행 중이면 그 상태(다운로드/설치/완료/에러)가 우선이고,
+  /// idle 일 때만 버전 확인 결과 (진행중 / 실패 / 업데이트 있음+버튼 / 최신).
+  Widget _buildUpdateStatus(AppL10n t, AppUpdateState update) {
+    final notifier = ref.read(appUpdateProvider.notifier);
+    switch (update.phase) {
+      case AppUpdatePhase.downloading:
+        final p = update.progress;
+        return Row(
+          children: [
+            Expanded(
+              child: LinearProgressIndicator(
+                value: p,
+                minHeight: 6,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              p == null
+                  ? t.attUpdateDownloading
+                  : '${(p * 100).toStringAsFixed(0)}%',
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+          ],
+        );
+      case AppUpdatePhase.installing:
+        return Row(
+          children: [
+            const Expanded(
+              child: LinearProgressIndicator(
+                value: null,
+                minHeight: 6,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              t.attUpdateLaunchingInstaller,
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+          ],
+        );
+      case AppUpdatePhase.ready:
+        return Row(
+          children: [
+            const Icon(Icons.check_circle_rounded,
+                size: 18, color: AppColors.success),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                t.attUpdateReadyTitle,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.text,
+                ),
+              ),
+            ),
+            FilledButton(
+              onPressed: notifier.install,
+              child: Text(t.attUpdateInstallNow),
+            ),
+          ],
+        );
+      case AppUpdatePhase.error:
+        return Row(
+          children: [
+            const Icon(Icons.error_rounded, size: 18, color: AppColors.danger),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                appUpdateErrorMessage(t, update.errorKind),
+                style: const TextStyle(fontSize: 13, color: AppColors.danger),
+              ),
+            ),
+            TextButton(
+              onPressed: notifier.retry,
+              child: Text(t.actionRetry),
+            ),
+          ],
+        );
+      case AppUpdatePhase.idle:
+        return _buildVersionCheckStatus(t);
     }
   }
 
-  /// 버전 확인 결과 UI (진행중 / 실패 / 업데이트 있음+버튼 / 최신).
-  Widget _buildUpdateStatus(AppL10n t) {
-    final progress = _updateProgress;
-    if (progress != null) {
-      return Row(
-        children: [
-          Expanded(
-            child: LinearProgressIndicator(
-              value: progress >= 1.0 ? null : progress,
-              minHeight: 6,
-              borderRadius: BorderRadius.circular(3),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            progress >= 1.0
-                ? t.attUpdateLaunchingInstaller
-                : '${(progress * 100).toStringAsFixed(0)}%',
-            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-          ),
-        ],
-      );
-    }
+  /// 전역 업데이트가 idle 일 때의 버전 확인 결과 표시.
+  Widget _buildVersionCheckStatus(AppL10n t) {
     if (_updateCheckFailed) {
       return Row(
         children: [
@@ -261,6 +310,9 @@ class _AttendanceSettingsScreenState
   Widget build(BuildContext context) {
     final t = AppL10n.of(context);
     final device = ref.watch(attendanceDeviceProvider).device;
+    final update = ref.watch(appUpdateProvider);
+    final updateBusy = update.phase == AppUpdatePhase.downloading ||
+        update.phase == AppUpdatePhase.installing;
     final currentLocale = ref.watch(localeProvider);
     final effectiveLanguage =
         currentLocale?.languageCode ?? Localizations.localeOf(context).languageCode;
@@ -359,18 +411,17 @@ class _AttendanceSettingsScreenState
                               ),
                             )
                           : IconButton(
-                              onPressed: _updateProgress != null
-                                  ? null
-                                  : _checkForUpdates,
+                              onPressed: updateBusy ? null : _checkForUpdates,
                               icon: const Icon(Icons.refresh_rounded),
                               tooltip: t.attSettingsCheckUpdate,
                             ),
                     ),
                   ),
-                  // 버전 확인 결과 / 업데이트 실행
-                  if (_updateChecked) ...[
+                  // 버전 확인 결과 / 전역 업데이트 진행 상태
+                  if (_updateChecked ||
+                      update.phase != AppUpdatePhase.idle) ...[
                     const SizedBox(height: 12),
-                    _buildUpdateStatus(t),
+                    _buildUpdateStatus(t, update),
                   ],
                   const SizedBox(height: 12),
                   _InfoRow(

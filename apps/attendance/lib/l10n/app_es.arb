@@ -23,10 +23,10 @@
   "commonUntitled": "Sin título",
 
   "attAccessCodeRegisterTitle": "Registrar este dispositivo",
-  "attAccessCodeRegisterDescription": "Ingresa el código de acceso de 6 caracteres proporcionado por tu gerente.",
+  "attAccessCodeRegisterDescription": "Ingresa el código de acceso proporcionado por tu gerente.",
   "attAccessCodeRegisterButton": "Registrar dispositivo",
   "attAccessCodeChangeStoreTitle": "Cambiar tienda",
-  "attAccessCodeChangeStoreDescription": "Ingresa un nuevo código de acceso de 6 caracteres para cambiar este dispositivo a otra tienda.",
+  "attAccessCodeChangeStoreDescription": "Ingresa un nuevo código de acceso para cambiar este dispositivo a otra tienda.",
   "attAccessCodeInvalid": "Código de acceso inválido",
   "attAccessCodeRegisterFailedTitle": "No se pudo registrar el dispositivo",
 
@@ -299,6 +299,18 @@
   "attUpdateReadyTitle": "Actualización descargada",
   "attUpdateReadyMessage": "La actualización está lista para instalar. La pantalla se desbloqueará brevemente para ejecutar el instalador y luego se volverá a bloquear automáticamente.",
   "attUpdateInstallNow": "Instalar ahora",
+  "attUpdateConfirmTitle": "¿Descargar la actualización?",
+  "attUpdateConfirmMessage": "¿Descargar la versión {version} ahora? Puedes seguir usando la app mientras se descarga.",
+  "@attUpdateConfirmMessage": {
+    "placeholders": {
+      "version": { "type": "String" }
+    }
+  },
+  "attUpdateConfirmOk": "Descargar",
+  "attUpdateErrNetwork": "La descarga falló por un problema de red. Revisa la conexión y toca Reintentar.",
+  "attUpdateErrDisk": "No hay espacio suficiente para descargar la actualización. Libera espacio y reintenta.",
+  "attUpdateErrInstaller": "No se pudo abrir el instalador. Desbloquea el modo quiosco y reintenta.",
+  "attUpdateErrUnknown": "La actualización falló. Toca Reintentar o reinicia la app e inténtalo de nuevo.",
   "attSettingsCheckUpdate": "Buscar actualizaciones",
   "attSettingsUpToDate": "Tienes la última versión.",
   "attSettingsUpdateAvailable": "Actualización disponible: v{latest}",
@@ -455,6 +467,8 @@
   "mgPinCancel": "Cancelar",
   "mgPinErrorTaken": "Este PIN ya está en uso. Introduce otro número.",
   "mgPinErrorConflict": "Este PIN entra en conflicto con el de otro empleado. Introduce otro número.",
+  "mgPinErrorConflictOtherStore": "Este PIN ya lo usa un empleado de otra tienda. Elige otro número.",
+  "mgPinErrorConflictPrefix": "Este PIN se solapa con otro PIN (números que empiezan igual). Elige otro número.",
   "mgPinErrorForbidden": "No tienes permiso para gestionar los PIN.",
   "mgPinErrorNotFound": "Este empleado ya no está asignado a esta tienda.",
   "mgPinErrorLoad": "No se pudo cargar la lista de empleados. Desliza hacia abajo para reintentar.",

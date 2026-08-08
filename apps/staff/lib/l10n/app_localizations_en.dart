@@ -2357,10 +2357,22 @@ class AppL10nEn extends AppL10n {
   String get myPinEdit => 'Edit PIN';
 
   @override
-  String get myPinNotAvailable => 'Not available';
+  String get myPinSaveFailedTitle => 'Could not save PIN';
 
   @override
-  String get myPinSaveFailed => 'Could not save PIN';
+  String get myPinConflictInUse =>
+      'This PIN is already in use by another employee. Enter a different number.';
+
+  @override
+  String get myPinConflictPrefix =>
+      'This PIN overlaps with another employee\'s PIN (numbers that start the same). Enter a different number.';
+
+  @override
+  String get myPinInvalidFormat => 'PIN must be 4-6 digits.';
+
+  @override
+  String get myPinSaveFailedRetry =>
+      'Something went wrong. Check your connection and try again.';
 
   @override
   String get warningsHeader => 'Warnings';

@@ -4399,17 +4399,35 @@ abstract class AppL10n {
   /// **'Edit PIN'**
   String get myPinEdit;
 
-  /// No description provided for @myPinNotAvailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Not available'**
-  String get myPinNotAvailable;
-
-  /// No description provided for @myPinSaveFailed.
+  /// No description provided for @myPinSaveFailedTitle.
   ///
   /// In en, this message translates to:
   /// **'Could not save PIN'**
-  String get myPinSaveFailed;
+  String get myPinSaveFailedTitle;
+
+  /// No description provided for @myPinConflictInUse.
+  ///
+  /// In en, this message translates to:
+  /// **'This PIN is already in use by another employee. Enter a different number.'**
+  String get myPinConflictInUse;
+
+  /// No description provided for @myPinConflictPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'This PIN overlaps with another employee\'s PIN (numbers that start the same). Enter a different number.'**
+  String get myPinConflictPrefix;
+
+  /// No description provided for @myPinInvalidFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN must be 4-6 digits.'**
+  String get myPinInvalidFormat;
+
+  /// No description provided for @myPinSaveFailedRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Check your connection and try again.'**
+  String get myPinSaveFailedRetry;
 
   /// No description provided for @warningsHeader.
   ///
