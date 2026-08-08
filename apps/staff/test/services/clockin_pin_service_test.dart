@@ -87,21 +87,71 @@ void main() {
       expect(result['clockin_pin'], '1234');
     });
 
-    test('throws Exception(pin_not_available) on 409', () async {
+    test('409 pin_conflict(exact) — detail dict 보존한 PinUpdateException', () async {
+      adapter.handler = (_) => _json(409, {
+            'detail': {
+              'code': 'pin_conflict',
+              'reason': 'exact',
+              'other_store': null,
+              'message': 'This PIN is already in use by another employee.',
+            },
+          });
+
+      await expectLater(
+        () => service.updatePin('1234'),
+        throwsA(predicate((e) =>
+            e is PinUpdateException &&
+            e.statusCode == 409 &&
+            e.isPinConflict &&
+            e.code == 'pin_conflict' &&
+            e.reason == 'exact' &&
+            e.detail['other_store'] == null &&
+            e.detail['message'] ==
+                'This PIN is already in use by another employee.')),
+      );
+    });
+
+    test('409 pin_conflict(prefix) — reason 구분 보존', () async {
+      adapter.handler = (_) => _json(409, {
+            'detail': {
+              'code': 'pin_conflict',
+              'reason': 'prefix',
+              'other_store': null,
+              'message':
+                  "This PIN overlaps with another employee's PIN (numbers that start the same).",
+            },
+          });
+
+      await expectLater(
+        () => service.updatePin('12345'),
+        throwsA(predicate((e) =>
+            e is PinUpdateException && e.isPinConflict && e.reason == 'prefix')),
+      );
+    });
+
+    test('409 detail 이 dict 아님(문자열 fallback) — 빈 detail 로 보존', () async {
       adapter.handler = (_) => _json(409, {'detail': 'Not available'});
 
       await expectLater(
         () => service.updatePin('1234'),
-        throwsA(predicate((e) => e is Exception && e.toString().contains('pin_not_available'))),
+        throwsA(predicate((e) =>
+            e is PinUpdateException &&
+            e.statusCode == 409 &&
+            !e.isPinConflict &&
+            e.detail.isEmpty)),
       );
     });
 
-    test('throws Exception(pin_not_available) on 422', () async {
+    test('422 — isInvalidFormat PinUpdateException', () async {
       adapter.handler = (_) => _json(422, {'detail': 'Validation failed'});
 
       await expectLater(
         () => service.updatePin('9999'),
-        throwsA(predicate((e) => e is Exception && e.toString().contains('pin_not_available'))),
+        throwsA(predicate((e) =>
+            e is PinUpdateException &&
+            e.statusCode == 422 &&
+            e.isInvalidFormat &&
+            !e.isPinConflict)),
       );
     });
 

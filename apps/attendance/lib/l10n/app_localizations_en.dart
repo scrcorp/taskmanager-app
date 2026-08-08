@@ -70,7 +70,7 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get attAccessCodeRegisterDescription =>
-      'Enter the 6-character access code provided by your manager.';
+      'Enter the access code provided by your manager.';
 
   @override
   String get attAccessCodeRegisterButton => 'Register Device';
@@ -80,7 +80,7 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get attAccessCodeChangeStoreDescription =>
-      'Enter a new 6-character access code to switch this device to a different store.';
+      'Enter a new access code to switch this device to a different store.';
 
   @override
   String get attAccessCodeInvalid => 'Invalid access code';
@@ -588,6 +588,33 @@ class AppL10nEn extends AppL10n {
   String get attUpdateInstallNow => 'Install Now';
 
   @override
+  String get attUpdateConfirmTitle => 'Download update?';
+
+  @override
+  String attUpdateConfirmMessage(String version) {
+    return 'Download version $version now? You can keep using the app while it downloads.';
+  }
+
+  @override
+  String get attUpdateConfirmOk => 'Download';
+
+  @override
+  String get attUpdateErrNetwork =>
+      'Download failed due to a network problem. Check the connection and tap Retry.';
+
+  @override
+  String get attUpdateErrDisk =>
+      'Not enough storage to download the update. Free up space and retry.';
+
+  @override
+  String get attUpdateErrInstaller =>
+      'Could not open the installer. Unlock kiosk mode and retry.';
+
+  @override
+  String get attUpdateErrUnknown =>
+      'Update failed. Tap Retry, or restart the app and try again.';
+
+  @override
   String get attSettingsCheckUpdate => 'Check for updates';
 
   @override
@@ -1056,6 +1083,14 @@ class AppL10nEn extends AppL10n {
   @override
   String get mgPinErrorConflict =>
       'This PIN conflicts with another employee\'s PIN. Please enter a different number.';
+
+  @override
+  String get mgPinErrorConflictOtherStore =>
+      'This PIN is already used by an employee at another store. Pick a different number.';
+
+  @override
+  String get mgPinErrorConflictPrefix =>
+      'This PIN overlaps with another PIN (numbers that start the same). Pick a different number.';
 
   @override
   String get mgPinErrorForbidden =>

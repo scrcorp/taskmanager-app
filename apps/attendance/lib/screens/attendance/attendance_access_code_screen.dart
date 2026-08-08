@@ -1,6 +1,6 @@
 /// 기기 등록용 Access Code 입력 화면
 ///
-/// 관리자가 발급한 6자 영숫자 코드를 입력 → 서버에 register 요청 → token 발급.
+/// 관리자가 발급한 access code(4~32자, 콘솔에서 직접 지정 가능)를 입력 → 서버에 register 요청 → token 발급.
 /// 소문자 입력 시 자동으로 대문자 변환.
 ///
 /// 모드:
@@ -50,7 +50,8 @@ class _AttendanceAccessCodeScreenState
 
   Future<void> _submit() async {
     final code = _controller.text.trim().toUpperCase();
-    if (code.length < 6) return;
+    // 4자 미만은 서버가 422 — 미리 차단 (manual 코드 최소 길이와 동일)
+    if (code.length < 4) return;
     setState(() => _submitting = true);
 
     // reset 모드: 기존 device 를 먼저 해제 (실패해도 진행)
@@ -103,7 +104,9 @@ class _AttendanceAccessCodeScreenState
             child: LanguageSwitcher(),
           ),
           Center(
-        child: ConstrainedBox(
+        // 키보드가 올라오면 세로 공간이 부족해 overflow 나므로 스크롤 허용
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -148,8 +151,10 @@ class _AttendanceAccessCodeScreenState
                 textAlign: TextAlign.center,
                 textCapitalization: TextCapitalization.characters,
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9]')),
-                  LengthLimitingTextInputFormatter(6),
+                  // 서버 계약(4~32자, 공백만 금지)과 동일 — 콘솔에서 직접 지정한
+                  // 코드(영숫자 외 문자 포함 가능)를 그대로 입력할 수 있어야 한다.
+                  FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                  LengthLimitingTextInputFormatter(32),
                   TextInputFormatter.withFunction((oldValue, newValue) {
                     return newValue.copyWith(text: newValue.text.toUpperCase());
                   }),
@@ -194,6 +199,7 @@ class _AttendanceAccessCodeScreenState
               ),
             ],
           ),
+        ),
         ),
       ),
         ],

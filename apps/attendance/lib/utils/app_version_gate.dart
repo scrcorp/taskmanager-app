@@ -4,17 +4,20 @@
 ///   1. 등록된 device token 으로 GET /attendance/app-version 호출 +
 ///      응답 헤더 (X-App-Latest-Version 등) piggyback 수신
 ///   2. current < min_version → 전체화면 blocker (Update 버튼만)
-///   3. current < latest_version → 상단 권장 배너
-///   4. Update 탭 → in-app 다운로드 + PackageInstaller intent ([AppInstaller])
+///   3. current < latest_version → 설정 화면에서 확인/설치
+///   4. Update 탭 → 확인 모달 → appUpdateProvider 가 전역으로 다운로드 진행
+///      (화면을 벗어나도 계속) → ready 에서 설치 버튼
 ///
 /// min_version 이 null 이거나 current >= min → 통과.
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import 'package:htm_core/htm_core.dart';
 import '../l10n/app_localizations.dart';
+import '../providers/app_update_provider.dart';
 import '../services/attendance_device_service.dart';
-import 'app_installer.dart';
+import '../widgets/app_update_banner.dart';
 
 class AppVersionStatus {
   final String current;
@@ -36,6 +39,10 @@ class AppVersionStatus {
 
   bool get hasUpdate =>
       latestVersion != null && _semverLess(current, latestVersion!);
+
+  /// 다운로드 대상 버전 라벨 — 파일명/확인 모달에 쓴다.
+  /// latest 가 없으면 min 으로라도 특정한다 (blocker 는 min 만 있을 수 있음).
+  String get updateTargetVersion => latestVersion ?? minVersion ?? 'latest';
 }
 
 /// "MAJOR.MINOR.PATCH" 또는 "MAJOR.MINOR.PATCH+BUILD" 를 비교한다.
@@ -87,110 +94,45 @@ Future<AppVersionStatus?> fetchAppVersionStatus(
   }
 }
 
-/// 다운로드 + 설치 작업의 외부 노출용 상태. UI 가 disabled/progress 결정에 사용.
-class _InstallController {
-  double? progress;  // null = idle, 0.0 ~ 1.0 = downloading, 1.0 = handing off to OS
-  String? error;
-
-  bool get isRunning => progress != null && error == null;
-}
-
-/// 업데이트 설치 흐름: 다운로드 → "설치할래?" 확인 → 키오스크 자동해제 → 설치.
-///
-/// 사장님 요청 흐름 그대로 — 다운로드가 끝나면 설치 여부를 물어보고, 승인하면
-/// lock-task 를 잠깐 풀어(5분 뒤 자동 재잠금) OS 설치 관리자가 포그라운드로 뜰 수
-/// 있게 한 뒤 설치 intent 를 발사한다. 키오스크가 켜져 있으면 설치 관리자가 가려져
-/// "설치가 안 되는" 문제를 이 자동 해제가 방지한다.
-///
-/// [onProgress]: null=idle, 0.0~1.0=다운로드 중, 1.0=설치 관리자 호출 중.
-/// 사용자가 확인을 취소하면 onProgress(null) 로 되돌리고 조용히 종료.
-Future<void> runUpdateInstall(
-  BuildContext context, {
-  required String url,
-  required void Function(double? progress) onProgress,
+/// 다운로드 시작 전 확인 모달 → 승인 시 전역 notifier 로 다운로드 시작.
+/// 설정 화면과 blocker 화면이 공유한다 (이슈 1-1 — 시작 전 확인 일관 적용).
+Future<void> confirmAndStartUpdateDownload(
+  BuildContext context,
+  WidgetRef ref, {
+  required AppVersionStatus status,
 }) async {
   final t = AppL10n.of(context);
-  onProgress(0.0);
-  final apkPath = await AppInstaller.downloadApk(
-    url,
-    onProgress: (p) => onProgress(p),
-  );
-
-  // 다운로드 완료 → 설치 확인 (in-app 다이얼로그라 lock-task 여부와 무관하게 표시됨)
-  if (!context.mounted) return;
-  final confirmed = await AppModal.show(
-    context,
-    title: t.attUpdateReadyTitle,
-    message: t.attUpdateReadyMessage,
-    type: ModalType.confirm,
-    confirmText: t.attUpdateInstallNow,
-  );
-  if (confirmed != true) {
-    onProgress(null);
+  final url = status.downloadUrl;
+  if (url == null || url.isEmpty) {
+    await AppModal.show(
+      context,
+      title: t.attUpdateUnavailableTitle,
+      message: t.attUpdateUnavailableMessage,
+      type: ModalType.info,
+    );
     return;
   }
-
-  // 키오스크가 잠겨 있으면 OS 설치 관리자가 가려진다 → 잠깐 해제 (5분 뒤 자동 재잠금).
-  if (await KioskLock.isLocked()) {
-    await KioskIntent.disableTemporarily();
-    await KioskLock.stop();
-  }
-
-  onProgress(1.0); // 설치 관리자 호출 중
-  await AppInstaller.installApk(apkPath);
+  final version = status.updateTargetVersion;
+  final confirmed = await AppModal.show(
+    context,
+    title: t.attUpdateConfirmTitle,
+    message: t.attUpdateConfirmMessage(version),
+    type: ModalType.confirm,
+    confirmText: t.attUpdateConfirmOk,
+  );
+  if (confirmed != true) return;
+  // 여기서부터는 BuildContext 무관 — notifier 가 화면 수명 밖에서 진행한다.
+  await ref.read(appUpdateProvider.notifier).startDownload(url, version);
 }
 
-class UpdateBlockerScreen extends StatefulWidget {
+class UpdateBlockerScreen extends ConsumerWidget {
   final AppVersionStatus status;
   const UpdateBlockerScreen({super.key, required this.status});
 
   @override
-  State<UpdateBlockerScreen> createState() => _UpdateBlockerScreenState();
-}
-
-class _UpdateBlockerScreenState extends State<UpdateBlockerScreen> {
-  final _ctrl = _InstallController();
-
-  Future<void> _onDownload() async {
+  Widget build(BuildContext context, WidgetRef ref) {
     final t = AppL10n.of(context);
-    final url = widget.status.downloadUrl;
-    if (url == null || url.isEmpty) {
-      await AppModal.show(
-        context,
-        title: t.attUpdateUnavailableTitle,
-        message: t.attUpdateUnavailableMessage,
-        type: ModalType.info,
-      );
-      return;
-    }
-    try {
-      await runUpdateInstall(
-        context,
-        url: url,
-        onProgress: (p) {
-          if (!mounted) return;
-          setState(() => _ctrl.progress = p);
-        },
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _ctrl.progress = null;
-        _ctrl.error = e.toString();
-      });
-      await AppModal.show(
-        context,
-        title: t.attUpdateCannotOpenTitle,
-        message: '${t.attUpdateCannotOpenMessage}\n\n$e',
-        type: ModalType.info,
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppL10n.of(context);
-    final progress = _ctrl.progress;
+    final update = ref.watch(appUpdateProvider);
     return Scaffold(
       backgroundColor: AppColors.bg,
       body: SafeArea(
@@ -221,8 +163,8 @@ class _UpdateBlockerScreenState extends State<UpdateBlockerScreen> {
                   const SizedBox(height: 12),
                   Text(
                     t.attUpdateRequiredMessage(
-                      widget.status.current,
-                      widget.status.minVersion ?? '?',
+                      status.current,
+                      status.minVersion ?? '?',
                     ),
                     textAlign: TextAlign.center,
                     style: const TextStyle(
@@ -230,8 +172,8 @@ class _UpdateBlockerScreenState extends State<UpdateBlockerScreen> {
                       color: AppColors.textMuted,
                     ),
                   ),
-                  if (widget.status.releaseNotes != null &&
-                      widget.status.releaseNotes!.isNotEmpty) ...[
+                  if (status.releaseNotes != null &&
+                      status.releaseNotes!.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -241,7 +183,7 @@ class _UpdateBlockerScreenState extends State<UpdateBlockerScreen> {
                         border: Border.all(color: AppColors.border),
                       ),
                       child: Text(
-                        widget.status.releaseNotes!,
+                        status.releaseNotes!,
                         style: const TextStyle(
                           fontSize: 13,
                           color: AppColors.text,
@@ -250,36 +192,8 @@ class _UpdateBlockerScreenState extends State<UpdateBlockerScreen> {
                     ),
                   ],
                   const SizedBox(height: 28),
-                  if (progress != null) ...[
-                    LinearProgressIndicator(
-                      value: progress >= 1.0 ? null : progress,
-                      minHeight: 8,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      progress >= 1.0
-                          ? t.attUpdateLaunchingInstaller
-                          : '${(progress * 100).toStringAsFixed(0)}%',
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                  ] else
-                    FilledButton.icon(
-                      onPressed: _ctrl.isRunning ? null : _onDownload,
-                      icon: const Icon(Icons.download),
-                      label: Text(
-                        t.attUpdateDownloadButton(
-                          widget.status.latestVersion ?? '?',
-                        ),
-                      ),
-                      style: FilledButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                    ),
+                  // 전역 배너와 중복 표시될 수 있지만 이 화면에선 화면 내 표시가 우선.
+                  _buildAction(context, ref, t, update),
                 ],
               ),
             ),
@@ -287,5 +201,104 @@ class _UpdateBlockerScreenState extends State<UpdateBlockerScreen> {
         ),
       ),
     );
+  }
+
+  /// 하단 액션 영역 — 전역 업데이트 상태(phase)에 따라 전환.
+  Widget _buildAction(
+    BuildContext context,
+    WidgetRef ref,
+    AppL10n t,
+    AppUpdateState update,
+  ) {
+    final notifier = ref.read(appUpdateProvider.notifier);
+    switch (update.phase) {
+      case AppUpdatePhase.downloading:
+        final p = update.progress;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            LinearProgressIndicator(
+              value: p,
+              minHeight: 8,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              p == null
+                  ? t.attUpdateDownloading
+                  : '${(p * 100).toStringAsFixed(0)}%',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ],
+        );
+      case AppUpdatePhase.installing:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            LinearProgressIndicator(
+              value: null,
+              minHeight: 8,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              t.attUpdateLaunchingInstaller,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ],
+        );
+      case AppUpdatePhase.ready:
+        return FilledButton.icon(
+          onPressed: notifier.install,
+          icon: const Icon(Icons.install_mobile_rounded),
+          label: Text(t.attUpdateInstallNow),
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+          ),
+        );
+      case AppUpdatePhase.error:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              appUpdateErrorMessage(t, update.errorKind),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.danger,
+              ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: notifier.retry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text(t.actionRetry),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+            ),
+          ],
+        );
+      case AppUpdatePhase.idle:
+        return FilledButton.icon(
+          onPressed: () =>
+              confirmAndStartUpdateDownload(context, ref, status: status),
+          icon: const Icon(Icons.download),
+          label: Text(
+            t.attUpdateDownloadButton(status.latestVersion ?? '?'),
+          ),
+          style: FilledButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+          ),
+        );
+    }
   }
 }

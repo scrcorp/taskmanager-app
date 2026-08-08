@@ -72,6 +72,13 @@ class AppL10nEs extends AppL10n {
   String get loginRegisterAction => 'Regístrate';
 
   @override
+  String get loginRegisterUnavailableTitle => 'Consulta con tu gerente';
+
+  @override
+  String get loginRegisterUnavailableMessage =>
+      'No puedes crear una cuenta aquí. Pídele a tu gerente que te envíe un enlace de registro — ese enlace crea tu cuenta.';
+
+  @override
   String get loginFailedTitle => 'Error al iniciar sesión';
 
   @override
@@ -2374,10 +2381,22 @@ class AppL10nEs extends AppL10n {
   String get myPinEdit => 'Editar PIN';
 
   @override
-  String get myPinNotAvailable => 'No disponible';
+  String get myPinSaveFailedTitle => 'No se pudo guardar el PIN';
 
   @override
-  String get myPinSaveFailed => 'No se pudo guardar el PIN';
+  String get myPinConflictInUse =>
+      'Este PIN ya está en uso por otro empleado. Ingresa un número diferente.';
+
+  @override
+  String get myPinConflictPrefix =>
+      'Este PIN coincide con el inicio del PIN de otro empleado (números que empiezan igual). Ingresa un número diferente.';
+
+  @override
+  String get myPinInvalidFormat => 'El PIN debe tener de 4 a 6 dígitos.';
+
+  @override
+  String get myPinSaveFailedRetry =>
+      'Algo salió mal. Revisa tu conexión e inténtalo de nuevo.';
 
   @override
   String get warningsHeader => 'Advertencias';

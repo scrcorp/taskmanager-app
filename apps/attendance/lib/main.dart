@@ -12,6 +12,7 @@ import 'l10n/app_localizations.dart';
 import 'providers/device_power_provider.dart';
 import 'providers/locale_provider.dart';
 import 'screens/attendance/attendance_shell_screen.dart';
+import 'widgets/app_update_banner.dart';
 
 const _appEnv = String.fromEnvironment('APP_ENV');
 const _appTitle = _appEnv == 'production'
@@ -45,6 +46,9 @@ class AttendanceApp extends ConsumerWidget {
       title: _appTitle,
       theme: AppTheme.light,
       home: const AttendanceShellScreen(),
+      // 업데이트 다운로드 배너를 Navigator 바깥에 겹친다 — settings/manage 등
+      // push 된 어떤 라우트 위에서도 진행/완료/에러가 보여야 하기 때문.
+      builder: (context, child) => AppUpdateOverlay(child: child),
       debugShowCheckedModeBanner: false,
       locale: locale,
       supportedLocales: supportedLocales,

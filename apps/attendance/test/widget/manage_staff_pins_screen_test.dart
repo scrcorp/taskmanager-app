@@ -6,6 +6,7 @@
 ///   - 최초 렌더는 마스킹만
 ///   - Reveal 을 눌러야 서버에서 평문을 가져오고(=감사 로그가 남고) 표시
 ///   - update 권한이 없으면 변경 메뉴 자체가 없음
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -67,6 +68,29 @@ class _FakeService extends AttendanceDeviceService {
   Future<String?> manageRegenerateStaffPin(String userId) async {
     regenerateCalls += 1;
     return '135790';
+  }
+}
+
+/// PIN 저장이 409 로 거절되는 대역 — detail 형태(dict/문자열)별 문구 매핑 검증용.
+class _Conflict409Service extends _FakeService {
+  final Object detail;
+  _Conflict409Service(this.detail);
+
+  @override
+  Future<String?> manageUpdateStaffPin({
+    required String userId,
+    required String pin,
+  }) async {
+    final req = RequestOptions(path: '/attendance/manage/staff-pins/$userId');
+    throw DioException(
+      requestOptions: req,
+      type: DioExceptionType.badResponse,
+      response: Response(
+        requestOptions: req,
+        statusCode: 409,
+        data: {'detail': detail},
+      ),
+    );
   }
 }
 
@@ -272,5 +296,116 @@ void main() {
 
     // 이게 끊기면 PIN 을 찾는 도중 manage 세션이 만료된다.
     expect(activityCount, greaterThan(0));
+  });
+
+  // ── 409 detail dict → 사유별 문구 매핑 (2-C) ────────────────
+
+  /// Edit 다이얼로그를 열어 4자리를 입력하고 저장까지 진행.
+  Future<void> submitPinChange(WidgetTester tester) async {
+    await tester.tap(find.byIcon(Icons.more_vert_rounded).first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Edit'));
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 4; i++) {
+      await tester.tap(find.text('1'));
+      await tester.pump();
+    }
+    await tester.tap(find.text('Save PIN'));
+    await tester.pumpAndSettle();
+  }
+
+  /// SnackBar 잔여 타이머 정리 — 없으면 테스트 종료 시 pending Timer 로 실패.
+  Future<void> drainSnackBar(WidgetTester tester) async {
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('409 reason=prefix → 앞자리 겹침 문구', (tester) async {
+    await useTabletSurface(tester);
+    await tester.pumpWidget(
+      _wrap(
+        _Conflict409Service(
+          {'code': 'pin_conflict', 'reason': 'prefix', 'other_store': false},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await submitPinChange(tester);
+
+    expect(
+      find.text(
+        'This PIN overlaps with another PIN (numbers that start the same). '
+        'Pick a different number.',
+      ),
+      findsOneWidget,
+    );
+    await drainSnackBar(tester);
+  });
+
+  testWidgets('409 other_store=true → 다른 매장 사용중 문구', (tester) async {
+    await useTabletSurface(tester);
+    await tester.pumpWidget(
+      _wrap(
+        _Conflict409Service(
+          {'code': 'pin_conflict', 'reason': 'exact', 'other_store': true},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await submitPinChange(tester);
+
+    expect(
+      find.text(
+        'This PIN is already used by an employee at another store. '
+        'Pick a different number.',
+      ),
+      findsOneWidget,
+    );
+    await drainSnackBar(tester);
+  });
+
+  testWidgets('409 exact + 같은 매장 → 기존 conflict 문구', (tester) async {
+    await useTabletSurface(tester);
+    await tester.pumpWidget(
+      _wrap(
+        _Conflict409Service(
+          {'code': 'pin_conflict', 'reason': 'exact', 'other_store': false},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await submitPinChange(tester);
+
+    expect(
+      find.text(
+        "This PIN conflicts with another employee's PIN. "
+        'Please enter a different number.',
+      ),
+      findsOneWidget,
+    );
+    await drainSnackBar(tester);
+  });
+
+  testWidgets('409 detail 이 문자열(구버전 서버) → 기존 conflict 문구 fallback',
+      (tester) async {
+    await useTabletSurface(tester);
+    await tester.pumpWidget(_wrap(_Conflict409Service('Not available')));
+    await tester.pumpAndSettle();
+
+    await submitPinChange(tester);
+
+    // raw detail("Not available") 이 그대로 노출되면 안 된다.
+    expect(find.text('Not available'), findsNothing);
+    expect(
+      find.text(
+        "This PIN conflicts with another employee's PIN. "
+        'Please enter a different number.',
+      ),
+      findsOneWidget,
+    );
+    await drainSnackBar(tester);
   });
 }
