@@ -223,6 +223,18 @@ abstract class AppL10n {
   /// **'Register'**
   String get loginRegisterAction;
 
+  /// No description provided for @loginRegisterUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask Your Manager'**
+  String get loginRegisterUnavailableTitle;
+
+  /// No description provided for @loginRegisterUnavailableMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You can\'t create an account here. Ask your manager to send you a sign-up link — that link sets up your account.'**
+  String get loginRegisterUnavailableMessage;
+
   /// No description provided for @loginFailedTitle.
   ///
   /// In en, this message translates to:

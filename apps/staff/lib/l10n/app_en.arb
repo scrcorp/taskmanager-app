@@ -26,6 +26,8 @@
   "loginForgotPassword": "Forgot Password?",
   "loginNoAccountPrompt": "Don't have an account? ",
   "loginRegisterAction": "Register",
+  "loginRegisterUnavailableTitle": "Ask Your Manager",
+  "loginRegisterUnavailableMessage": "You can't create an account here. Ask your manager to send you a sign-up link — that link sets up your account.",
   "loginFailedTitle": "Login Failed",
   "loginFailedDefault": "Login failed",
   "loginAlreadyHaveAccountPrompt": "Already have an account? ",

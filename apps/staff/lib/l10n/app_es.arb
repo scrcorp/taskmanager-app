@@ -23,6 +23,8 @@
   "loginForgotPassword": "¿Olvidaste tu contraseña?",
   "loginNoAccountPrompt": "¿No tienes cuenta? ",
   "loginRegisterAction": "Regístrate",
+  "loginRegisterUnavailableTitle": "Consulta con tu gerente",
+  "loginRegisterUnavailableMessage": "No puedes crear una cuenta aquí. Pídele a tu gerente que te envíe un enlace de registro — ese enlace crea tu cuenta.",
   "loginFailedTitle": "Error al iniciar sesión",
   "loginFailedDefault": "No se pudo iniciar sesión",
   "loginAlreadyHaveAccountPrompt": "¿Ya tienes cuenta? ",

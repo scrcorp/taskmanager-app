@@ -72,6 +72,13 @@ class AppL10nEs extends AppL10n {
   String get loginRegisterAction => 'Regístrate';
 
   @override
+  String get loginRegisterUnavailableTitle => 'Consulta con tu gerente';
+
+  @override
+  String get loginRegisterUnavailableMessage =>
+      'No puedes crear una cuenta aquí. Pídele a tu gerente que te envíe un enlace de registro — ese enlace crea tu cuenta.';
+
+  @override
   String get loginFailedTitle => 'Error al iniciar sesión';
 
   @override
