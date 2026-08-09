@@ -7,6 +7,7 @@
 
 import '../models/attendance_action.dart';
 import '../providers/attendance_dashboard_provider.dart' show TodayStaffBreak;
+import 'minute_time.dart';
 import 'staff_status_utils.dart';
 
 /// 현재 시각 기준 scheduled_end 까지 남은 시간 (분).
@@ -16,7 +17,7 @@ import 'staff_status_utils.dart';
 int remainingMinutesUntilScheduledEnd(DateTime? scheduledEnd, DateTime now) {
   if (scheduledEnd == null) return 0;
   if (!scheduledEnd.isAfter(now)) return 0;
-  return scheduledEnd.difference(now).inMinutes;
+  return minutesBetweenClamped(now, scheduledEnd);
 }
 
 /// Early clock-out reason picker 를 띄울지.
@@ -63,7 +64,9 @@ bool shouldShowBreakReasonDialog({
 }) {
   if (action != AttendanceAction.breakEnd) return false;
   if (currentBreak == null) return false;
-  final elapsed = now.difference(currentBreak.startedAt).inMinutes;
+  // 서버(attendance_device_service)의 break 경과 계산과 같은 규칙(R2)이어야
+  // 경계 1분에서 "앱은 모달 안 띄웠는데 서버는 사유 요구" 불일치가 안 생긴다.
+  final elapsed = minutesBetweenClamped(currentBreak.startedAt, now);
   final progress = breakProgress(currentBreak.breakType, elapsed);
   return progress.state == BreakState.requiresReason;
 }

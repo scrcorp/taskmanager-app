@@ -3,6 +3,7 @@
 /// Pure logic (DB/IO 없음). unit test 로 전 분기 커버.
 
 import '../providers/attendance_dashboard_provider.dart';
+import 'minute_time.dart';
 
 /// Schedule screen 의 3 섹션 분류 키. (Issue 9: onShift → clockedIn 라벨 변경)
 enum StaffSection { clockedIn, notClockedIn, completed, other }
@@ -69,7 +70,7 @@ String staffBlockSubline(TodayStaffRow row, {DateTime? now}) {
     case 'on_break':
       final br = row.currentBreak;
       if (br != null) {
-        final mins = n.difference(br.startedAt).inMinutes;
+        final mins = minutesBetweenClamped(br.startedAt, n);
         return 'Break ${mins}m';
       }
       return 'On Break';

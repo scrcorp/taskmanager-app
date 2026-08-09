@@ -238,6 +238,23 @@ void main() {
       );
     });
 
+    test('초가 섞인 경계 — 분 절삭(R2) 기준으로 판정해 서버와 일치', () {
+      // 12:00:50 시작 → 12:35:10 종료. 실제 경과는 34분 20초라
+      // 예전 방식(.inMinutes)은 34분으로 보고 모달을 안 띄웠지만,
+      // 서버는 12:35 − 12:00 = 35분으로 보고 사유를 요구해 400 을 준다.
+      expect(
+        shouldShowBreakReasonDialog(
+          action: AttendanceAction.breakEnd,
+          currentBreak: TodayStaffBreak(
+            startedAt: DateTime(2026, 5, 22, 12, 0, 50),
+            breakType: 'unpaid_meal',
+          ),
+          now: DateTime(2026, 5, 22, 12, 35, 10),
+        ),
+        true,
+      );
+    });
+
     test('열린 break 정보가 없으면 false (서버 판단에 맡김)', () {
       expect(
         shouldShowBreakReasonDialog(

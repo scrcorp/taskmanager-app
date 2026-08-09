@@ -34,6 +34,7 @@ import '../../models/tip_models.dart';
 import '../../providers/attendance_dashboard_provider.dart';
 import '../../providers/attendance_device_provider.dart';
 import '../../utils/main_flow_state.dart';
+import '../../utils/minute_time.dart';
 import '../../utils/main_flow_transitions.dart' as flow;
 import '../../utils/store_time.dart';
 import '../../widgets/action_sheet.dart';
@@ -574,15 +575,13 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
   int _computeBreakElapsedMinutes() {
     final br = _flow.user?.currentBreak;
     if (br == null) return 0;
-    final diff = _now.difference(br.startedAt).inMinutes;
-    return diff > 0 ? diff : 0;
+    return minutesBetweenClamped(br.startedAt, _now);
   }
 
   int _computeRemainingMinutes() {
     final end = _flow.user?.scheduledEnd;
     if (end == null) return 0;
-    final diff = end.difference(_now).inMinutes;
-    return diff > 0 ? diff : 0;
+    return minutesBetweenClamped(_now, end);
   }
 }
 
@@ -1012,7 +1011,7 @@ class _WorkingRow extends StatelessWidget {
     final String subline;
     final Color subColor;
     if (isBreak && row.currentBreak != null) {
-      final elapsed = now.difference(row.currentBreak!.startedAt).inMinutes;
+      final elapsed = minutesBetweenClamped(row.currentBreak!.startedAt, now);
       final typeKey = (row.currentBreak!.breakType == 'unpaid_meal' ||
               row.currentBreak!.breakType == 'unpaid_long')
           ? t.pfMainBreakTypeMeal
@@ -1020,7 +1019,8 @@ class _WorkingRow extends StatelessWidget {
       subline = t.pfMainBreakDuration(_fmtDuration(elapsed), typeKey);
       subColor = AppColors.warning;
     } else {
-      final mins = row.clockIn != null ? now.difference(row.clockIn!).inMinutes : 0;
+      final mins =
+          row.clockIn != null ? minutesBetweenClamped(row.clockIn!, now) : 0;
       subline = t.pfMainWorkingDuration(_fmtDuration(mins));
       subColor = AppColors.success;
     }

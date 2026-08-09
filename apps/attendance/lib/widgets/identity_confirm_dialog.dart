@@ -16,6 +16,7 @@ import 'package:htm_core/htm_core.dart';
 import '../l10n/app_localizations.dart';
 import '../models/identify_response.dart';
 import '../utils/identity_confirm_logic.dart';
+import '../utils/minute_time.dart';
 import '../utils/staff_status_utils.dart';
 
 /// status → 표시 라벨 (l10n).
@@ -300,7 +301,7 @@ class _StatusPanel extends StatelessWidget {
     // On break + current_break → break info
     if (status == 'on_break' && user.currentBreak != null) {
       final br = user.currentBreak!;
-      final elapsed = now.difference(br.startedAt).inMinutes;
+      final elapsed = minutesBetweenClamped(br.startedAt, now);
       final progress = breakProgress(br.breakType, elapsed);
       final warn = progress.state != BreakState.within;
       return _Panel(
