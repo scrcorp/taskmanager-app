@@ -43,8 +43,13 @@ class _ManageScheduleEditModalState extends ConsumerState<ManageScheduleEditModa
   String? _workRoleId;
   int? _startMin;
   int? _endMin;
+  // Touched: work role 기본시간이 덮어쓰지 않게 하는 플래그 (기존 값이 있으면 처음부터 true).
   bool _startTouched = false;
   bool _endTouched = false;
+  // Edited: 이번 세션에서 매니저가 휠로 직접 바꿨는가. 수정 PATCH 에 시각을 넣을지 결정한다.
+  // (안 건드린 시각은 보내지 않아야 워크인의 분 단위 값이 보존된다)
+  bool _startEdited = false;
+  bool _endEdited = false;
   int _startKey = 0;
   int _endKey = 0;
 
@@ -57,6 +62,9 @@ class _ManageScheduleEditModalState extends ConsumerState<ManageScheduleEditModa
     if (e != null) {
       _userId = e.userId;
       _workRoleId = e.workRoleId;
+      // 기존 값은 그대로 둔다. 워크인 스케줄은 실제 clock-in 시각(분 단위)이라
+      // 여는 것만으로 값이 바뀌면 근태 기록이 왜곡된다 — 매니저가 직접 시간을
+      // 고를 때만 5분 단위가 적용되고, 안 건드린 시각은 PATCH 에서 아예 빠진다.
       _startMin = hhmmToMinutes(e.startHHmm);
       _endMin = hhmmToMinutes(e.endHHmm);
       _startTouched = true;
@@ -103,17 +111,18 @@ class _ManageScheduleEditModalState extends ConsumerState<ManageScheduleEditModa
       final role = _workRoles.firstWhere((r) => r.workRoleId == id,
           orElse: () => const AdminWorkRole(
               workRoleId: '', name: null, shiftName: null, positionName: null, defaultStartHHmm: null, defaultEndHHmm: null));
+      // work role 기본시간은 console 에서 임의 분으로 저장될 수 있어 step 스냅 후 반영.
       if (!_startTouched) {
         final s = hhmmToMinutes(role.defaultStartHHmm);
         if (s != null) {
-          _startMin = s;
+          _startMin = snapToStep(s);
           _startKey++;
         }
       }
       if (!_endTouched) {
         final en = hhmmToMinutes(role.defaultEndHHmm);
         if (en != null) {
-          _endMin = en;
+          _endMin = snapToStep(en);
           _endKey++;
         }
       }
@@ -132,12 +141,14 @@ class _ManageScheduleEditModalState extends ConsumerState<ManageScheduleEditModa
       // device service는 datetime 인코딩 파라미터를 수용하나(forward-compat), 앱이
       // 경계 로직을 갖추기 전엔 전달하지 않는다.
       if (_isEdit) {
+        // 안 건드린 시각은 아예 보내지 않는다 — 워크인처럼 5분을 벗어난 기존 값이
+        // 다른 항목만 고쳐도 조용히 바뀌는 것을 막는다 (서버는 보낸 필드만 검사).
         await service.manageUpdateSchedule(
           scheduleId: widget.existing!.scheduleId,
           userId: _userId,
           workRoleId: _workRoleId,
-          startHHmm: minutesToHHmm(_startMin!),
-          endHHmm: minutesToHHmm(_endMin!),
+          startHHmm: _startEdited ? minutesToHHmm(_startMin!) : null,
+          endHHmm: _endEdited ? minutesToHHmm(_endMin!) : null,
         );
       } else {
         await service.manageCreateSchedule(
@@ -330,13 +341,16 @@ class _ManageScheduleEditModalState extends ConsumerState<ManageScheduleEditModa
               if (isStart) {
                 _startMin = v;
                 _startTouched = true;
+                _startEdited = true;
                 if (!_endTouched) {
                   _endMin = clampMinutes(v + defaultShiftMinutes);
+                  _endEdited = true;
                   _endKey++;
                 }
               } else {
                 _endMin = v;
                 _endTouched = true;
+                _endEdited = true;
               }
             }),
           ),
