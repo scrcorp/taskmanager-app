@@ -28,15 +28,19 @@ import 'package:intl/intl.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/attendance_action.dart';
 import '../../models/early_clock_out_reason.dart';
+import '../../utils/early_clock_in_logic.dart';
+import '../../widgets/break_reason_dialog.dart';
 import '../../models/identify_response.dart';
 import '../../models/tip_models.dart';
 import '../../providers/attendance_dashboard_provider.dart';
 import '../../providers/attendance_device_provider.dart';
 import '../../utils/main_flow_state.dart';
+import '../../utils/minute_time.dart';
 import '../../utils/main_flow_transitions.dart' as flow;
 import '../../utils/store_time.dart';
 import '../../widgets/action_sheet.dart';
 import '../../widgets/battery_indicator.dart';
+import '../../widgets/early_clock_in_dialog.dart';
 import '../../widgets/early_clock_out_dialog.dart';
 import '../../widgets/identity_confirm_dialog.dart';
 import '../../widgets/language_switcher.dart';
@@ -147,11 +151,15 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
 
   Future<void> _onActionPicked(AttendanceAction action) async {
     final user = _flow.user!;
+    final tipEnabled =
+        ref.read(attendanceDeviceProvider).device?.tipEntryEnabled ?? false;
     final next = flow.pickAction(
       _flow,
       action,
       scheduledEnd: user.scheduledEnd,
+      currentBreak: user.currentBreak,
       now: DateTime.now(),
+      tipEntryEnabled: tipEnabled,
     );
     setState(() => _flow = next);
 
@@ -168,8 +176,39 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
   }
 
   Future<void> _onEarlyReasonSubmit(EarlyClockOutReason reason, String? detail) async {
-    setState(() => _flow = flow.submitEarlyReason(_flow, reason, detail));
+    final tipEnabled =
+        ref.read(attendanceDeviceProvider).device?.tipEntryEnabled ?? false;
+    setState(() => _flow = flow.submitEarlyReason(
+          _flow,
+          reason,
+          detail,
+          tipEntryEnabled: tipEnabled,
+        ));
+    // tip 화면이 꺼진 매장이면 곧바로 서버 호출로 넘어간다.
+    if (_flow.stage == MainFlowStage.submitting) {
+      await _performClockAction();
+      return;
+    }
     await _loadTipReceivers();
+  }
+
+  /// break 초과 사유 제출 → 그대로 break-end 호출.
+  Future<void> _onBreakReasonSubmit(String reason) async {
+    setState(() => _flow = flow.submitBreakReason(_flow, reason));
+    await _performClockAction();
+  }
+
+  void _onBreakReasonCancel() {
+    setState(() => _flow = flow.cancelBreakReason(_flow));
+  }
+
+  Future<void> _onEarlyClockInReasonSubmit(String reason) async {
+    setState(() => _flow = flow.submitEarlyClockInReason(_flow, reason));
+    await _performClockAction();
+  }
+
+  void _onEarlyClockInReasonCancel() {
+    setState(() => _flow = flow.cancelEarlyClockInReason(_flow));
   }
 
   void _onEarlyCancel() {
@@ -229,7 +268,13 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     final action = _flow.pickedAction!;
     final pin = _flow.enteredPin!;
     final user = _flow.user!;
-    final reasonText = _composeReasonText(_flow.earlyReason, _flow.earlyDetail);
+    // 세 액션이 같은 body 필드(reason)를 공유한다:
+    //   clock_out → 조기 퇴근 사유 / break_end → 초과 사유 / clock_in → 조기 출근 사유.
+    final reasonText = switch (action) {
+      AttendanceAction.breakEnd => _flow.breakReason,
+      AttendanceAction.clockIn => _flow.earlyClockInReason,
+      _ => _composeReasonText(_flow.earlyReason, _flow.earlyDetail),
+    };
 
     // 열린 스케줄 없이 클락인 = 워크인. (오늘 스케줄 없음=null, 또는 이전 shift 퇴근완료=clocked_out)
     // 서버에 walk_in=true 전달해 자동 스케줄 생성 경로 사용. 퇴근 후 재출근(하루 여러 shift) 지원.
@@ -251,6 +296,15 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     if (!mounted) return;
 
     if (!result.success) {
+      // 서버가 조기 출근 사유를 요구 — 에러로 끝내지 않고 사유 입력으로 이어간다.
+      // 메시지 문자열이 아니라 code 로 판단한다 (서버 문구 변경에 안 깨지게).
+      if (result.errorCode == kEarlyClockInReasonRequired) {
+        setState(() => _flow = flow.requireEarlyClockInReason(
+              _flow,
+              minutesEarlyFromDetail(result.errorDetail),
+            ));
+        return;
+      }
       setState(() => _flow = flow.submitFailed(_flow, result.message));
       return;
     }
@@ -481,6 +535,24 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                 onCancel: _onEarlyCancel,
               ),
             ),
+          if (_flow.stage == MainFlowStage.earlyClockInReason && _flow.user != null)
+            _BarrierWrap(
+              child: EarlyClockInDialog(
+                userName: _flow.user!.userName,
+                minutesEarly: _flow.minutesEarly ?? 0,
+                onSubmit: _onEarlyClockInReasonSubmit,
+                onCancel: _onEarlyClockInReasonCancel,
+              ),
+            ),
+          if (_flow.stage == MainFlowStage.breakReason && _flow.user != null)
+            _BarrierWrap(
+              child: BreakReasonDialog(
+                userName: _flow.user!.userName,
+                elapsedMinutes: _computeBreakElapsedMinutes(),
+                onSubmit: _onBreakReasonSubmit,
+                onCancel: _onBreakReasonCancel,
+              ),
+            ),
           if (_flow.stage == MainFlowStage.tipEntry && _flow.user != null)
             _BarrierWrap(
               child: _loadingReceivers
@@ -531,11 +603,17 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     return DateFormat('HH:mm').format(toStoreClock(dt, offset));
   }
 
+  /// 열린 break 의 경과 분 — 사유 다이얼로그 헤더에 표시.
+  int _computeBreakElapsedMinutes() {
+    final br = _flow.user?.currentBreak;
+    if (br == null) return 0;
+    return minutesBetweenClamped(br.startedAt, _now);
+  }
+
   int _computeRemainingMinutes() {
     final end = _flow.user?.scheduledEnd;
     if (end == null) return 0;
-    final diff = end.difference(_now).inMinutes;
-    return diff > 0 ? diff : 0;
+    return minutesBetweenClamped(_now, end);
   }
 }
 
@@ -965,7 +1043,7 @@ class _WorkingRow extends StatelessWidget {
     final String subline;
     final Color subColor;
     if (isBreak && row.currentBreak != null) {
-      final elapsed = now.difference(row.currentBreak!.startedAt).inMinutes;
+      final elapsed = minutesBetweenClamped(row.currentBreak!.startedAt, now);
       final typeKey = (row.currentBreak!.breakType == 'unpaid_meal' ||
               row.currentBreak!.breakType == 'unpaid_long')
           ? t.pfMainBreakTypeMeal
@@ -973,7 +1051,8 @@ class _WorkingRow extends StatelessWidget {
       subline = t.pfMainBreakDuration(_fmtDuration(elapsed), typeKey);
       subColor = AppColors.warning;
     } else {
-      final mins = row.clockIn != null ? now.difference(row.clockIn!).inMinutes : 0;
+      final mins =
+          row.clockIn != null ? minutesBetweenClamped(row.clockIn!, now) : 0;
       subline = t.pfMainWorkingDuration(_fmtDuration(mins));
       subColor = AppColors.success;
     }

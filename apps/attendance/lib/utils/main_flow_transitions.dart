@@ -7,6 +7,7 @@ import '../models/attendance_action.dart';
 import '../models/early_clock_out_reason.dart';
 import '../models/identify_response.dart';
 import '../models/tip_models.dart';
+import '../providers/attendance_dashboard_provider.dart' show TodayStaffBreak;
 import 'flow_decisions.dart';
 import 'main_flow_state.dart';
 
@@ -54,7 +55,9 @@ MainFlowState pickAction(
   MainFlowState s,
   AttendanceAction action, {
   DateTime? scheduledEnd,
+  TodayStaffBreak? currentBreak,
   required DateTime now,
+  required bool tipEntryEnabled,
 }) {
   // clock_out → early/tip 분기
   if (action == AttendanceAction.clockOut) {
@@ -63,8 +66,24 @@ MainFlowState pickAction(
       scheduledEnd: scheduledEnd,
       now: now,
     );
+    final showTip = shouldShowTipEntry(action, tipEntryEnabled: tipEntryEnabled);
     return MainFlowState(
-      stage: showEarly ? MainFlowStage.earlyReason : MainFlowStage.tipEntry,
+      stage: showEarly
+          ? MainFlowStage.earlyReason
+          : (showTip ? MainFlowStage.tipEntry : MainFlowStage.submitting),
+      enteredPin: s.enteredPin,
+      user: s.user,
+      pickedAction: action,
+    );
+  }
+  // break_end 가 허용 시간을 넘겼으면 사유 입력 먼저 — 없으면 서버가 거부한다.
+  if (shouldShowBreakReasonDialog(
+    action: action,
+    currentBreak: currentBreak,
+    now: now,
+  )) {
+    return MainFlowState(
+      stage: MainFlowStage.breakReason,
       enteredPin: s.enteredPin,
       user: s.user,
       pickedAction: action,
@@ -79,6 +98,59 @@ MainFlowState pickAction(
   );
 }
 
+MainFlowState submitBreakReason(MainFlowState s, String reason) {
+  return MainFlowState(
+    stage: MainFlowStage.submitting,
+    enteredPin: s.enteredPin,
+    user: s.user,
+    pickedAction: s.pickedAction,
+    breakReason: reason,
+  );
+}
+
+/// 서버가 조기 출근 사유를 요구했을 때 (400 code) — 사유 입력 단계로.
+///
+/// clock_out 과 달리 앱이 미리 판정하지 않는다. threshold 가 서버 설정이라
+/// 한 번 제출해 보고 거부 코드를 받아야 알 수 있다.
+MainFlowState requireEarlyClockInReason(MainFlowState s, int minutesEarly) {
+  return MainFlowState(
+    stage: MainFlowStage.earlyClockInReason,
+    enteredPin: s.enteredPin,
+    user: s.user,
+    pickedAction: s.pickedAction,
+    minutesEarly: minutesEarly,
+  );
+}
+
+/// 조기 출근 사유 제출 → 같은 clock_in 을 reason 과 함께 재시도.
+MainFlowState submitEarlyClockInReason(MainFlowState s, String reason) {
+  return MainFlowState(
+    stage: MainFlowStage.submitting,
+    enteredPin: s.enteredPin,
+    user: s.user,
+    pickedAction: s.pickedAction,
+    minutesEarly: s.minutesEarly,
+    earlyClockInReason: reason,
+  );
+}
+
+/// 사유 입력 취소 — 출근은 성립하지 않는다. 액션 선택으로 되돌린다.
+MainFlowState cancelEarlyClockInReason(MainFlowState s) {
+  return MainFlowState(
+    stage: MainFlowStage.choosingAction,
+    enteredPin: s.enteredPin,
+    user: s.user,
+  );
+}
+
+MainFlowState cancelBreakReason(MainFlowState s) {
+  return MainFlowState(
+    stage: MainFlowStage.choosingAction,
+    enteredPin: s.enteredPin,
+    user: s.user,
+  );
+}
+
 MainFlowState cancelAction(MainFlowState s) {
   return MainFlowState.initial();
 }
@@ -86,10 +158,11 @@ MainFlowState cancelAction(MainFlowState s) {
 MainFlowState submitEarlyReason(
   MainFlowState s,
   EarlyClockOutReason reason,
-  String? detail,
-) {
+  String? detail, {
+  required bool tipEntryEnabled,
+}) {
   return MainFlowState(
-    stage: MainFlowStage.tipEntry,
+    stage: tipEntryEnabled ? MainFlowStage.tipEntry : MainFlowStage.submitting,
     enteredPin: s.enteredPin,
     user: s.user,
     pickedAction: s.pickedAction,

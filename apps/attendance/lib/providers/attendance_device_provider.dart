@@ -48,6 +48,10 @@ class DeviceInfo {
   /// 없으면 기본 false (스케줄 없이 출근 불가).
   final bool walkInAllowed;
 
+  /// clock-out 시 tip 입력 화면 노출 여부 — `attendance.tip_entry_enabled` 해소값.
+  /// store 설정이라 같은 매장의 모든 기기가 같은 값을 본다. 없으면 기본 false.
+  final bool tipEntryEnabled;
+
   const DeviceInfo({
     required this.deviceId,
     required this.deviceName,
@@ -60,6 +64,7 @@ class DeviceInfo {
     this.registeredAt,
     this.lastSeenAt,
     this.walkInAllowed = false,
+    this.tipEntryEnabled = false,
   });
 
   factory DeviceInfo.fromJson(Map<String, dynamic> json) {
@@ -83,6 +88,7 @@ class DeviceInfo {
       registeredAt: parseDt(json['registered_at']),
       lastSeenAt: parseDt(json['last_seen_at']),
       walkInAllowed: json['walk_in_allowed'] == true,
+      tipEntryEnabled: json['tip_entry_enabled'] == true,
     );
   }
 }
@@ -300,7 +306,13 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
       Map<String, dynamic> result;
       switch (action) {
         case 'clock-in':
-          result = await _service.clockIn(userId: userId, pin: pin, scheduleId: scheduleId, walkIn: walkIn);
+          result = await _service.clockIn(
+            userId: userId,
+            pin: pin,
+            scheduleId: scheduleId,
+            walkIn: walkIn,
+            reason: reason,
+          );
           break;
         case 'clock-out':
           result = await _service.clockOut(userId: userId, pin: pin, reason: reason);
@@ -319,7 +331,8 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
           );
           break;
         case 'break-end':
-          result = await _service.breakEnd(userId: userId, pin: pin);
+          // break 초과 사유 — unpaid_meal 35분 이상이면 서버가 필수로 요구한다.
+          result = await _service.breakEnd(userId: userId, pin: pin, reason: reason);
           break;
         default:
           return const ClockActionResult(
@@ -342,6 +355,8 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
       return ClockActionResult(
         success: false,
         message: _parseError(e, 'Action failed'),
+        errorCode: _parseErrorCode(e),
+        errorDetail: _parseErrorDetail(e),
       );
     } catch (e) {
       return ClockActionResult(success: false, message: 'Action failed');
@@ -420,12 +435,34 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
     return seed;
   }
 
+  /// 구조화된 detail(dict) 에서 code 만 뽑는다. 없으면 null.
+  String? _parseErrorCode(Object e) {
+    final detail = _detailMap(e);
+    final code = detail?['code'];
+    return code is String && code.isNotEmpty ? code : null;
+  }
+
+  /// 구조화된 detail(dict) 전체 — minutes_early 등 부가 정보용.
+  Map<String, dynamic>? _parseErrorDetail(Object e) => _detailMap(e);
+
+  Map<String, dynamic>? _detailMap(Object e) {
+    if (e is DioException && e.response?.data is Map<String, dynamic>) {
+      final detail = (e.response!.data as Map<String, dynamic>)['detail'];
+      if (detail is Map<String, dynamic>) return detail;
+    }
+    return null;
+  }
+
   /// Dio 에러를 사용자 친화적 메시지로 변환
   String _parseError(Object e, String fallback) {
     if (e is DioException && e.response?.data is Map<String, dynamic>) {
       final data = e.response!.data as Map<String, dynamic>;
       final detail = data['detail'];
       if (detail is String && detail.isNotEmpty) return detail;
+      // 구조화된 detail — message 필드를 사람이 읽는 문장으로 쓴다.
+      if (detail is Map && detail['message'] is String) {
+        return detail['message'] as String;
+      }
       if (detail is List && detail.isNotEmpty) {
         final first = detail.first;
         if (first is Map && first['msg'] is String) return first['msg'] as String;
@@ -450,9 +487,18 @@ class ClockActionResult {
   final String message;
   final Map<String, dynamic>? data;
 
+  /// 서버가 준 구조화된 실패 코드 (예: 'early_clock_in_reason_required').
+  /// 메시지 문자열 매칭 대신 이걸로 후속 화면을 결정한다.
+  final String? errorCode;
+
+  /// 그 실패의 부가 정보 (minutes_early, schedule_id 등).
+  final Map<String, dynamic>? errorDetail;
+
   const ClockActionResult({
     required this.success,
     required this.message,
     this.data,
+    this.errorCode,
+    this.errorDetail,
   });
 }

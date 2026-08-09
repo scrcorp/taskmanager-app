@@ -887,6 +887,114 @@ class AppL10nEn extends AppL10n {
   String get pfEarlySubmit => 'Submit & Clock Out';
 
   @override
+  String get mgStoreSettingsTitle => 'Store Settings';
+
+  @override
+  String get mgStoreSettingsScopeNote =>
+      'These settings apply to the whole store — every device here, and the console.';
+
+  @override
+  String get mgStoreSettingsTipEntry => 'Tip entry on clock-out';
+
+  @override
+  String get mgStoreSettingsTipEntryDesc =>
+      'Ask staff to record tips when they clock out.';
+
+  @override
+  String get mgStoreSettingsSaved => 'Setting saved.';
+
+  @override
+  String get mgStoreSettingsLoadError =>
+      'Could not load store settings. Check the connection and try again.';
+
+  @override
+  String get mgStoreSettingsSaveError =>
+      'Could not save the setting. Check the connection and try again.';
+
+  @override
+  String get mgStoreSettingsForbidden =>
+      'You do not have permission to change store settings. Ask an owner or GM.';
+
+  @override
+  String get pfBreakReasonHeader => 'BREAK OVER ALLOWANCE';
+
+  @override
+  String pfBreakReasonElapsed(int minutes) {
+    return '$minutes minutes on break so far';
+  }
+
+  @override
+  String pfBreakReasonTitle(String name) {
+    return '$name, why did this break run long?';
+  }
+
+  @override
+  String get pfBreakReasonBody =>
+      'A reason is required to end a break over the allowance. Your manager will see this.';
+
+  @override
+  String get pfBreakReasonForgot => 'Forgot to end break';
+
+  @override
+  String get pfBreakReasonManager => 'Manager approved longer break';
+
+  @override
+  String get pfBreakReasonEmergency => 'Personal emergency';
+
+  @override
+  String get pfBreakReasonCoverage => 'Waiting for coverage';
+
+  @override
+  String get pfBreakReasonOther => 'Other (please specify)';
+
+  @override
+  String get pfBreakReasonOtherHint => 'Please describe...';
+
+  @override
+  String get pfBreakReasonCancel => 'Cancel';
+
+  @override
+  String get pfBreakReasonSubmit => 'Submit & End Break';
+
+  @override
+  String get pfEarlyInHeader => 'EARLY CLOCK-IN';
+
+  @override
+  String pfEarlyInEarlyBy(String duration) {
+    return '$duration before your shift starts';
+  }
+
+  @override
+  String pfEarlyInTitle(String name) {
+    return '$name, why are you starting early?';
+  }
+
+  @override
+  String get pfEarlyInBody =>
+      'A reason is required to clock in before your shift. Your manager will see this and the extra time counts toward your pay.';
+
+  @override
+  String get pfEarlyInAsked => 'Asked to come in early';
+
+  @override
+  String get pfEarlyInCovering => 'Covering for someone';
+
+  @override
+  String get pfEarlyInStoreHelp => 'Store needs help now';
+
+  @override
+  String get pfEarlyInOther => 'Other (please specify)';
+
+  @override
+  String get pfEarlyInOtherHint => 'Please describe...';
+
+  @override
+  String get pfEarlyInCancel => 'Cancel';
+
+  @override
+  String get pfEarlyInSubmit => 'Submit & Clock In';
+
+  @override
   String get pfTipHeader => 'TIP ENTRY';
 
   @override

@@ -1627,6 +1627,192 @@ abstract class AppL10n {
   /// **'Submit & Clock Out'**
   String get pfEarlySubmit;
 
+  /// No description provided for @mgStoreSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Store Settings'**
+  String get mgStoreSettingsTitle;
+
+  /// No description provided for @mgStoreSettingsScopeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'These settings apply to the whole store — every device here, and the console.'**
+  String get mgStoreSettingsScopeNote;
+
+  /// No description provided for @mgStoreSettingsTipEntry.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip entry on clock-out'**
+  String get mgStoreSettingsTipEntry;
+
+  /// No description provided for @mgStoreSettingsTipEntryDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask staff to record tips when they clock out.'**
+  String get mgStoreSettingsTipEntryDesc;
+
+  /// No description provided for @mgStoreSettingsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Setting saved.'**
+  String get mgStoreSettingsSaved;
+
+  /// No description provided for @mgStoreSettingsLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load store settings. Check the connection and try again.'**
+  String get mgStoreSettingsLoadError;
+
+  /// No description provided for @mgStoreSettingsSaveError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the setting. Check the connection and try again.'**
+  String get mgStoreSettingsSaveError;
+
+  /// No description provided for @mgStoreSettingsForbidden.
+  ///
+  /// In en, this message translates to:
+  /// **'You do not have permission to change store settings. Ask an owner or GM.'**
+  String get mgStoreSettingsForbidden;
+
+  /// No description provided for @pfBreakReasonHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'BREAK OVER ALLOWANCE'**
+  String get pfBreakReasonHeader;
+
+  /// No description provided for @pfBreakReasonElapsed.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} minutes on break so far'**
+  String pfBreakReasonElapsed(int minutes);
+
+  /// No description provided for @pfBreakReasonTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}, why did this break run long?'**
+  String pfBreakReasonTitle(String name);
+
+  /// No description provided for @pfBreakReasonBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A reason is required to end a break over the allowance. Your manager will see this.'**
+  String get pfBreakReasonBody;
+
+  /// No description provided for @pfBreakReasonForgot.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot to end break'**
+  String get pfBreakReasonForgot;
+
+  /// No description provided for @pfBreakReasonManager.
+  ///
+  /// In en, this message translates to:
+  /// **'Manager approved longer break'**
+  String get pfBreakReasonManager;
+
+  /// No description provided for @pfBreakReasonEmergency.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal emergency'**
+  String get pfBreakReasonEmergency;
+
+  /// No description provided for @pfBreakReasonCoverage.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for coverage'**
+  String get pfBreakReasonCoverage;
+
+  /// No description provided for @pfBreakReasonOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other (please specify)'**
+  String get pfBreakReasonOther;
+
+  /// No description provided for @pfBreakReasonOtherHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Please describe...'**
+  String get pfBreakReasonOtherHint;
+
+  /// No description provided for @pfBreakReasonCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get pfBreakReasonCancel;
+
+  /// No description provided for @pfBreakReasonSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit & End Break'**
+  String get pfBreakReasonSubmit;
+
+  /// No description provided for @pfEarlyInHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'EARLY CLOCK-IN'**
+  String get pfEarlyInHeader;
+
+  /// No description provided for @pfEarlyInEarlyBy.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} before your shift starts'**
+  String pfEarlyInEarlyBy(String duration);
+
+  /// No description provided for @pfEarlyInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}, why are you starting early?'**
+  String pfEarlyInTitle(String name);
+
+  /// No description provided for @pfEarlyInBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A reason is required to clock in before your shift. Your manager will see this and the extra time counts toward your pay.'**
+  String get pfEarlyInBody;
+
+  /// No description provided for @pfEarlyInAsked.
+  ///
+  /// In en, this message translates to:
+  /// **'Asked to come in early'**
+  String get pfEarlyInAsked;
+
+  /// No description provided for @pfEarlyInCovering.
+  ///
+  /// In en, this message translates to:
+  /// **'Covering for someone'**
+  String get pfEarlyInCovering;
+
+  /// No description provided for @pfEarlyInStoreHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Store needs help now'**
+  String get pfEarlyInStoreHelp;
+
+  /// No description provided for @pfEarlyInOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other (please specify)'**
+  String get pfEarlyInOther;
+
+  /// No description provided for @pfEarlyInOtherHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Please describe...'**
+  String get pfEarlyInOtherHint;
+
+  /// No description provided for @pfEarlyInCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get pfEarlyInCancel;
+
+  /// No description provided for @pfEarlyInSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit & Clock In'**
+  String get pfEarlyInSubmit;
+
   /// No description provided for @pfTipHeader.
   ///
   /// In en, this message translates to:
