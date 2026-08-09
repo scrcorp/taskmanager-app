@@ -957,6 +957,44 @@ class AppL10nEn extends AppL10n {
   String get pfBreakReasonSubmit => 'Submit & End Break';
 
   @override
+  String get pfEarlyInHeader => 'EARLY CLOCK-IN';
+
+  @override
+  String pfEarlyInEarlyBy(String duration) {
+    return '$duration before your shift starts';
+  }
+
+  @override
+  String pfEarlyInTitle(String name) {
+    return '$name, why are you starting early?';
+  }
+
+  @override
+  String get pfEarlyInBody =>
+      'A reason is required to clock in before your shift. Your manager will see this and the extra time counts toward your pay.';
+
+  @override
+  String get pfEarlyInAsked => 'Asked to come in early';
+
+  @override
+  String get pfEarlyInCovering => 'Covering for someone';
+
+  @override
+  String get pfEarlyInStoreHelp => 'Store needs help now';
+
+  @override
+  String get pfEarlyInOther => 'Other (please specify)';
+
+  @override
+  String get pfEarlyInOtherHint => 'Please describe...';
+
+  @override
+  String get pfEarlyInCancel => 'Cancel';
+
+  @override
+  String get pfEarlyInSubmit => 'Submit & Clock In';
+
+  @override
   String get pfTipHeader => 'TIP ENTRY';
 
   @override

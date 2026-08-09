@@ -306,7 +306,13 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
       Map<String, dynamic> result;
       switch (action) {
         case 'clock-in':
-          result = await _service.clockIn(userId: userId, pin: pin, scheduleId: scheduleId, walkIn: walkIn);
+          result = await _service.clockIn(
+            userId: userId,
+            pin: pin,
+            scheduleId: scheduleId,
+            walkIn: walkIn,
+            reason: reason,
+          );
           break;
         case 'clock-out':
           result = await _service.clockOut(userId: userId, pin: pin, reason: reason);
@@ -349,6 +355,8 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
       return ClockActionResult(
         success: false,
         message: _parseError(e, 'Action failed'),
+        errorCode: _parseErrorCode(e),
+        errorDetail: _parseErrorDetail(e),
       );
     } catch (e) {
       return ClockActionResult(success: false, message: 'Action failed');
@@ -427,12 +435,34 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
     return seed;
   }
 
+  /// 구조화된 detail(dict) 에서 code 만 뽑는다. 없으면 null.
+  String? _parseErrorCode(Object e) {
+    final detail = _detailMap(e);
+    final code = detail?['code'];
+    return code is String && code.isNotEmpty ? code : null;
+  }
+
+  /// 구조화된 detail(dict) 전체 — minutes_early 등 부가 정보용.
+  Map<String, dynamic>? _parseErrorDetail(Object e) => _detailMap(e);
+
+  Map<String, dynamic>? _detailMap(Object e) {
+    if (e is DioException && e.response?.data is Map<String, dynamic>) {
+      final detail = (e.response!.data as Map<String, dynamic>)['detail'];
+      if (detail is Map<String, dynamic>) return detail;
+    }
+    return null;
+  }
+
   /// Dio 에러를 사용자 친화적 메시지로 변환
   String _parseError(Object e, String fallback) {
     if (e is DioException && e.response?.data is Map<String, dynamic>) {
       final data = e.response!.data as Map<String, dynamic>;
       final detail = data['detail'];
       if (detail is String && detail.isNotEmpty) return detail;
+      // 구조화된 detail — message 필드를 사람이 읽는 문장으로 쓴다.
+      if (detail is Map && detail['message'] is String) {
+        return detail['message'] as String;
+      }
       if (detail is List && detail.isNotEmpty) {
         final first = detail.first;
         if (first is Map && first['msg'] is String) return first['msg'] as String;
@@ -457,9 +487,18 @@ class ClockActionResult {
   final String message;
   final Map<String, dynamic>? data;
 
+  /// 서버가 준 구조화된 실패 코드 (예: 'early_clock_in_reason_required').
+  /// 메시지 문자열 매칭 대신 이걸로 후속 화면을 결정한다.
+  final String? errorCode;
+
+  /// 그 실패의 부가 정보 (minutes_early, schedule_id 등).
+  final Map<String, dynamic>? errorDetail;
+
   const ClockActionResult({
     required this.success,
     required this.message,
     this.data,
+    this.errorCode,
+    this.errorDetail,
   });
 }

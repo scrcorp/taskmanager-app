@@ -28,6 +28,7 @@ import 'package:intl/intl.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/attendance_action.dart';
 import '../../models/early_clock_out_reason.dart';
+import '../../utils/early_clock_in_logic.dart';
 import '../../widgets/break_reason_dialog.dart';
 import '../../models/identify_response.dart';
 import '../../models/tip_models.dart';
@@ -39,6 +40,7 @@ import '../../utils/main_flow_transitions.dart' as flow;
 import '../../utils/store_time.dart';
 import '../../widgets/action_sheet.dart';
 import '../../widgets/battery_indicator.dart';
+import '../../widgets/early_clock_in_dialog.dart';
 import '../../widgets/early_clock_out_dialog.dart';
 import '../../widgets/identity_confirm_dialog.dart';
 import '../../widgets/language_switcher.dart';
@@ -200,6 +202,15 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     setState(() => _flow = flow.cancelBreakReason(_flow));
   }
 
+  Future<void> _onEarlyClockInReasonSubmit(String reason) async {
+    setState(() => _flow = flow.submitEarlyClockInReason(_flow, reason));
+    await _performClockAction();
+  }
+
+  void _onEarlyClockInReasonCancel() {
+    setState(() => _flow = flow.cancelEarlyClockInReason(_flow));
+  }
+
   void _onEarlyCancel() {
     setState(() => _flow = flow.cancelEarly(_flow));
   }
@@ -257,10 +268,13 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     final action = _flow.pickedAction!;
     final pin = _flow.enteredPin!;
     final user = _flow.user!;
-    // clock_out 은 early 사유, break_end 는 초과 사유 — 같은 body 필드(reason)를 쓴다.
-    final reasonText = action == AttendanceAction.breakEnd
-        ? _flow.breakReason
-        : _composeReasonText(_flow.earlyReason, _flow.earlyDetail);
+    // 세 액션이 같은 body 필드(reason)를 공유한다:
+    //   clock_out → 조기 퇴근 사유 / break_end → 초과 사유 / clock_in → 조기 출근 사유.
+    final reasonText = switch (action) {
+      AttendanceAction.breakEnd => _flow.breakReason,
+      AttendanceAction.clockIn => _flow.earlyClockInReason,
+      _ => _composeReasonText(_flow.earlyReason, _flow.earlyDetail),
+    };
 
     // 열린 스케줄 없이 클락인 = 워크인. (오늘 스케줄 없음=null, 또는 이전 shift 퇴근완료=clocked_out)
     // 서버에 walk_in=true 전달해 자동 스케줄 생성 경로 사용. 퇴근 후 재출근(하루 여러 shift) 지원.
@@ -282,6 +296,15 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     if (!mounted) return;
 
     if (!result.success) {
+      // 서버가 조기 출근 사유를 요구 — 에러로 끝내지 않고 사유 입력으로 이어간다.
+      // 메시지 문자열이 아니라 code 로 판단한다 (서버 문구 변경에 안 깨지게).
+      if (result.errorCode == kEarlyClockInReasonRequired) {
+        setState(() => _flow = flow.requireEarlyClockInReason(
+              _flow,
+              minutesEarlyFromDetail(result.errorDetail),
+            ));
+        return;
+      }
       setState(() => _flow = flow.submitFailed(_flow, result.message));
       return;
     }
@@ -510,6 +533,15 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                 remainingMinutes: _computeRemainingMinutes(),
                 onSubmit: _onEarlyReasonSubmit,
                 onCancel: _onEarlyCancel,
+              ),
+            ),
+          if (_flow.stage == MainFlowStage.earlyClockInReason && _flow.user != null)
+            _BarrierWrap(
+              child: EarlyClockInDialog(
+                userName: _flow.user!.userName,
+                minutesEarly: _flow.minutesEarly ?? 0,
+                onSubmit: _onEarlyClockInReasonSubmit,
+                onCancel: _onEarlyClockInReasonCancel,
               ),
             ),
           if (_flow.stage == MainFlowStage.breakReason && _flow.user != null)

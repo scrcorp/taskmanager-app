@@ -108,6 +108,41 @@ MainFlowState submitBreakReason(MainFlowState s, String reason) {
   );
 }
 
+/// 서버가 조기 출근 사유를 요구했을 때 (400 code) — 사유 입력 단계로.
+///
+/// clock_out 과 달리 앱이 미리 판정하지 않는다. threshold 가 서버 설정이라
+/// 한 번 제출해 보고 거부 코드를 받아야 알 수 있다.
+MainFlowState requireEarlyClockInReason(MainFlowState s, int minutesEarly) {
+  return MainFlowState(
+    stage: MainFlowStage.earlyClockInReason,
+    enteredPin: s.enteredPin,
+    user: s.user,
+    pickedAction: s.pickedAction,
+    minutesEarly: minutesEarly,
+  );
+}
+
+/// 조기 출근 사유 제출 → 같은 clock_in 을 reason 과 함께 재시도.
+MainFlowState submitEarlyClockInReason(MainFlowState s, String reason) {
+  return MainFlowState(
+    stage: MainFlowStage.submitting,
+    enteredPin: s.enteredPin,
+    user: s.user,
+    pickedAction: s.pickedAction,
+    minutesEarly: s.minutesEarly,
+    earlyClockInReason: reason,
+  );
+}
+
+/// 사유 입력 취소 — 출근은 성립하지 않는다. 액션 선택으로 되돌린다.
+MainFlowState cancelEarlyClockInReason(MainFlowState s) {
+  return MainFlowState(
+    stage: MainFlowStage.choosingAction,
+    enteredPin: s.enteredPin,
+    user: s.user,
+  );
+}
+
 MainFlowState cancelBreakReason(MainFlowState s) {
   return MainFlowState(
     stage: MainFlowStage.choosingAction,

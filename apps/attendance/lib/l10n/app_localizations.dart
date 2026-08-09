@@ -1747,6 +1747,72 @@ abstract class AppL10n {
   /// **'Submit & End Break'**
   String get pfBreakReasonSubmit;
 
+  /// No description provided for @pfEarlyInHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'EARLY CLOCK-IN'**
+  String get pfEarlyInHeader;
+
+  /// No description provided for @pfEarlyInEarlyBy.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} before your shift starts'**
+  String pfEarlyInEarlyBy(String duration);
+
+  /// No description provided for @pfEarlyInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{name}, why are you starting early?'**
+  String pfEarlyInTitle(String name);
+
+  /// No description provided for @pfEarlyInBody.
+  ///
+  /// In en, this message translates to:
+  /// **'A reason is required to clock in before your shift. Your manager will see this and the extra time counts toward your pay.'**
+  String get pfEarlyInBody;
+
+  /// No description provided for @pfEarlyInAsked.
+  ///
+  /// In en, this message translates to:
+  /// **'Asked to come in early'**
+  String get pfEarlyInAsked;
+
+  /// No description provided for @pfEarlyInCovering.
+  ///
+  /// In en, this message translates to:
+  /// **'Covering for someone'**
+  String get pfEarlyInCovering;
+
+  /// No description provided for @pfEarlyInStoreHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Store needs help now'**
+  String get pfEarlyInStoreHelp;
+
+  /// No description provided for @pfEarlyInOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other (please specify)'**
+  String get pfEarlyInOther;
+
+  /// No description provided for @pfEarlyInOtherHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Please describe...'**
+  String get pfEarlyInOtherHint;
+
+  /// No description provided for @pfEarlyInCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get pfEarlyInCancel;
+
+  /// No description provided for @pfEarlyInSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit & Clock In'**
+  String get pfEarlyInSubmit;
+
   /// No description provided for @pfTipHeader.
   ///
   /// In en, this message translates to:
