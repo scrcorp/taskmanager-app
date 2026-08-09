@@ -14,6 +14,7 @@ import '../models/tip_models.dart';
 ///   - confirming: IdentityConfirmDialog
 ///   - choosingAction: ActionSheet
 ///   - earlyReason: EarlyClockOutDialog (clock_out 일찍 시)
+///   - breakReason: BreakReasonDialog (break_end 가 허용 시간 초과 시)
 ///   - tipEntry: TipEntryDialog (clock_out 후)
 ///   - submitting: clock action API 진행 중 (loading)
 ///   - success: SuccessModal
@@ -24,6 +25,7 @@ enum MainFlowStage {
   confirming,
   choosingAction,
   earlyReason,
+  breakReason,
   tipEntry,
   submitting,
   success,
@@ -37,6 +39,8 @@ class MainFlowState {
   final AttendanceAction? pickedAction;
   final EarlyClockOutReason? earlyReason;
   final String? earlyDetail;
+  /// break_end 초과 사유 — 서버 body 의 reason 으로 그대로 전달된다.
+  final String? breakReason;
   final TipPayload? tip;
   final String? errorMessage;
 
@@ -47,6 +51,7 @@ class MainFlowState {
     this.pickedAction,
     this.earlyReason,
     this.earlyDetail,
+    this.breakReason,
     this.tip,
     this.errorMessage,
   });
@@ -64,6 +69,7 @@ class MainFlowState {
     AttendanceAction? pickedAction,
     EarlyClockOutReason? earlyReason,
     String? earlyDetail,
+    String? breakReason,
     TipPayload? tip,
     String? errorMessage,
   }) {
@@ -74,6 +80,7 @@ class MainFlowState {
       pickedAction: pickedAction ?? this.pickedAction,
       earlyReason: earlyReason ?? this.earlyReason,
       earlyDetail: earlyDetail ?? this.earlyDetail,
+      breakReason: breakReason ?? this.breakReason,
       tip: tip ?? this.tip,
       errorMessage: errorMessage ?? this.errorMessage,
     );
@@ -89,6 +96,7 @@ class MainFlowState {
           other.pickedAction == pickedAction &&
           other.earlyReason == earlyReason &&
           other.earlyDetail == earlyDetail &&
+          other.breakReason == breakReason &&
           other.errorMessage == errorMessage;
 
   @override
@@ -99,6 +107,7 @@ class MainFlowState {
         pickedAction,
         earlyReason,
         earlyDetail,
+        breakReason,
         errorMessage,
       );
 

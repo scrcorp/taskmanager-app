@@ -22,6 +22,7 @@ import '../../widgets/schedule_staff_detail_panel.dart';
 import '../../widgets/store_clock.dart';
 import 'attendance_manage_action_modal.dart';
 import 'attendance_manage_staff_pins_screen.dart';
+import 'attendance_manage_store_settings_screen.dart';
 
 class AttendanceManageHomeScreen extends ConsumerStatefulWidget {
   const AttendanceManageHomeScreen({super.key});
@@ -175,6 +176,17 @@ class _AttendanceManageHomeScreenState
       MaterialPageRoute(
         builder: (_) =>
             AttendanceManageStaffPinsScreen(onActivity: _resetSession),
+      ),
+    );
+    if (!mounted) return;
+    _resetSession();
+  }
+
+  Future<void> _openStoreSettings() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) =>
+            AttendanceManageStoreSettingsScreen(onActivity: _resetSession),
       ),
     );
     if (!mounted) return;
@@ -478,6 +490,18 @@ class _AttendanceManageHomeScreenState
                       icon: Icons.pin_rounded,
                       label: 'Staff PINs',
                       onTap: _openStaffPins,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  // 매장 설정은 console 과 같은 stores:update 문턱 — 서버가 내려준
+                  // can_manage_store_settings 일 때만 노출.
+                  if (ref
+                      .watch(attendanceManageSessionProvider)
+                      .canManageStoreSettings) ...[
+                    _BigPrimaryButton(
+                      icon: Icons.tune_rounded,
+                      label: 'Store Settings',
+                      onTap: _openStoreSettings,
                     ),
                     const SizedBox(width: 8),
                   ],

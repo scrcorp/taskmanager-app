@@ -28,6 +28,7 @@ import 'package:intl/intl.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/attendance_action.dart';
 import '../../models/early_clock_out_reason.dart';
+import '../../widgets/break_reason_dialog.dart';
 import '../../models/identify_response.dart';
 import '../../models/tip_models.dart';
 import '../../providers/attendance_dashboard_provider.dart';
@@ -147,11 +148,15 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
 
   Future<void> _onActionPicked(AttendanceAction action) async {
     final user = _flow.user!;
+    final tipEnabled =
+        ref.read(attendanceDeviceProvider).device?.tipEntryEnabled ?? false;
     final next = flow.pickAction(
       _flow,
       action,
       scheduledEnd: user.scheduledEnd,
+      currentBreak: user.currentBreak,
       now: DateTime.now(),
+      tipEntryEnabled: tipEnabled,
     );
     setState(() => _flow = next);
 
@@ -168,8 +173,30 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
   }
 
   Future<void> _onEarlyReasonSubmit(EarlyClockOutReason reason, String? detail) async {
-    setState(() => _flow = flow.submitEarlyReason(_flow, reason, detail));
+    final tipEnabled =
+        ref.read(attendanceDeviceProvider).device?.tipEntryEnabled ?? false;
+    setState(() => _flow = flow.submitEarlyReason(
+          _flow,
+          reason,
+          detail,
+          tipEntryEnabled: tipEnabled,
+        ));
+    // tip 화면이 꺼진 매장이면 곧바로 서버 호출로 넘어간다.
+    if (_flow.stage == MainFlowStage.submitting) {
+      await _performClockAction();
+      return;
+    }
     await _loadTipReceivers();
+  }
+
+  /// break 초과 사유 제출 → 그대로 break-end 호출.
+  Future<void> _onBreakReasonSubmit(String reason) async {
+    setState(() => _flow = flow.submitBreakReason(_flow, reason));
+    await _performClockAction();
+  }
+
+  void _onBreakReasonCancel() {
+    setState(() => _flow = flow.cancelBreakReason(_flow));
   }
 
   void _onEarlyCancel() {
@@ -229,7 +256,10 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     final action = _flow.pickedAction!;
     final pin = _flow.enteredPin!;
     final user = _flow.user!;
-    final reasonText = _composeReasonText(_flow.earlyReason, _flow.earlyDetail);
+    // clock_out 은 early 사유, break_end 는 초과 사유 — 같은 body 필드(reason)를 쓴다.
+    final reasonText = action == AttendanceAction.breakEnd
+        ? _flow.breakReason
+        : _composeReasonText(_flow.earlyReason, _flow.earlyDetail);
 
     // 열린 스케줄 없이 클락인 = 워크인. (오늘 스케줄 없음=null, 또는 이전 shift 퇴근완료=clocked_out)
     // 서버에 walk_in=true 전달해 자동 스케줄 생성 경로 사용. 퇴근 후 재출근(하루 여러 shift) 지원.
@@ -481,6 +511,15 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                 onCancel: _onEarlyCancel,
               ),
             ),
+          if (_flow.stage == MainFlowStage.breakReason && _flow.user != null)
+            _BarrierWrap(
+              child: BreakReasonDialog(
+                userName: _flow.user!.userName,
+                elapsedMinutes: _computeBreakElapsedMinutes(),
+                onSubmit: _onBreakReasonSubmit,
+                onCancel: _onBreakReasonCancel,
+              ),
+            ),
           if (_flow.stage == MainFlowStage.tipEntry && _flow.user != null)
             _BarrierWrap(
               child: _loadingReceivers
@@ -529,6 +568,14 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     if (dt == null) return '';
     final offset = ref.read(attendanceDeviceProvider).device?.storeTimezoneOffsetMinutes;
     return DateFormat('HH:mm').format(toStoreClock(dt, offset));
+  }
+
+  /// 열린 break 의 경과 분 — 사유 다이얼로그 헤더에 표시.
+  int _computeBreakElapsedMinutes() {
+    final br = _flow.user?.currentBreak;
+    if (br == null) return 0;
+    final diff = _now.difference(br.startedAt).inMinutes;
+    return diff > 0 ? diff : 0;
   }
 
   int _computeRemainingMinutes() {

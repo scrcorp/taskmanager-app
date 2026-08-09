@@ -1,6 +1,8 @@
 /// flow_decisions unit tests — Phase 5 Stage H-1.
 
 import 'package:attendance/models/attendance_action.dart';
+import 'package:attendance/providers/attendance_dashboard_provider.dart'
+    show TodayStaffBreak;
 import 'package:attendance/utils/flow_decisions.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -159,15 +161,92 @@ void main() {
   });
 
   group('shouldShowTipEntry', () {
-    test('clock_out → true', () {
-      expect(shouldShowTipEntry(AttendanceAction.clockOut), true);
+    test('clock_out + 매장 설정 on → true', () {
+      expect(
+        shouldShowTipEntry(AttendanceAction.clockOut, tipEntryEnabled: true),
+        true,
+      );
     });
 
-    test('clock_in / breaks → false', () {
-      expect(shouldShowTipEntry(AttendanceAction.clockIn), false);
-      expect(shouldShowTipEntry(AttendanceAction.breakShortPaid), false);
-      expect(shouldShowTipEntry(AttendanceAction.breakLongUnpaid), false);
-      expect(shouldShowTipEntry(AttendanceAction.breakEnd), false);
+    test('clock_out 이어도 매장 설정 off 면 false (store 토글이 최종 결정)', () {
+      expect(
+        shouldShowTipEntry(AttendanceAction.clockOut, tipEntryEnabled: false),
+        false,
+      );
+    });
+
+    test('clock_in / breaks → 설정과 무관하게 false', () {
+      for (final a in [
+        AttendanceAction.clockIn,
+        AttendanceAction.breakShortPaid,
+        AttendanceAction.breakLongUnpaid,
+        AttendanceAction.breakEnd,
+      ]) {
+        expect(shouldShowTipEntry(a, tipEntryEnabled: true), false);
+        expect(shouldShowTipEntry(a, tipEntryEnabled: false), false);
+      }
+    });
+  });
+
+  group('shouldShowBreakReasonDialog', () {
+    TodayStaffBreak breakOf(String type, int minutesAgo) => TodayStaffBreak(
+          startedAt: now.subtract(Duration(minutes: minutesAgo)),
+          breakType: type,
+        );
+
+    test('unpaid_meal 40분 → true (서버가 사유를 요구하는 구간)', () {
+      expect(
+        shouldShowBreakReasonDialog(
+          action: AttendanceAction.breakEnd,
+          currentBreak: breakOf('unpaid_meal', 40),
+          now: now,
+        ),
+        true,
+      );
+    });
+
+    test('unpaid_meal 32분 → false (허용 범위)', () {
+      expect(
+        shouldShowBreakReasonDialog(
+          action: AttendanceAction.breakEnd,
+          currentBreak: breakOf('unpaid_meal', 32),
+          now: now,
+        ),
+        false,
+      );
+    });
+
+    test('paid_10min 은 아무리 길어도 false (초과분 unpaid 처리)', () {
+      expect(
+        shouldShowBreakReasonDialog(
+          action: AttendanceAction.breakEnd,
+          currentBreak: breakOf('paid_10min', 40),
+          now: now,
+        ),
+        false,
+      );
+    });
+
+    test('break_end 가 아니면 false', () {
+      expect(
+        shouldShowBreakReasonDialog(
+          action: AttendanceAction.clockOut,
+          currentBreak: breakOf('unpaid_meal', 40),
+          now: now,
+        ),
+        false,
+      );
+    });
+
+    test('열린 break 정보가 없으면 false (서버 판단에 맡김)', () {
+      expect(
+        shouldShowBreakReasonDialog(
+          action: AttendanceAction.breakEnd,
+          currentBreak: null,
+          now: now,
+        ),
+        false,
+      );
     });
   });
 

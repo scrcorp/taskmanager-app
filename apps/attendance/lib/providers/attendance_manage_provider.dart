@@ -193,6 +193,10 @@ class ManageSessionState {
   final bool canReadPins;
   final bool canUpdatePins;
 
+  /// Store Settings 메뉴 노출 여부. 매장 설정은 console 과 같은 stores:update
+  /// 문턱이라, manage 진입(SV+)만으로 열면 안 된다.
+  final bool canManageStoreSettings;
+
   const ManageSessionState({
     this.active = false,
     this.managerUserId,
@@ -201,6 +205,7 @@ class ManageSessionState {
     this.error,
     this.canReadPins = false,
     this.canUpdatePins = false,
+    this.canManageStoreSettings = false,
   });
 
   ManageSessionState copyWith({
@@ -211,6 +216,7 @@ class ManageSessionState {
     String? error,
     bool? canReadPins,
     bool? canUpdatePins,
+    bool? canManageStoreSettings,
     bool clearError = false,
   }) {
     return ManageSessionState(
@@ -221,6 +227,8 @@ class ManageSessionState {
       error: clearError ? null : (error ?? this.error),
       canReadPins: canReadPins ?? this.canReadPins,
       canUpdatePins: canUpdatePins ?? this.canUpdatePins,
+      canManageStoreSettings:
+          canManageStoreSettings ?? this.canManageStoreSettings,
     );
   }
 }
@@ -250,6 +258,7 @@ class AttendanceManageSessionNotifier extends StateNotifier<ManageSessionState> 
         expiresAt: DateTime.tryParse(body['expires_at']?.toString() ?? ''),
         canReadPins: body['can_read_pins'] == true,
         canUpdatePins: body['can_update_pins'] == true,
+        canManageStoreSettings: body['can_manage_store_settings'] == true,
       );
       return true;
     } on DioException catch (e) {

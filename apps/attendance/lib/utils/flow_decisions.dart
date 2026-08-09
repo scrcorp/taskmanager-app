@@ -6,6 +6,8 @@
 /// main screen state machine 에서 호출하는 pure 함수 모음.
 
 import '../models/attendance_action.dart';
+import '../providers/attendance_dashboard_provider.dart' show TodayStaffBreak;
+import 'staff_status_utils.dart';
 
 /// 현재 시각 기준 scheduled_end 까지 남은 시간 (분).
 ///   - scheduledEnd null → 0 (no shift)
@@ -37,9 +39,33 @@ bool shouldShowEarlyClockOutDialog({
 }
 
 /// Tip entry dialog 를 띄울지.
-///   - clock_out 일 때만 true (그 외 action 은 tip 입력 없음)
-bool shouldShowTipEntry(AttendanceAction action) {
+///   - clock_out 이 아니면 false (그 외 action 은 tip 입력 없음)
+///   - 매장 설정 `attendance.tip_entry_enabled` 가 꺼져 있으면 false
+///
+/// [tipEntryEnabled] 는 DeviceMe 로 내려온 store 설정 해소값이다. 기기 로컬 설정이
+/// 아니라서 같은 매장의 모든 기기가 같은 값을 본다.
+bool shouldShowTipEntry(AttendanceAction action, {required bool tipEntryEnabled}) {
+  if (!tipEntryEnabled) return false;
   return action == AttendanceAction.clockOut;
+}
+
+/// Break 사유 입력을 받을지.
+///   - break_end 가 아니면 false
+///   - 열린 break 정보가 없으면 false (서버가 판단하도록 그대로 보냄)
+///   - 허용 시간을 넘겨 서버가 사유를 요구하는 상태면 true
+///
+/// 이 게이트가 없으면 unpaid_meal 35분 초과 시 서버가 400 을 주는데 사유를 넣을
+/// 화면이 없어 휴식을 끝낼 수 없다 (2026-08-08 실사용 버그).
+bool shouldShowBreakReasonDialog({
+  required AttendanceAction action,
+  required TodayStaffBreak? currentBreak,
+  required DateTime now,
+}) {
+  if (action != AttendanceAction.breakEnd) return false;
+  if (currentBreak == null) return false;
+  final elapsed = now.difference(currentBreak.startedAt).inMinutes;
+  final progress = breakProgress(currentBreak.breakType, elapsed);
+  return progress.state == BreakState.requiresReason;
 }
 
 /// 이 action 이 clock_out 흐름인지 (early/tip 분기 트리거).

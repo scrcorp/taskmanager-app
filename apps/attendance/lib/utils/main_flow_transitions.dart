@@ -7,6 +7,7 @@ import '../models/attendance_action.dart';
 import '../models/early_clock_out_reason.dart';
 import '../models/identify_response.dart';
 import '../models/tip_models.dart';
+import '../providers/attendance_dashboard_provider.dart' show TodayStaffBreak;
 import 'flow_decisions.dart';
 import 'main_flow_state.dart';
 
@@ -54,7 +55,9 @@ MainFlowState pickAction(
   MainFlowState s,
   AttendanceAction action, {
   DateTime? scheduledEnd,
+  TodayStaffBreak? currentBreak,
   required DateTime now,
+  required bool tipEntryEnabled,
 }) {
   // clock_out → early/tip 분기
   if (action == AttendanceAction.clockOut) {
@@ -63,8 +66,24 @@ MainFlowState pickAction(
       scheduledEnd: scheduledEnd,
       now: now,
     );
+    final showTip = shouldShowTipEntry(action, tipEntryEnabled: tipEntryEnabled);
     return MainFlowState(
-      stage: showEarly ? MainFlowStage.earlyReason : MainFlowStage.tipEntry,
+      stage: showEarly
+          ? MainFlowStage.earlyReason
+          : (showTip ? MainFlowStage.tipEntry : MainFlowStage.submitting),
+      enteredPin: s.enteredPin,
+      user: s.user,
+      pickedAction: action,
+    );
+  }
+  // break_end 가 허용 시간을 넘겼으면 사유 입력 먼저 — 없으면 서버가 거부한다.
+  if (shouldShowBreakReasonDialog(
+    action: action,
+    currentBreak: currentBreak,
+    now: now,
+  )) {
+    return MainFlowState(
+      stage: MainFlowStage.breakReason,
       enteredPin: s.enteredPin,
       user: s.user,
       pickedAction: action,
@@ -79,6 +98,24 @@ MainFlowState pickAction(
   );
 }
 
+MainFlowState submitBreakReason(MainFlowState s, String reason) {
+  return MainFlowState(
+    stage: MainFlowStage.submitting,
+    enteredPin: s.enteredPin,
+    user: s.user,
+    pickedAction: s.pickedAction,
+    breakReason: reason,
+  );
+}
+
+MainFlowState cancelBreakReason(MainFlowState s) {
+  return MainFlowState(
+    stage: MainFlowStage.choosingAction,
+    enteredPin: s.enteredPin,
+    user: s.user,
+  );
+}
+
 MainFlowState cancelAction(MainFlowState s) {
   return MainFlowState.initial();
 }
@@ -86,10 +123,11 @@ MainFlowState cancelAction(MainFlowState s) {
 MainFlowState submitEarlyReason(
   MainFlowState s,
   EarlyClockOutReason reason,
-  String? detail,
-) {
+  String? detail, {
+  required bool tipEntryEnabled,
+}) {
   return MainFlowState(
-    stage: MainFlowStage.tipEntry,
+    stage: tipEntryEnabled ? MainFlowStage.tipEntry : MainFlowStage.submitting,
     enteredPin: s.enteredPin,
     user: s.user,
     pickedAction: s.pickedAction,

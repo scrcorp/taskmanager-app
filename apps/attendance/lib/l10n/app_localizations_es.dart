@@ -894,6 +894,76 @@ class AppL10nEs extends AppL10n {
   String get pfEarlySubmit => 'Enviar y salir';
 
   @override
+  String get mgStoreSettingsTitle => 'Ajustes de tienda';
+
+  @override
+  String get mgStoreSettingsScopeNote =>
+      'Estos ajustes aplican a toda la tienda — todos los dispositivos y la consola.';
+
+  @override
+  String get mgStoreSettingsTipEntry => 'Registro de propinas al salir';
+
+  @override
+  String get mgStoreSettingsTipEntryDesc =>
+      'Pedir al personal que registre propinas al marcar salida.';
+
+  @override
+  String get mgStoreSettingsSaved => 'Ajuste guardado.';
+
+  @override
+  String get mgStoreSettingsLoadError =>
+      'No se pudieron cargar los ajustes. Revisa la conexión e inténtalo de nuevo.';
+
+  @override
+  String get mgStoreSettingsSaveError =>
+      'No se pudo guardar el ajuste. Revisa la conexión e inténtalo de nuevo.';
+
+  @override
+  String get mgStoreSettingsForbidden =>
+      'No tienes permiso para cambiar los ajustes de la tienda. Consulta a un owner o GM.';
+
+  @override
+  String get pfBreakReasonHeader => 'DESCANSO EXCEDIDO';
+
+  @override
+  String pfBreakReasonElapsed(int minutes) {
+    return '$minutes minutos de descanso hasta ahora';
+  }
+
+  @override
+  String pfBreakReasonTitle(String name) {
+    return '$name, ¿por qué se alargó el descanso?';
+  }
+
+  @override
+  String get pfBreakReasonBody =>
+      'Se requiere motivo para terminar un descanso excedido. Tu gerente lo verá.';
+
+  @override
+  String get pfBreakReasonForgot => 'Olvidé terminar el descanso';
+
+  @override
+  String get pfBreakReasonManager => 'Gerente aprobó más tiempo';
+
+  @override
+  String get pfBreakReasonEmergency => 'Emergencia personal';
+
+  @override
+  String get pfBreakReasonCoverage => 'Esperando reemplazo';
+
+  @override
+  String get pfBreakReasonOther => 'Otro (especificar)';
+
+  @override
+  String get pfBreakReasonOtherHint => 'Describe...';
+
+  @override
+  String get pfBreakReasonCancel => 'Cancelar';
+
+  @override
+  String get pfBreakReasonSubmit => 'Enviar y terminar';
+
+  @override
   String get pfTipHeader => 'PROPINAS';
 
   @override

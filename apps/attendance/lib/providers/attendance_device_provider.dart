@@ -48,6 +48,10 @@ class DeviceInfo {
   /// 없으면 기본 false (스케줄 없이 출근 불가).
   final bool walkInAllowed;
 
+  /// clock-out 시 tip 입력 화면 노출 여부 — `attendance.tip_entry_enabled` 해소값.
+  /// store 설정이라 같은 매장의 모든 기기가 같은 값을 본다. 없으면 기본 false.
+  final bool tipEntryEnabled;
+
   const DeviceInfo({
     required this.deviceId,
     required this.deviceName,
@@ -60,6 +64,7 @@ class DeviceInfo {
     this.registeredAt,
     this.lastSeenAt,
     this.walkInAllowed = false,
+    this.tipEntryEnabled = false,
   });
 
   factory DeviceInfo.fromJson(Map<String, dynamic> json) {
@@ -83,6 +88,7 @@ class DeviceInfo {
       registeredAt: parseDt(json['registered_at']),
       lastSeenAt: parseDt(json['last_seen_at']),
       walkInAllowed: json['walk_in_allowed'] == true,
+      tipEntryEnabled: json['tip_entry_enabled'] == true,
     );
   }
 }
@@ -319,7 +325,8 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
           );
           break;
         case 'break-end':
-          result = await _service.breakEnd(userId: userId, pin: pin);
+          // break 초과 사유 — unpaid_meal 35분 이상이면 서버가 필수로 요구한다.
+          result = await _service.breakEnd(userId: userId, pin: pin, reason: reason);
           break;
         default:
           return const ClockActionResult(
