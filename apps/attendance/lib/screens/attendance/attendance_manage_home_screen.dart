@@ -12,6 +12,7 @@ import '../../models/schedule_staff_view.dart';
 import '../../providers/attendance_device_provider.dart';
 import '../../providers/attendance_manage_provider.dart';
 import '../../services/attendance_device_service.dart';
+import '../../utils/manage_home_ctas.dart';
 import '../../utils/manage_status_utils.dart';
 import '../../utils/staff_status_utils.dart' show StaffSection;
 import '../../widgets/battery_indicator.dart';
@@ -191,6 +192,43 @@ class _AttendanceManageHomeScreenState
     );
     if (!mounted) return;
     _resetSession();
+  }
+
+  /// 현재 manage 세션 권한으로 노출할 CTA 목록 (헤더 / 빈 상태 공통 규칙).
+  List<ManageHomeCta> _ctas({required bool header}) {
+    final session = ref.watch(attendanceManageSessionProvider);
+    return header
+        ? manageHomeHeaderCtas(
+            canReadPins: session.canReadPins,
+            canManageStoreSettings: session.canManageStoreSettings,
+          )
+        : manageHomeEmptyStateCtas(
+            canReadPins: session.canReadPins,
+            canManageStoreSettings: session.canManageStoreSettings,
+          );
+  }
+
+  Widget _ctaButton(ManageHomeCta cta) {
+    switch (cta) {
+      case ManageHomeCta.addSchedule:
+        return _BigPrimaryButton(
+          icon: Icons.add_rounded,
+          label: 'Add Schedule',
+          onTap: _openCreate,
+        );
+      case ManageHomeCta.staffPins:
+        return _BigPrimaryButton(
+          icon: Icons.pin_rounded,
+          label: 'Staff PINs',
+          onTap: _openStaffPins,
+        );
+      case ManageHomeCta.storeSettings:
+        return _BigPrimaryButton(
+          icon: Icons.tune_rounded,
+          label: 'Store Settings',
+          onTap: _openStoreSettings,
+        );
+    }
   }
 
   Future<void> _openCardActions(AdminScheduleRow row) async {
@@ -481,35 +519,14 @@ class _AttendanceManageHomeScreenState
                     ),
                   ),
                   const Spacer(),
-                  // PIN 메뉴는 manage 세션(SV+)만으로 열리면 안 된다 — 서버가 내려준
-                  // can_read_pins(GM+ 기본)일 때만 노출.
-                  if (ref
-                      .watch(attendanceManageSessionProvider)
-                      .canReadPins) ...[
-                    _BigPrimaryButton(
-                      icon: Icons.pin_rounded,
-                      label: 'Staff PINs',
-                      onTap: _openStaffPins,
-                    ),
-                    const SizedBox(width: 8),
+                  // 노출 여부는 manage_home_ctas 가 단독으로 결정한다 — 빈 상태 행과
+                  // 같은 규칙을 써야 한쪽에만 버튼이 빠지는 사고가 안 난다.
+                  // (PIN=can_read_pins GM+, 매장설정=can_manage_store_settings stores:update)
+                  for (final cta in _ctas(header: true)) ...[
+                    _ctaButton(cta),
+                    if (cta != ManageHomeCta.addSchedule)
+                      const SizedBox(width: 8),
                   ],
-                  // 매장 설정은 console 과 같은 stores:update 문턱 — 서버가 내려준
-                  // can_manage_store_settings 일 때만 노출.
-                  if (ref
-                      .watch(attendanceManageSessionProvider)
-                      .canManageStoreSettings) ...[
-                    _BigPrimaryButton(
-                      icon: Icons.tune_rounded,
-                      label: 'Store Settings',
-                      onTap: _openStoreSettings,
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  _BigPrimaryButton(
-                    icon: Icons.add_rounded,
-                    label: 'Add Schedule',
-                    onTap: _openCreate,
-                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -722,25 +739,16 @@ class _AttendanceManageHomeScreenState
               style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 24),
-            // 빈 상태에도 Staff PINs 를 둔다. "오늘 스케줄이 없는 신입이 첫 출근"
-            // 이 바로 PIN 을 물어보는 대표 상황이라, 여기서 막히면 기능이 정작
-            // 필요한 순간에 닿지 않는다.
-            Row(
-              mainAxisSize: MainAxisSize.min,
+            // 빈 상태에도 헤더와 같은 CTA 를 둔다. "오늘 스케줄이 없는 신입이 첫 출근"
+            // 이 바로 PIN 을 물어보는 대표 상황이고, 매장 설정 역시 빈 상태에서는
+            // 헤더 행이 렌더되지 않아 여기 없으면 아예 닿지 못한다.
+            // 버튼이 3개까지 늘어나므로 Row 가 아니라 Wrap (가로 오버플로 방지).
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
               children: [
-                _BigPrimaryButton(
-                  icon: Icons.add_rounded,
-                  label: 'Add Schedule',
-                  onTap: _openCreate,
-                ),
-                if (ref.watch(attendanceManageSessionProvider).canReadPins) ...[
-                  const SizedBox(width: 8),
-                  _BigPrimaryButton(
-                    icon: Icons.pin_rounded,
-                    label: 'Staff PINs',
-                    onTap: _openStaffPins,
-                  ),
-                ],
+                for (final cta in _ctas(header: false)) _ctaButton(cta),
               ],
             ),
           ],
