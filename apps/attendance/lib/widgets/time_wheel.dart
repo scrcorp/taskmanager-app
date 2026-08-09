@@ -1,9 +1,14 @@
-/// 시각 휠 피커 (Issue 10 Step 4) — 시(00~23) · 분(00~59) 두 컬럼 스크롤.
+/// 시각 휠 피커 (Issue 10 Step 4) — 시(00~23) · 분(step 단위) 두 컬럼 스크롤.
 ///
 /// 키오스크 터치 친화 (키보드 입력 대신). ListWheelScrollView 기반.
+/// 분 컬럼은 [scheduleStepMinutes] 배수만 노출한다 — 1분 단위는 터치로 맞추기 어렵고
+/// 서버도 키오스크 경로를 같은 step 으로 검증하므로, 저장 못 할 값을 아예 못 고르게 한다.
+/// 예외: 넘겨받은 초기값이 step 을 벗어나면 그 값도 눈금에 포함한다 (기존 값 보존).
 
 import 'package:flutter/material.dart';
 import 'package:htm_core/htm_core.dart';
+
+import '../utils/schedule_edit_logic.dart';
 
 class TimeWheel extends StatefulWidget {
   final int initialMinutes; // 0..1439 (hh*60+mm)
@@ -18,16 +23,28 @@ class TimeWheel extends StatefulWidget {
 class _TimeWheelState extends State<TimeWheel> {
   late final FixedExtentScrollController _hCtrl;
   late final FixedExtentScrollController _mCtrl;
+  late final List<int> _minutes; // 분 컬럼에 노출할 값들
   late int _h;
-  late int _m;
+  late int _mIndex;
+
+  int get _m => _minutes[_mIndex];
 
   @override
   void initState() {
     super.initState();
+    final initialMinute = widget.initialMinutes % 60;
+    // 분 눈금 = step 배수. 단, 기존 값이 step 을 벗어나 있으면(워크인의 실제 clock-in
+    // 시각 등) 그 값도 눈금에 넣어 **화면에 있는 그대로** 보여준다. 임의로 반올림해서
+    // 보여주면 매니저가 안 건드린 값이 바뀐 것처럼 보인다. 다른 눈금을 고르는 순간
+    // 값은 step 단위가 되고, 이 예외 눈금은 사라진다.
+    _minutes = [
+      for (var m = 0; m < 60; m += scheduleStepMinutes) m,
+      if (initialMinute % scheduleStepMinutes != 0) initialMinute,
+    ]..sort();
     _h = (widget.initialMinutes ~/ 60).clamp(0, 23);
-    _m = (widget.initialMinutes % 60).clamp(0, 59);
+    _mIndex = _minutes.indexOf(initialMinute).clamp(0, _minutes.length - 1);
     _hCtrl = FixedExtentScrollController(initialItem: _h);
-    _mCtrl = FixedExtentScrollController(initialItem: _m);
+    _mCtrl = FixedExtentScrollController(initialItem: _mIndex);
   }
 
   @override
@@ -59,7 +76,7 @@ class _TimeWheelState extends State<TimeWheel> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _column(_hCtrl, 24, (v) {
+              _column(_hCtrl, [for (var h = 0; h < 24; h++) h], (v) {
                 setState(() => _h = v);
                 _emit();
               }),
@@ -68,8 +85,8 @@ class _TimeWheelState extends State<TimeWheel> {
                 child: Text(':',
                     style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.text)),
               ),
-              _column(_mCtrl, 60, (v) {
-                setState(() => _m = v);
+              _column(_mCtrl, _minutes, (v) {
+                setState(() => _mIndex = v);
                 _emit();
               }),
             ],
@@ -79,7 +96,8 @@ class _TimeWheelState extends State<TimeWheel> {
     );
   }
 
-  Widget _column(FixedExtentScrollController ctrl, int count, ValueChanged<int> onSel) {
+  /// [values] 를 순서대로 그리는 휠 컬럼. 콜백은 선택된 **인덱스**를 준다.
+  Widget _column(FixedExtentScrollController ctrl, List<int> values, ValueChanged<int> onSel) {
     return SizedBox(
       width: 72,
       child: ListWheelScrollView.useDelegate(
@@ -90,11 +108,11 @@ class _TimeWheelState extends State<TimeWheel> {
         diameterRatio: 1.6,
         onSelectedItemChanged: onSel,
         childDelegate: ListWheelChildBuilderDelegate(
-          childCount: count,
+          childCount: values.length,
           builder: (context, i) {
             return Center(
               child: Text(
-                i.toString().padLeft(2, '0'),
+                values[i].toString().padLeft(2, '0'),
                 style: const TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
