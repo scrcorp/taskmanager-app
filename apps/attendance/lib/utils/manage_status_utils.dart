@@ -6,6 +6,7 @@
 ///
 /// Pure logic — unit test 로 분기 커버.
 
+import 'minute_time.dart';
 import 'staff_status_utils.dart' show StaffSection;
 
 /// state → schedule 3 섹션 분류 (working/breaking=clockedIn, upcoming=notClockedIn, done=completed).
@@ -48,7 +49,7 @@ bool isManageSoon(
     if (h == null || m == null) return false;
     start = DateTime(now.year, now.month, now.day, h, m);
   }
-  final diff = start.difference(now).inMinutes;
+  final diff = minutesBetween(now, start);
   return diff >= 0 && diff <= thresholdMinutes;
 }
 

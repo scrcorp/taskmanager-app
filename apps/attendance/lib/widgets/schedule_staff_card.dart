@@ -8,6 +8,7 @@ import 'package:htm_core/htm_core.dart';
 
 import '../models/schedule_staff_view.dart';
 import '../utils/manage_status_colors.dart';
+import '../utils/minute_time.dart';
 import '../utils/manage_status_utils.dart';
 
 int scheduleMinsSince(DateTime now, String? hhmm) {
@@ -17,7 +18,7 @@ int scheduleMinsSince(DateTime now, String? hhmm) {
   final m = int.tryParse(p[1]);
   if (h == null || m == null) return 0;
   final start = DateTime(now.year, now.month, now.day, h, m);
-  final diff = now.difference(start).inMinutes;
+  final diff = minutesBetween(start, now);
   // 자정 넘김: 이벤트(출근/휴식 시작)가 어제 밤이면 diff가 음수 —
   // '0m'으로 클램프하지 말고 +24h wrap (24h 미만 근무 전제).
   if (diff < 0) {

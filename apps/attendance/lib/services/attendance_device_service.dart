@@ -149,10 +149,14 @@ class AttendanceDeviceService {
     required String pin,
     String? scheduleId,
     bool walkIn = false,
+    String? reason,
   }) async {
+    // reason 은 조기 출근 사유 — 예정 시작보다 이르면 서버가 필수로 요구한다
+    // (code=early_clock_in_reason_required). 그 외엔 서버가 무시한다.
     final extra = <String, dynamic>{
       if (scheduleId != null) 'schedule_id': scheduleId,
       if (walkIn) 'walk_in': true,
+      if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
     };
     return _postAction(
       '/attendance/clock-in',
@@ -196,11 +200,22 @@ class AttendanceDeviceService {
   }
 
   /// Break End — user_id + 6자리 PIN으로 휴식 종료
+  ///
+  /// [reason] 은 break 가 허용 시간을 넘겼을 때의 사유. unpaid_meal 35분 이상이면
+  /// 서버가 필수로 요구하며, 없으면 400 이라 휴식을 끝낼 수 없다.
   Future<Map<String, dynamic>> breakEnd({
     required String userId,
     required String pin,
+    String? reason,
   }) async {
-    return _postAction('/attendance/break-end', userId: userId, pin: pin);
+    return _postAction(
+      '/attendance/break-end',
+      userId: userId,
+      pin: pin,
+      extra: (reason != null && reason.trim().isNotEmpty)
+          ? {'reason': reason.trim()}
+          : null,
+    );
   }
 
   /// PIN 단독으로 본인 식별 + 오늘 attendance status (Phase 3, PIN-first kiosk entry).
@@ -489,6 +504,23 @@ class AttendanceDeviceService {
       if (breakType != null) 'break_type': breakType,
       if (reason != null) 'reason': reason,
     });
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  /// 매장 설정 조회 — console 과 같은 store 설정을 읽는다 (기기 로컬 설정 아님).
+  Future<Map<String, dynamic>> manageGetStoreSettings() async {
+    final response = await _dio.get('/attendance/manage/store-settings');
+    return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  /// 매장 설정 변경. 같은 매장의 다른 기기는 다음 device 폴링에서 새 값을 받는다.
+  Future<Map<String, dynamic>> manageUpdateStoreSettings({
+    required bool tipEntryEnabled,
+  }) async {
+    final response = await _dio.put(
+      '/attendance/manage/store-settings',
+      data: {'tip_entry_enabled': tipEntryEnabled},
+    );
     return Map<String, dynamic>.from(response.data as Map);
   }
 

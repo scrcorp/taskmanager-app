@@ -16,6 +16,7 @@ import '../l10n/app_localizations.dart';
 import '../models/attendance_action.dart';
 import '../models/identify_response.dart';
 import '../utils/attendance_action_policy.dart';
+import '../utils/minute_time.dart';
 import '../utils/staff_status_utils.dart';
 import 'identity_confirm_dialog.dart' show localizedBreakLabel, localizedBreakHint;
 
@@ -134,7 +135,7 @@ class _BreakInfo extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppL10n.of(context);
     final br = user.currentBreak!;
-    final elapsed = now.difference(br.startedAt).inMinutes;
+    final elapsed = minutesBetweenClamped(br.startedAt, now);
     final progress = breakProgress(br.breakType, elapsed);
     final warn = progress.state != BreakState.within;
     return Container(
@@ -202,7 +203,7 @@ class _ActionsGrid extends StatelessWidget {
     ];
 
     final br = user.currentBreak;
-    final elapsed = br == null ? 0 : now.difference(br.startedAt).inMinutes;
+    final elapsed = br == null ? 0 : minutesBetweenClamped(br.startedAt, now);
 
     return Wrap(
       spacing: 12,
