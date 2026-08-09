@@ -149,10 +149,14 @@ class AttendanceDeviceService {
     required String pin,
     String? scheduleId,
     bool walkIn = false,
+    String? reason,
   }) async {
+    // reason 은 조기 출근 사유 — 예정 시작보다 이르면 서버가 필수로 요구한다
+    // (code=early_clock_in_reason_required). 그 외엔 서버가 무시한다.
     final extra = <String, dynamic>{
       if (scheduleId != null) 'schedule_id': scheduleId,
       if (walkIn) 'walk_in': true,
+      if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
     };
     return _postAction(
       '/attendance/clock-in',

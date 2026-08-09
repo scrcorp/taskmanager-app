@@ -14,6 +14,9 @@ import '../models/tip_models.dart';
 ///   - confirming: IdentityConfirmDialog
 ///   - choosingAction: ActionSheet
 ///   - earlyReason: EarlyClockOutDialog (clock_out 일찍 시)
+///   - earlyClockInReason: EarlyClockInDialog (clock_in 이 예정보다 이를 때).
+///     clock_out 과 달리 **서버가 판정한다** — threshold 가 서버 설정이라 앱이
+///     미리 알 수 없다. 그래서 한 번 제출해 400(code) 을 받고 이 단계로 온다.
 ///   - breakReason: BreakReasonDialog (break_end 가 허용 시간 초과 시)
 ///   - tipEntry: TipEntryDialog (clock_out 후)
 ///   - submitting: clock action API 진행 중 (loading)
@@ -25,6 +28,7 @@ enum MainFlowStage {
   confirming,
   choosingAction,
   earlyReason,
+  earlyClockInReason,
   breakReason,
   tipEntry,
   submitting,
@@ -41,6 +45,10 @@ class MainFlowState {
   final String? earlyDetail;
   /// break_end 초과 사유 — 서버 body 의 reason 으로 그대로 전달된다.
   final String? breakReason;
+  /// 조기 출근 사유 — clock_in body 의 reason 으로 전달된다.
+  final String? earlyClockInReason;
+  /// 예정보다 몇 분 이른지 (서버 detail.minutes_early) — 사유 화면 헤더용.
+  final int? minutesEarly;
   final TipPayload? tip;
   final String? errorMessage;
 
@@ -52,6 +60,8 @@ class MainFlowState {
     this.earlyReason,
     this.earlyDetail,
     this.breakReason,
+    this.earlyClockInReason,
+    this.minutesEarly,
     this.tip,
     this.errorMessage,
   });
@@ -70,6 +80,8 @@ class MainFlowState {
     EarlyClockOutReason? earlyReason,
     String? earlyDetail,
     String? breakReason,
+    String? earlyClockInReason,
+    int? minutesEarly,
     TipPayload? tip,
     String? errorMessage,
   }) {
@@ -81,6 +93,8 @@ class MainFlowState {
       earlyReason: earlyReason ?? this.earlyReason,
       earlyDetail: earlyDetail ?? this.earlyDetail,
       breakReason: breakReason ?? this.breakReason,
+      earlyClockInReason: earlyClockInReason ?? this.earlyClockInReason,
+      minutesEarly: minutesEarly ?? this.minutesEarly,
       tip: tip ?? this.tip,
       errorMessage: errorMessage ?? this.errorMessage,
     );
@@ -97,6 +111,8 @@ class MainFlowState {
           other.earlyReason == earlyReason &&
           other.earlyDetail == earlyDetail &&
           other.breakReason == breakReason &&
+          other.earlyClockInReason == earlyClockInReason &&
+          other.minutesEarly == minutesEarly &&
           other.errorMessage == errorMessage;
 
   @override
@@ -108,6 +124,8 @@ class MainFlowState {
         earlyReason,
         earlyDetail,
         breakReason,
+        earlyClockInReason,
+        minutesEarly,
         errorMessage,
       );
 

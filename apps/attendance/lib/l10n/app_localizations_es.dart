@@ -964,6 +964,44 @@ class AppL10nEs extends AppL10n {
   String get pfBreakReasonSubmit => 'Enviar y terminar';
 
   @override
+  String get pfEarlyInHeader => 'ENTRADA ANTICIPADA';
+
+  @override
+  String pfEarlyInEarlyBy(String duration) {
+    return '$duration antes del inicio de tu turno';
+  }
+
+  @override
+  String pfEarlyInTitle(String name) {
+    return '$name, ¿por qué empiezas antes?';
+  }
+
+  @override
+  String get pfEarlyInBody =>
+      'Se requiere un motivo para fichar antes de tu turno. Tu gerente lo verá y el tiempo extra cuenta para tu pago.';
+
+  @override
+  String get pfEarlyInAsked => 'Me pidieron llegar antes';
+
+  @override
+  String get pfEarlyInCovering => 'Cubriendo a un compañero';
+
+  @override
+  String get pfEarlyInStoreHelp => 'La tienda necesita ayuda ahora';
+
+  @override
+  String get pfEarlyInOther => 'Otro (especifica)';
+
+  @override
+  String get pfEarlyInOtherHint => 'Describe por favor...';
+
+  @override
+  String get pfEarlyInCancel => 'Cancelar';
+
+  @override
+  String get pfEarlyInSubmit => 'Enviar y fichar';
+
+  @override
   String get pfTipHeader => 'PROPINAS';
 
   @override

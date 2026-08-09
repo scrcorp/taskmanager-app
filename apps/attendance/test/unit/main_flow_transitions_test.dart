@@ -23,6 +23,7 @@ IdentifyResponse _user({String name = 'Marcus', String? status = 'working'}) =>
 const _tip = TipPayload(cardTips: 40, cashTipsKept: 10, distributions: []);
 
 void main() {
+  _earlyClockInTransitionTests();
   final now = DateTime(2026, 5, 22, 12, 0);
   final fourHoursLater = now.add(const Duration(hours: 4));
   final twoMinutesLater = now.add(const Duration(minutes: 2));
@@ -360,6 +361,49 @@ void main() {
       expect(next.user, isNull);
       expect(next.enteredPin, isNull);
       expect(next.errorMessage, isNull);
+    });
+  });
+}
+
+// ── 조기 출근 강행 (서버가 400 code 로 사유를 요구하는 경로) ──────────────
+
+void _earlyClockInTransitionTests() {
+  const submitting = MainFlowState(
+    stage: MainFlowStage.submitting,
+    enteredPin: '1234',
+    pickedAction: AttendanceAction.clockIn,
+  );
+
+  group('requireEarlyClockInReason', () {
+    test('submitting + 서버 거부 → earlyClockInReason + 이른 정도 보관', () {
+      final next = requireEarlyClockInReason(submitting, 120);
+      expect(next.stage, MainFlowStage.earlyClockInReason);
+      expect(next.minutesEarly, 120);
+      // 같은 clock_in 을 재시도해야 하므로 PIN/액션이 유지돼야 한다.
+      expect(next.enteredPin, '1234');
+      expect(next.pickedAction, AttendanceAction.clockIn);
+    });
+  });
+
+  group('submitEarlyClockInReason', () {
+    test('사유 제출 → submitting 으로 되돌아가 reason 과 함께 재시도', () {
+      final next = submitEarlyClockInReason(
+        requireEarlyClockInReason(submitting, 120),
+        'Asked to come in early',
+      );
+      expect(next.stage, MainFlowStage.submitting);
+      expect(next.earlyClockInReason, 'Asked to come in early');
+      expect(next.pickedAction, AttendanceAction.clockIn);
+    });
+  });
+
+  group('cancelEarlyClockInReason', () {
+    test('취소 → 액션 선택으로. 출근은 성립하지 않는다', () {
+      final next = cancelEarlyClockInReason(
+        requireEarlyClockInReason(submitting, 120),
+      );
+      expect(next.stage, MainFlowStage.choosingAction);
+      expect(next.earlyClockInReason, isNull);
     });
   });
 }
