@@ -35,6 +35,23 @@ void main() {
     });
   });
 
+  group('snapToStep', () {
+    test('가장 가까운 5분 배수로 스냅', () {
+      expect(snapToStep(9 * 60 + 17), 9 * 60 + 15); // 09:17 → 09:15
+      expect(snapToStep(9 * 60 + 18), 9 * 60 + 20); // 09:18 → 09:20
+      expect(snapToStep(9 * 60 + 15), 9 * 60 + 15); // 이미 배수면 그대로
+    });
+    test('step 배수만 반환 — 서버가 거부할 값이 나오지 않는다', () {
+      for (var m = 0; m <= 1439; m++) {
+        expect(snapToStep(m) % scheduleStepMinutes, 0, reason: 'minutes=$m');
+      }
+    });
+    test('상단 경계는 23:55 로 clamp (반올림이 하루를 넘지 않게)', () {
+      expect(snapToStep(1439), 23 * 60 + 55); // 23:59 → 23:55
+      expect(snapToStep(1438), 23 * 60 + 55);
+    });
+  });
+
   group('clampMinutes', () {
     test('범위 제한', () {
       expect(clampMinutes(-5), 0);
