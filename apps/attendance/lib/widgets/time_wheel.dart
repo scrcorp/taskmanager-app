@@ -1,8 +1,15 @@
 /// 시각 휠 피커 (Issue 10 Step 4) — 시(00~23) · 분(step 단위) 두 컬럼 스크롤.
 ///
 /// 키오스크 터치 친화 (키보드 입력 대신). ListWheelScrollView 기반.
-/// 분 컬럼은 [scheduleStepMinutes] 배수만 노출한다 — 1분 단위는 터치로 맞추기 어렵고
-/// 서버도 키오스크 경로를 같은 step 으로 검증하므로, 저장 못 할 값을 아예 못 고르게 한다.
+///
+/// 분 컬럼의 눈금 간격은 [stepMinutes] 로 **호출부가 정한다**. 두 용도의 제약이
+/// 다르기 때문이다:
+///   - 스케줄 시각 → 5분. 서버가 KIOSK_STEP_MINUTES 로 실제 검증하므로, 저장 못 할
+///     값을 아예 못 고르게 한다.
+///   - clock in/out · break 시각 → 1분. 실제로 찍힌 시각이라 5분 배수라는 보장이
+///     없고 서버도 그리드를 요구하지 않는다. 여기에 5분을 강요하면 매니저가
+///     "09:07 에 온 사람" 을 09:05/09:10 으로밖에 못 적는다 (2026-08-09 제보).
+///
 /// 예외: 넘겨받은 초기값이 step 을 벗어나면 그 값도 눈금에 포함한다 (기존 값 보존).
 
 import 'package:flutter/material.dart';
@@ -10,11 +17,22 @@ import 'package:htm_core/htm_core.dart';
 
 import '../utils/schedule_edit_logic.dart';
 
+/// clock in/out · break 처럼 실제로 찍힌 시각을 고칠 때의 눈금 간격.
+const clockStepMinutes = 1;
+
 class TimeWheel extends StatefulWidget {
   final int initialMinutes; // 0..1439 (hh*60+mm)
   final ValueChanged<int> onChanged;
 
-  const TimeWheel({super.key, required this.initialMinutes, required this.onChanged});
+  /// 분 눈금 간격. 스케줄은 [scheduleStepMinutes], clock/break 은 [clockStepMinutes].
+  final int stepMinutes;
+
+  const TimeWheel({
+    super.key,
+    required this.initialMinutes,
+    required this.onChanged,
+    this.stepMinutes = scheduleStepMinutes,
+  });
 
   @override
   State<TimeWheel> createState() => _TimeWheelState();
@@ -37,9 +55,10 @@ class _TimeWheelState extends State<TimeWheel> {
     // 시각 등) 그 값도 눈금에 넣어 **화면에 있는 그대로** 보여준다. 임의로 반올림해서
     // 보여주면 매니저가 안 건드린 값이 바뀐 것처럼 보인다. 다른 눈금을 고르는 순간
     // 값은 step 단위가 되고, 이 예외 눈금은 사라진다.
+    final step = widget.stepMinutes < 1 ? 1 : widget.stepMinutes;
     _minutes = [
-      for (var m = 0; m < 60; m += scheduleStepMinutes) m,
-      if (initialMinute % scheduleStepMinutes != 0) initialMinute,
+      for (var m = 0; m < 60; m += step) m,
+      if (initialMinute % step != 0) initialMinute,
     ]..sort();
     _h = (widget.initialMinutes ~/ 60).clamp(0, 23);
     _mIndex = _minutes.indexOf(initialMinute).clamp(0, _minutes.length - 1);

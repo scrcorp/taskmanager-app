@@ -39,11 +39,30 @@ void main() {
   group('adminActionsForState', () {
     test('state별 액션 매핑', () {
       expect(adminActionsForState('upcoming'), [AdminAction.clockIn]);
-      expect(adminActionsForState('working'),
-          [AdminAction.clockOut, AdminAction.break10min, AdminAction.breakMeal, AdminAction.undoClockIn]);
-      expect(adminActionsForState('breaking'),
-          [AdminAction.endBreak, AdminAction.clockOut, AdminAction.undoClockIn]);
-      expect(adminActionsForState('done'), [AdminAction.reopenShift]);
+      expect(adminActionsForState('working'), [
+        AdminAction.clockOut,
+        AdminAction.break10min,
+        AdminAction.breakMeal,
+        AdminAction.editTimes,
+        AdminAction.undoClockIn,
+      ]);
+      expect(adminActionsForState('breaking'), [
+        AdminAction.endBreak,
+        AdminAction.clockOut,
+        AdminAction.editTimes,
+        AdminAction.undoClockIn,
+      ]);
+      expect(adminActionsForState('done'),
+          [AdminAction.editTimes, AdminAction.reopenShift]);
+    });
+
+    test('clock 기록이 있는 상태엔 Edit Times 가 항상 있다 (상태 되돌리기 없이 시각 수정)', () {
+      for (final state in ['working', 'breaking', 'done']) {
+        expect(adminActionsForState(state), contains(AdminAction.editTimes),
+            reason: '$state 에 Edit Times 없음');
+      }
+      // upcoming 은 고칠 기록 자체가 없다
+      expect(adminActionsForState('upcoming'), isNot(contains(AdminAction.editTimes)));
     });
   });
 
@@ -67,6 +86,7 @@ void main() {
       expect(find.text('Clock Out'), findsOneWidget);
       expect(find.text('Start 10-min Break'), findsOneWidget);
       expect(find.text('Undo Clock-in'), findsOneWidget);
+      expect(find.text('Edit Times'), findsOneWidget);
     });
   });
 
