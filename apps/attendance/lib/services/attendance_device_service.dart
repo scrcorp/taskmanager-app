@@ -545,6 +545,30 @@ class AttendanceDeviceService {
     );
     return Map<String, dynamic>.from(response.data as Map);
   }
+
+  /// 상태는 그대로 두고 **시각만** 보정 (clock in/out + break 세션).
+  ///
+  /// null 인 필드는 "변경 안 함". 상태 전이가 필요하면 manageChangeStatus /
+  /// manageClockAction 을 쓸 것 — 이 호출은 status 를 절대 바꾸지 않는다.
+  Future<Map<String, dynamic>> manageEditTimes({
+    required String userId,
+    required String reason,
+    String? clockInHHmm,
+    String? clockOutHHmm,
+    List<Map<String, String>> breaks = const [],
+  }) async {
+    final response = await _dio.post(
+      '/attendance/manage/attendance/times',
+      data: {
+        'user_id': userId,
+        'reason': reason,
+        if (clockInHHmm != null) 'clock_in_hhmm': clockInHHmm,
+        if (clockOutHHmm != null) 'clock_out_hhmm': clockOutHHmm,
+        if (breaks.isNotEmpty) 'breaks': breaks,
+      },
+    );
+    return Map<String, dynamic>.from(response.data as Map);
+  }
 }
 
 /// Device 토큰을 Authorization 헤더로 자동 주입

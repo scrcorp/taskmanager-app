@@ -22,6 +22,7 @@ import '../../widgets/schedule_staff_card.dart';
 import '../../widgets/schedule_staff_detail_panel.dart';
 import '../../widgets/store_clock.dart';
 import 'attendance_manage_action_modal.dart';
+import 'attendance_manage_edit_times_modal.dart';
 import 'attendance_manage_staff_pins_screen.dart';
 import 'attendance_manage_store_settings_screen.dart';
 
@@ -235,11 +236,14 @@ class _AttendanceManageHomeScreenState
     // Action Picker(중앙 모달) → 액션 선택 → Action Modal(시간/사유) → 적용.
     final action = await ManageActionPicker.show(context, row: row, now: _now);
     if (action == null || !mounted) return;
-    final applied = await AttendanceManageActionModal.show(
-      context,
-      action: action,
-      row: row,
-    );
+    // Edit Times 는 상태 전이가 아니라 시각 보정이라 전용 모달로 간다.
+    final applied = action == AdminAction.editTimes
+        ? await AttendanceManageEditTimesModal.show(context, row: row)
+        : await AttendanceManageActionModal.show(
+            context,
+            action: action,
+            row: row,
+          );
     if (!mounted) return;
     if (applied) await _refresh();
   }
