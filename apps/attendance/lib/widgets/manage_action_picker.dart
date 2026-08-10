@@ -92,7 +92,8 @@ class ManageActionPicker extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              // 액션 타일
+              // 액션 타일 — 개수가 상태마다 다르고(최대 5) 화면 높이가 짧은 기기도
+              // 있어서 스크롤 가능하게 둔다. 고정 Column 이면 타일이 잘려 안 보인다.
               if (actions.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 20),
@@ -100,10 +101,20 @@ class ManageActionPicker extends StatelessWidget {
                       textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
                 )
               else
-                for (final a in actions) ...[
-                  _ActionTile(action: a, onTap: () => onPick(a)),
-                  const SizedBox(height: 10),
-                ],
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final a in actions) ...[
+                          _ActionTile(action: a, onTap: () => onPick(a)),
+                          const SizedBox(height: 10),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

@@ -70,15 +70,27 @@ class AdminWorkRole {
 
 /// 한 attendance 의 break 한 건 (manage UI Breaks 존).
 class ManageBreak {
+  /// 서버가 준 break 세션 id — Edit Times 가 "이 세션의 시각" 을 지목하는 키.
+  /// 구버전 서버 응답엔 없으므로 빈 문자열 fallback (그 경우 편집 대상에서 제외).
+  final String id;
   final String type; // paid_10min | unpaid_meal
   final String start; // "HH:mm"
   final String? end; // null = 진행 중
 
-  const ManageBreak({required this.type, required this.start, this.end});
+  const ManageBreak({
+    this.id = '',
+    required this.type,
+    required this.start,
+    this.end,
+  });
 
   bool get inProgress => end == null;
 
+  /// 시각을 고칠 수 있는 세션인지 — id 가 없으면 지목할 방법이 없다.
+  bool get editable => id.isNotEmpty;
+
   factory ManageBreak.fromJson(Map<String, dynamic> json) => ManageBreak(
+        id: json['break_id']?.toString() ?? '',
         type: json['type']?.toString() ?? '',
         start: json['start']?.toString() ?? '',
         end: json['end']?.toString(),

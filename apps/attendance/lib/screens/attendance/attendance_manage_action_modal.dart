@@ -14,6 +14,7 @@ import 'package:htm_core/htm_core.dart';
 import '../../providers/attendance_manage_provider.dart';
 import '../../services/attendance_device_service.dart';
 import '../../utils/staff_status_utils.dart' show breakProgress, BreakState;
+import '../../widgets/reason_picker.dart' show kCorrectionReasonPresets;
 import '../../widgets/time_wheel.dart';
 import 'attendance_manage_home_screen.dart' show extractApiError;
 
@@ -25,6 +26,9 @@ enum AdminAction {
   endBreak,
   undoClockIn,
   reopenShift,
+  /// 상태 전이 없이 이미 찍힌 시각만 보정. 이 액션만 별도 모달
+  /// (`AttendanceManageEditTimesModal`) 로 열린다.
+  editTimes,
 }
 
 extension AdminActionX on AdminAction {
@@ -44,6 +48,8 @@ extension AdminActionX on AdminAction {
         return 'Undo Clock-in';
       case AdminAction.reopenShift:
         return 'Undo Clock-out';
+      case AdminAction.editTimes:
+        return 'Edit Times';
     }
   }
 
@@ -63,6 +69,8 @@ extension AdminActionX on AdminAction {
         return 'Clear clock-in time. The shift becomes upcoming again.';
       case AdminAction.reopenShift:
         return 'Undo the clock-out. Clock-out time is cleared and the staff returns to working status.';
+      case AdminAction.editTimes:
+        return 'Correct a recorded time (clock in/out or a break) without changing the status.';
     }
   }
 
@@ -82,6 +90,8 @@ extension AdminActionX on AdminAction {
         return Icons.undo_rounded;
       case AdminAction.reopenShift:
         return Icons.undo_rounded;
+      case AdminAction.editTimes:
+        return Icons.schedule_rounded;
     }
   }
 
@@ -99,6 +109,7 @@ extension AdminActionX on AdminAction {
       case AdminAction.undoClockIn:
         return AppColors.danger;
       case AdminAction.reopenShift:
+      case AdminAction.editTimes:
         return AppColors.accent;
     }
   }
@@ -121,12 +132,18 @@ List<AdminAction> adminActionsForState(String state) {
         AdminAction.clockOut,
         AdminAction.break10min,
         AdminAction.breakMeal,
+        AdminAction.editTimes,
         AdminAction.undoClockIn,
       ];
     case 'breaking':
-      return const [AdminAction.endBreak, AdminAction.clockOut, AdminAction.undoClockIn];
+      return const [
+        AdminAction.endBreak,
+        AdminAction.clockOut,
+        AdminAction.editTimes,
+        AdminAction.undoClockIn,
+      ];
     case 'done':
-      return const [AdminAction.reopenShift];
+      return const [AdminAction.editTimes, AdminAction.reopenShift];
     case 'upcoming':
     default:
       return const [AdminAction.clockIn];
@@ -161,16 +178,6 @@ class AttendanceManageActionModal extends ConsumerStatefulWidget {
   ConsumerState<AttendanceManageActionModal> createState() =>
       _AttendanceManageActionModalState();
 }
-
-/// Console 의 correctionPresets.ts 와 동일한 preset 목록. 양쪽 history 일관성용.
-const _kReasonPresets = <String>[
-  'Forgot to clock in',
-  'Forgot to clock out',
-  'Wrong time recorded',
-  'Device / network issue',
-  'Schedule change',
-  'Break correction',
-];
 
 class _AttendanceManageActionModalState
     extends ConsumerState<AttendanceManageActionModal> {
@@ -296,6 +303,9 @@ class _AttendanceManageActionModalState
             reason: reason,
           );
           break;
+        case AdminAction.editTimes:
+          // 라우팅 실수 방지 — Edit Times 는 AttendanceManageEditTimesModal 담당.
+          throw StateError('editTimes must be handled by the Edit Times modal');
       }
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -363,7 +373,12 @@ class _AttendanceManageActionModalState
                   child: Column(
                     children: [
                       _SectionLabel('${action.timeLabel.toUpperCase()} TIME'),
-                      TimeWheel(initialMinutes: _minutes, onChanged: (v) => setState(() => _minutes = v)),
+                      TimeWheel(
+                        // 실제로 찍히는 시각이라 1분 단위 (스케줄의 5분 그리드와 다름).
+                        stepMinutes: clockStepMinutes,
+                        initialMinutes: _minutes,
+                        onChanged: (v) => setState(() => _minutes = v),
+                      ),
                       if (_minutes != _nowMinutes)
                         Text(
                           () {
@@ -413,7 +428,7 @@ class _AttendanceManageActionModalState
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          for (final p in _kReasonPresets)
+                          for (final p in kCorrectionReasonPresets)
                             _ReasonChip(
                               label: p,
                               selected: _reasonPreset == p,
