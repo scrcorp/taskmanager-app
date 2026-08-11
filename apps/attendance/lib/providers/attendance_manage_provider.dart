@@ -113,9 +113,16 @@ class AdminScheduleRow {
   final String? positionName;
   final String? startHHmm;
   final String? endHHmm;
+  /// 스케줄에 잡힌 **예정 휴게**. 실제로 찍힌 [breaks] (attendance 세션) 와 다른 것이다.
+  /// 둘 다 null = 휴게 없음. 이 값을 읽을 수 있어야 휴게를 옮기거나 지울 수 있다 —
+  /// 예전엔 읽지도 못해서 근무창 밖으로 밀려난 휴게를 해소할 방법이 없었다(F6).
+  final String? breakStartHHmm;
+  final String? breakEndHHmm;
   // 전환기 벽시계 datetime 인코딩 — 있으면 우선(자정 넘김 정확), 없으면 HHmm fallback.
   final DateTime? startAt;
   final DateTime? endAt;
+  final DateTime? breakStartAt;
+  final DateTime? breakEndAt;
   final DateTime? operatingDay;
   final String status;
   final String? attendanceId;
@@ -138,8 +145,12 @@ class AdminScheduleRow {
     required this.positionName,
     required this.startHHmm,
     required this.endHHmm,
+    this.breakStartHHmm,
+    this.breakEndHHmm,
     this.startAt,
     this.endAt,
+    this.breakStartAt,
+    this.breakEndAt,
     this.operatingDay,
     required this.status,
     required this.attendanceId,
@@ -175,8 +186,12 @@ class AdminScheduleRow {
         positionName: json['position_name']?.toString(),
         startHHmm: json['start_time']?.toString(),
         endHHmm: json['end_time']?.toString(),
+        breakStartHHmm: json['break_start_time']?.toString(),
+        breakEndHHmm: json['break_end_time']?.toString(),
         startAt: _tryDt(json['start_at']),
         endAt: _tryDt(json['end_at']),
+        breakStartAt: _tryDt(json['break_start_at']),
+        breakEndAt: _tryDt(json['break_end_at']),
         operatingDay: _tryDt(json['operating_day']),
         status: json['status']?.toString() ?? '',
         attendanceId: json['attendance_id']?.toString(),

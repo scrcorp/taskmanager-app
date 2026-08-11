@@ -1,7 +1,12 @@
-/// 관리자 모드 홈 — 오늘 스케줄 그리드.
+/// 관리자 모드 홈 — 한 영업일의 스케줄 그리드.
 ///
 /// 큰 카드 그리드 (태블릿 2-column). 카드 탭 시 큰 액션 시트가 모달로 열리고
 /// Edit / Change Status / Delete + 빠른 clock 액션을 큰 버튼으로 제공.
+///
+/// **영업일 이동**(F5, D10-1): ‹ › 로 앞뒤 영업일을 보고 Today 로 돌아온다.
+/// 달력 위젯은 두지 않는다 — 키오스크에서 실제로 필요한 건 "어제/내일 근처"다.
+/// 오늘이 아닌 날을 보고 있으면 그 사실을 **눈에 띄게** 표시한다. 어제 화면을
+/// 오늘로 착각하고 시각을 고치면 엉뚱한 날의 근태가 바뀐다.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -14,6 +19,8 @@ import '../../providers/attendance_manage_provider.dart';
 import '../../services/attendance_device_service.dart';
 import '../../utils/manage_home_ctas.dart';
 import '../../utils/manage_status_utils.dart';
+import '../../utils/roster_day.dart';
+import '../../utils/schedule_codes.dart';
 import '../../utils/staff_status_utils.dart' show StaffSection;
 import '../../widgets/battery_indicator.dart';
 import '../../widgets/manage_action_picker.dart';
@@ -42,6 +49,12 @@ class _AttendanceManageHomeScreenState
   List<AdminScheduleRow> _schedules = const [];
   String? _error;
   String? _selectedId;
+
+  /// 보고 있는 영업일. **null = 오늘**(서버에 파라미터를 안 보낸다).
+  ///
+  /// 오늘을 날짜로 굳혀 두지 않는 이유: 키오스크는 며칠씩 켜져 있고 영업일 경계를
+  /// 넘어간다. null 로 두면 매 조회가 서버 기준의 "지금 오늘"을 따라간다.
+  DateTime? _viewDay;
 
   /// 스케줄 그리드/디테일 패널이 쓰는 now — 분 단위 표시라 분 경계에서만 rebuild.
   DateTime _now = DateTime.now();
@@ -114,6 +127,37 @@ class _AttendanceManageHomeScreenState
     await _exitAdminMode(silent: true);
   }
 
+  /// 기기가 보는 **오늘 영업일**. 서버가 store tz + day_start 로 계산해 준 값이다.
+  /// 로컬 달력으로 계산하지 않는다 — 키오스크엔 day_start 경계 정보가 없다.
+  DateTime? get _deviceToday {
+    final raw = ref.read(attendanceDeviceProvider).device?.workDate;
+    return raw == null ? null : DateTime.tryParse(raw);
+  }
+
+  /// 화면에 표시/전달할 영업일. 오늘 보기면 기기의 오늘.
+  DateTime? get _resolvedDay => _viewDay ?? _deviceToday;
+
+  /// 앞뒤 영업일로 이동. 기준을 모르면(work_date 미수신) 아무것도 하지 않는다 —
+  /// 임의의 로컬 날짜에서 출발하면 새벽조 영업일이 하루 어긋난다.
+  Future<void> _shiftDay(int deltaDays) async {
+    final base = _resolvedDay;
+    if (base == null) return;
+    setState(() {
+      _viewDay = rosterDateOnly(base).add(Duration(days: deltaDays));
+      _selectedId = null; // 다른 날의 선택이 디테일 패널에 남지 않게
+    });
+    await _refresh();
+  }
+
+  Future<void> _goToday() async {
+    if (_viewDay == null) return;
+    setState(() {
+      _viewDay = null;
+      _selectedId = null;
+    });
+    await _refresh();
+  }
+
   Future<void> _refresh() async {
     setState(() {
       _loading = true;
@@ -121,7 +165,9 @@ class _AttendanceManageHomeScreenState
     });
     try {
       final service = ref.read(attendanceDeviceServiceProvider);
-      final rows = await service.manageListSchedules();
+      final rows = await service.manageListSchedules(
+        operatingDay: _viewDay == null ? null : operatingDayParam(_viewDay!),
+      );
       if (!mounted) return;
       setState(() {
         _schedules = rows.map(AdminScheduleRow.fromJson).toList();
@@ -168,7 +214,12 @@ class _AttendanceManageHomeScreenState
   }
 
   Future<void> _openCreate() async {
-    final saved = await ManageScheduleEditModal.show(context);
+    // 보고 있는 날에 만든다. 오늘 보기(null)면 서버가 오늘로 앵커한다 —
+    // 여기서 날짜를 굳혀 보내면 영업일 경계를 넘긴 순간 어제에 만들게 된다.
+    final saved = await ManageScheduleEditModal.show(
+      context,
+      operatingDay: _viewDay,
+    );
     if (!mounted) return;
     if (saved) await _refresh();
   }
@@ -272,10 +323,17 @@ class _AttendanceManageHomeScreenState
       await _refresh();
     } catch (e) {
       if (!mounted) return;
+      // 과거 영업일을 열 수 있게 되면서(D10-1) 여기서 급여 기간 잠금을 실제로 만난다.
+      // 분기는 **코드**로 한다 — 서버 문구가 바뀌면 문자열 매칭은 조용히 깨진다.
+      final failure = parseScheduleFailure(e);
+      final locked =
+          failure?.errors.any((i) => i.code == kPayPeriodLocked) == true;
       AppModal.show(
         context,
-        title: 'Delete Failed',
-        message: extractApiError(e, 'Could not delete schedule.'),
+        title: locked ? 'Pay Period Closed' : 'Delete Failed',
+        message: locked
+            ? const ScheduleIssue(kPayPeriodLocked).text
+            : extractApiError(e, 'Could not delete schedule.'),
         type: ModalType.error,
       );
     }
@@ -486,10 +544,97 @@ class _AttendanceManageHomeScreenState
         ),
       );
     }
-    if (_schedules.isEmpty) {
-      return _emptyState();
-    }
+    // 날짜 바는 **항상** 보인다 (빈 상태 포함). 비어 있을 때야말로 "어느 날이
+    // 비었는지" 를 알아야 하고, 여기서 다른 날로 넘어갈 수 있어야 한다.
+    return Column(
+      children: [
+        _dayBar(),
+        const SizedBox(height: 12),
+        Expanded(child: _schedules.isEmpty ? _emptyState() : _grid()),
+      ],
+    );
+  }
 
+  /// 영업일 이동 바. 오늘이 아니면 경고색 + 상대 라벨 + Today 버튼.
+  Widget _dayBar() {
+    final day = _resolvedDay;
+    final today = _deviceToday;
+    final relative = day == null ? null : rosterRelativeLabel(day, today);
+    final isToday = day != null && relative == null;
+    // 기준 영업일을 모르면(work_date 미수신) 이동은 무동작이다. 로컬 달력으로
+    // 짐작해서 움직이면 새벽조 영업일이 하루 어긋난 채 수정 대상이 된다.
+    final canNavigate = day != null;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: isToday ? AppColors.white : AppColors.warningBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isToday ? AppColors.border : AppColors.warning,
+          width: isToday ? 1 : 2,
+        ),
+      ),
+      child: Row(
+        children: [
+          _HeaderIconButton(
+            icon: Icons.chevron_left_rounded,
+            tooltip: 'Previous day',
+            onTap: canNavigate ? () => _shiftDay(-1) : () {},
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                day == null ? 'Operating day —' : rosterDayLabel(day),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.text,
+                ),
+              ),
+              Text(
+                relative ?? 'Today',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: isToday ? AppColors.textMuted : AppColors.warning,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 8),
+          _HeaderIconButton(
+            icon: Icons.chevron_right_rounded,
+            tooltip: 'Next day',
+            onTap: canNavigate ? () => _shiftDay(1) : () {},
+          ),
+          if (!isToday) ...[
+            const SizedBox(width: 12),
+            // 오늘이 아니라는 사실을 문구로도 남긴다 — 색만으로는 놓친다.
+            const Expanded(
+              child: Text(
+                'You are not viewing today. Changes apply to the day shown here.',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.warning,
+                ),
+              ),
+            ),
+            _BigPrimaryButton(
+              icon: Icons.today_rounded,
+              label: 'Today',
+              onTap: _goToday,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _grid() {
     final selected = _selectedId == null
         ? null
         : _schedules.where((r) => r.scheduleId == _selectedId).firstOrNull;
@@ -514,9 +659,9 @@ class _AttendanceManageHomeScreenState
             children: [
               Row(
                 children: [
-                  const Text(
-                    "Today's Schedules",
-                    style: TextStyle(
+                  Text(
+                    rosterTitle(_resolvedDay, _deviceToday),
+                    style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w800,
                       color: AppColors.text,
@@ -728,9 +873,10 @@ class _AttendanceManageHomeScreenState
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'No schedules for today',
-              style: TextStyle(
+            Text(
+              rosterEmptyTitle(_resolvedDay, _deviceToday),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w800,
                 color: AppColors.text,

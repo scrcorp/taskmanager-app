@@ -134,10 +134,11 @@ class _ScheduleSummaryCardState extends ConsumerState<ScheduleSummaryCard> {
               : '${DateFormat.E(localeStr).format(actualDay)} ${actualDay.month}/${actualDay.day}';
       nextShift = _NextShift(
         dayLabel: dayLabel,
-        startTime: e.startTime,
-        endTime: e.endTime,
-        breakStartTime: e.breakStartTime,
-        breakEndTime: e.breakEndTime,
+        // `+1` 마커가 붙은 라벨 (D5-4). raw HH:mm 을 넣으면 새벽 근무가 당일 새벽처럼 보인다.
+        startTime: e.startLabel,
+        endTime: e.endLabel,
+        breakStartTime: e.hasBreak ? e.breakStartLabel : null,
+        breakEndTime: e.hasBreak ? e.breakEndLabel : null,
         storeName: e.storeName ?? '',
         roleName: e.workRoleName ?? '',
         hours: '${e.netWorkMinutes ~/ 60}h',

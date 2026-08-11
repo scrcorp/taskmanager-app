@@ -5,6 +5,7 @@
 
 import '../providers/attendance_dashboard_provider.dart' show TodayStaffRow;
 import '../providers/attendance_manage_provider.dart' show AdminScheduleRow, ManageBreak;
+import '../utils/schedule_edit_logic.dart' show dayOffsetFrom, hhmmToMinutes, hhmmWithDayMarker;
 
 class ScheduleStaffView {
   final String id; // 선택 키 (scheduleId 우선, 없으면 userId)
@@ -18,6 +19,8 @@ class ScheduleStaffView {
   // 벽시계 datetime(자정 넘김 정확) — soon 판정용. 없으면 scheduledStart HH:mm fallback.
   final DateTime? startAt;
   final DateTime? endAt;
+  // 영업일 라벨. 달력 날짜가 이 날과 다른 시각에 `+1` 마커를 붙이는 기준이다.
+  final DateTime? operatingDay;
   final String? clockIn; // "HH:mm"
   final String? clockOut;
 
@@ -32,9 +35,27 @@ class ScheduleStaffView {
     required this.scheduledEnd,
     this.startAt,
     this.endAt,
+    this.operatingDay,
     required this.clockIn,
     required this.clockOut,
   });
+
+  /// 표시용 예정 시각 — "02:00 +1" (D5-1/D5-4).
+  ///
+  /// 영업일 창은 자정을 넘으므로 `02:00` 만 적으면 "오늘 새벽"인지 "내일 새벽"인지
+  /// 알 수 없다. datetime 이 없는 경로(구 응답)는 마커 없이 HH:mm 그대로 — 없는
+  /// 정보를 추측해서 붙이면 틀린 마커가 된다.
+  String? get scheduledStartLabel => _withMarker(scheduledStart, startAt);
+  String? get scheduledEndLabel => _withMarker(scheduledEnd, endAt);
+
+  String? _withMarker(String? hhmm, DateTime? at) {
+    if (hhmm == null) return null;
+    final offset = dayOffsetFrom(operatingDay, at);
+    if (offset == 0) return hhmm;
+    final minutes = hhmmToMinutes(hhmm);
+    if (minutes == null) return hhmm;
+    return hhmmWithDayMarker(minutes, dayOffset: offset);
+  }
 }
 
 extension AdminScheduleRowView on AdminScheduleRow {
@@ -49,6 +70,7 @@ extension AdminScheduleRowView on AdminScheduleRow {
         scheduledEnd: endHHmm,
         startAt: startAt,
         endAt: endAt,
+        operatingDay: operatingDay,
         clockIn: clockInDisplay,
         clockOut: clockOutDisplay,
       );

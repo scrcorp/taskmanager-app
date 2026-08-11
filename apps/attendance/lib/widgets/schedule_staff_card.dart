@@ -46,7 +46,8 @@ class ScheduleStaffCard extends StatelessWidget {
   });
 
   String get _timeline {
-    final sched = '${view.scheduledStart ?? '--:--'}–${view.scheduledEnd ?? '--:--'}';
+    // `+1` 마커 포함 표기 — 새벽조를 당일 새벽과 구분한다(D5-4).
+    final sched = '${view.scheduledStartLabel ?? '--:--'}–${view.scheduledEndLabel ?? '--:--'}';
     switch (view.state) {
       case 'working':
         final inn = view.clockIn;

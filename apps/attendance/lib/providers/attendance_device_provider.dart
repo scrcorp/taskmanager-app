@@ -52,6 +52,13 @@ class DeviceInfo {
   /// store 설정이라 같은 매장의 모든 기기가 같은 값을 본다. 없으면 기본 false.
   final bool tipEntryEnabled;
 
+  /// 신규 스케줄 기본 길이(분) — `work.default_schedule_duration_minutes` 해소값(D8-2).
+  ///
+  /// 매장마다 다른 값이라 앱이 숫자를 들고 있으면 안 된다. 서버가 매장 설정을
+  /// org/store 로 해소해 내려주고, 설정이 없으면 서버 기본(330)을 내려준다.
+  /// 응답에 이 필드가 없으면(구버전 서버) 앱 폴백 [fallbackShiftMinutes] 로 떨어진다.
+  final int? defaultScheduleDurationMinutes;
+
   const DeviceInfo({
     required this.deviceId,
     required this.deviceName,
@@ -65,6 +72,7 @@ class DeviceInfo {
     this.lastSeenAt,
     this.walkInAllowed = false,
     this.tipEntryEnabled = false,
+    this.defaultScheduleDurationMinutes,
   });
 
   factory DeviceInfo.fromJson(Map<String, dynamic> json) {
@@ -89,6 +97,11 @@ class DeviceInfo {
       lastSeenAt: parseDt(json['last_seen_at']),
       walkInAllowed: json['walk_in_allowed'] == true,
       tipEntryEnabled: json['tip_entry_enabled'] == true,
+      // 0 이하는 값이 아니라 잘못된 설정이다 — 폴백이 걸리도록 null 로 떨어뜨린다.
+      defaultScheduleDurationMinutes: () {
+        final v = (json['default_schedule_duration_minutes'] as num?)?.toInt();
+        return (v == null || v <= 0) ? null : v;
+      }(),
     );
   }
 }
