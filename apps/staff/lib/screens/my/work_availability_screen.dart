@@ -8,7 +8,6 @@
 ///       - !can_edit: "매니저가 설정" 안내 배너
 /// 요일은 항상 일요일 시작(Sun→Sat). 하루 상태 3종:
 /// Off(해치/회색) / "HH:MM–HH:MM"(sky) / Full day(purple).
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -45,25 +44,14 @@ String _fmtDuration(String start, String end) {
   return m == 0 ? '(${h}h)' : '(${h}h ${m}m)';
 }
 
-/// 서버가 내려준 사람이 읽을 수 있는 에러 메시지("detail")를 추출한다.
-/// DioException 이고 응답 body 에 문자열 detail 이 있으면 그걸 반환, 아니면 null.
+/// 서버가 내려준 사람이 읽을 수 있는 에러 문장을 꺼낸다. 없으면 null(호출부 fallback).
+///
+/// 파싱은 공용 파서 하나로 한다 — 봉투 `error.message` → 레거시 `detail`(문자열/dict/422
+/// 배열) 순. 예전 구현은 문자열 detail 과 422 배열만 읽어서 **dict detail 이 오면
+/// 사유를 전혀 못 보여줬다.**
 String? _serverDetail(Object e) {
-  if (e is DioException) {
-    final data = e.response?.data;
-    if (data is Map) {
-      final detail = data['detail'];
-      // 문자열 detail (HTTPException) 은 그대로 노출.
-      if (detail is String) return detail;
-      // FastAPI/pydantic 422 는 detail 이 [{loc,msg,type}, ...] 리스트 → 첫 msg.
-      if (detail is List && detail.isNotEmpty) {
-        final first = detail.first;
-        if (first is Map && first['msg'] is String) {
-          return first['msg'] as String;
-        }
-      }
-    }
-  }
-  return null;
+  final err = parseApiError(e);
+  return err.hasMessage ? err.message : null;
 }
 
 class WorkAvailabilityScreen extends ConsumerStatefulWidget {

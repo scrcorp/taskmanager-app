@@ -1253,4 +1253,35 @@ class AppL10nEs extends AppL10n {
   @override
   String get attSettingsBrightnessFollowingSystem =>
       'Siguiendo el brillo del sistema';
+
+  @override
+  String get errNetworkTimeout =>
+      'El servidor no responde. Revisa la conexión e inténtalo de nuevo.';
+
+  @override
+  String get errNetworkUnreachable =>
+      'No se puede conectar con el servidor. Revisa la red e inténtalo de nuevo.';
+
+  @override
+  String get errNetworkInsecure =>
+      'No se pudo verificar la conexión segura. Contacta con soporte.';
+
+  @override
+  String get errRequestCancelled =>
+      'La solicitud se canceló. Inténtalo de nuevo.';
+
+  @override
+  String get errNetworkGeneric =>
+      'No se pudo conectar con el servidor. Inténtalo de nuevo.';
+
+  @override
+  String get errServerFault =>
+      'Algo falló de nuestro lado. Inténtalo de nuevo en un momento.';
+
+  @override
+  String get errValidation =>
+      'Algunos campos no son válidos. Revisa lo que ingresaste.';
+
+  @override
+  String get errUnexpected => 'Algo salió mal. Inténtalo de nuevo.';
 }

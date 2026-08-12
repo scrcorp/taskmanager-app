@@ -16,7 +16,7 @@ import '../../services/attendance_device_service.dart';
 import '../../utils/staff_status_utils.dart' show breakProgress, BreakState;
 import '../../widgets/reason_picker.dart' show kCorrectionReasonPresets;
 import '../../widgets/time_wheel.dart';
-import 'attendance_manage_home_screen.dart' show extractApiError;
+import '../../utils/api_error_display.dart' show extractApiError;
 
 enum AdminAction {
   clockIn,

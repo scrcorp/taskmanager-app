@@ -96,10 +96,11 @@ class _AttendanceManageStoreSettingsScreenState
     }
   }
 
-  bool _isForbidden(Object e) {
-    final text = e.toString();
-    return text.contains('403');
-  }
+  /// 권한 거부 판정 — 예외의 **status** 로 본다.
+  ///
+  /// 예전엔 `e.toString().contains('403')` 이었다. 예외 문자열에 우연히 403 이
+  /// 들어가면(예: 본문에 포함된 숫자) 엉뚱하게 권한 안내가 뜬다.
+  bool _isForbidden(Object e) => parseApiError(e).isForbidden;
 
   @override
   Widget build(BuildContext context) {

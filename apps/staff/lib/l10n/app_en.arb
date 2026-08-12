@@ -1231,5 +1231,14 @@
   "weekdayWednesday": "Wednesday",
   "weekdayThursday": "Thursday",
   "weekdayFriday": "Friday",
-  "weekdaySaturday": "Saturday"
+  "weekdaySaturday": "Saturday",
+
+  "errNetworkTimeout": "The server is not responding. Check the connection and try again.",
+  "errNetworkUnreachable": "Can't reach the server. Check the network connection and try again.",
+  "errNetworkInsecure": "The secure connection could not be verified. Contact support.",
+  "errRequestCancelled": "The request was cancelled. Try again.",
+  "errNetworkGeneric": "Couldn't reach the server. Try again.",
+  "errServerFault": "Something went wrong on our side. Try again in a moment.",
+  "errValidation": "Some fields are invalid. Please review your input.",
+  "errUnexpected": "Something went wrong. Try again."
 }
