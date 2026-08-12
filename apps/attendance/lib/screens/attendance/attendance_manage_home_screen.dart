@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:htm_core/htm_core.dart';
 
 import '../../models/schedule_staff_view.dart';
+import '../../utils/api_error_display.dart';
 import '../../providers/attendance_device_provider.dart';
 import '../../providers/attendance_manage_provider.dart';
 import '../../services/attendance_device_service.dart';
@@ -179,8 +180,9 @@ class _AttendanceManageHomeScreenState
         _error = extractApiError(e, 'Failed to load schedules.');
         _loading = false;
       });
-      if (_error?.toLowerCase().contains('session') == true ||
-          _error?.toLowerCase().contains('expired') == true) {
+      // 세션 종료 판정은 화면 문구가 아니라 **에러 자체**로 한다.
+      // (판정 로직과 남은 문자열 매칭 TODO 는 utils/api_error_display.dart 한 곳에만 있다)
+      if (isManageSessionEnded(e)) {
         await _exitAdminMode(silent: true);
       }
     }
@@ -984,15 +986,4 @@ class _HeaderIconButton extends StatelessWidget {
       ),
     );
   }
-}
-
-/// 어디서나 쓸 수 있는 axios/dio 에러 본문 추출.
-String extractApiError(Object e, String fallback) {
-  try {
-    final resp = (e as dynamic).response;
-    final data = resp?.data;
-    if (data is Map && data['detail'] is String)
-      return data['detail'] as String;
-  } catch (_) {}
-  return fallback;
 }

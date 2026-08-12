@@ -4,6 +4,7 @@
 ///   import 'package:htm_core/htm_core.dart';
 library;
 
+export 'src/api_error.dart';
 export 'src/theme.dart';
 export 'src/app_modal.dart';
 export 'src/kiosk_lock.dart';

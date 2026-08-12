@@ -19,7 +19,7 @@ import '../../services/attendance_device_service.dart';
 import '../../utils/edit_times_logic.dart';
 import '../../widgets/reason_picker.dart';
 import '../../widgets/time_wheel.dart';
-import 'attendance_manage_home_screen.dart' show extractApiError;
+import '../../utils/api_error_display.dart' show extractApiError;
 
 class AttendanceManageEditTimesModal extends ConsumerStatefulWidget {
   final AdminScheduleRow row;

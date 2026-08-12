@@ -23,7 +23,7 @@ import 'package:htm_core/htm_core.dart';
 import '../providers/attendance_device_provider.dart';
 import '../providers/attendance_manage_provider.dart';
 import '../services/attendance_device_service.dart';
-import '../screens/attendance/attendance_manage_home_screen.dart' show extractApiError;
+import '../utils/api_error_display.dart' show extractApiError;
 import '../utils/roster_day.dart';
 import '../utils/schedule_codes.dart';
 import '../utils/schedule_edit_logic.dart';
