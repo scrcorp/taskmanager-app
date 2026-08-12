@@ -217,8 +217,10 @@ class _DailyReportDetailScreenState
     } on DioException catch (e) {
       if (!mounted) return;
       if (e.response?.statusCode == 409) {
-        final detail = e.response?.data['detail'];
-        final existingId = detail is Map ? detail['existing_report_id'] : null;
+        // 예전엔 `e.response?.data['detail']` 이었다 — body 가 Map 이 아니면
+        // (구버전 5xx 의 text/plain 등) catch 블록 안에서 NoSuchMethodError 가 난다.
+        // 파서는 봉투 `error.params` 와 레거시 평탄 detail 을 모두 params 로 모아준다.
+        final existingId = parseApiError(e).params['existing_report_id'];
         if (existingId != null) {
           setState(() => _isCreating = false);
           await _showDuplicateDialog(existingId as String);

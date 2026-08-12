@@ -13,6 +13,10 @@ dependencies:
 
 dev_dependencies:
   flutter_lints: ^6.0.0
+  # api_error 파서는 공유 패키지에 있으므로 테스트도 여기 있어야 한다
+  # (두 앱이 각자 복사해 테스트하면 그 순간 파서가 둘이 된다).
+  flutter_test:
+    sdk: flutter
 
 flutter:
   uses-material-design: true

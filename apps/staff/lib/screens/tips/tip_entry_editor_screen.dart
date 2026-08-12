@@ -15,6 +15,7 @@ import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
 
 import '../../services/api_client.dart';
+import '../../utils/api_error_display.dart';
 import '../../utils/date_utils.dart';
 import '../../services/tip_service.dart';
 
@@ -350,12 +351,13 @@ class _TipEntryEditorScreenState
       if (!mounted) return;
       context.pop();
     } on DioException catch (e) {
-      final detail = e.response?.data is Map
-          ? (e.response!.data as Map)['detail']?.toString()
-          : null;
+      // 예전엔 detail 을 그대로 `.toString()` 했다 — dict detail 이면 Dart 맵 덤프
+      // ({code: ..., message: ...})가 사용자 화면에 그대로 찍힌다.
+      // 파서가 봉투 → detail 순으로 읽어 사람이 읽을 문장만 꺼낸다.
+      final message = extractApiError(e, 'Could not save. Try again.');
       setState(() {
         _busy = false;
-        _error = detail ?? 'Could not save. Try again.';
+        _error = message;
       });
     } catch (_) {
       setState(() {

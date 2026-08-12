@@ -134,6 +134,32 @@ DateTime? parseWallClock(dynamic v) {
 String? formatWallClockHm(DateTime? dt) =>
     dt == null ? null : DateFormat('HH:mm').format(dt);
 
+/// 영업일 라벨 대비 며칠 뒤인지 (표시 마커 `+1` 용). 정보가 없으면 0.
+///
+/// 스케줄은 영업일 창을 넘을 수 있으므로 2 이상이 나올 수도 있다 — 1 로 단정하지 않는다.
+int dayOffsetFromOperatingDay(DateTime? operatingDay, DateTime? at) {
+  if (operatingDay == null || at == null) return 0;
+  final a = DateTime(operatingDay.year, operatingDay.month, operatingDay.day);
+  final b = DateTime(at.year, at.month, at.day);
+  final d = b.difference(a).inDays;
+  return d > 0 ? d : 0;
+}
+
+/// 벽시계 시각 + 날짜 오프셋 마커 — "02:00 +1" (D5-4).
+///
+/// **시프트 전체가 아니라 시각 하나하나에 붙인다.** 예전에는 범위 끝에 " (+1d)" 를
+/// 한 번만 붙여서, 휴게가 자정을 넘었는지 시작이 넘었는지 종료가 넘었는지 구분이
+/// 안 됐다. 같은 시각을 화면마다 다르게 적으면 그 자체가 버그의 씨앗이다.
+///
+/// [at] 가 없으면(구 응답: HH:mm 문자열만) 마커 없이 [fallbackHm] 을 그대로 쓴다 —
+/// 없는 정보를 추측해서 붙이면 틀린 마커가 된다.
+String? hmWithDayMarker(DateTime? at, DateTime? operatingDay, {String? fallbackHm}) {
+  final hm = formatWallClockHm(at) ?? fallbackHm;
+  if (hm == null || hm.isEmpty) return hm;
+  final offset = dayOffsetFromOperatingDay(operatingDay, at);
+  return offset > 0 ? '$hm +$offset' : hm;
+}
+
 /// raw JSON 값(ISO "YYYY-MM-DDTHH:MM" 또는 "HH:MM")에서 "HH:mm" 부분만 추출.
 /// 모델을 우회해 dict를 직접 읽는 표시 사이트용. null/비문자열 → null.
 String? hmFromIso(dynamic v) {

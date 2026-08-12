@@ -2761,4 +2761,33 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get weekdaySaturday => 'Saturday';
+
+  @override
+  String get errNetworkTimeout =>
+      'The server is not responding. Check the connection and try again.';
+
+  @override
+  String get errNetworkUnreachable =>
+      'Can\'t reach the server. Check the network connection and try again.';
+
+  @override
+  String get errNetworkInsecure =>
+      'The secure connection could not be verified. Contact support.';
+
+  @override
+  String get errRequestCancelled => 'The request was cancelled. Try again.';
+
+  @override
+  String get errNetworkGeneric => 'Couldn\'t reach the server. Try again.';
+
+  @override
+  String get errServerFault =>
+      'Something went wrong on our side. Try again in a moment.';
+
+  @override
+  String get errValidation =>
+      'Some fields are invalid. Please review your input.';
+
+  @override
+  String get errUnexpected => 'Something went wrong. Try again.';
 }

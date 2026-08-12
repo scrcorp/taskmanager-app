@@ -195,25 +195,17 @@ class ScheduleEntry {
       (breakStartTime != null && breakEndTime != null &&
           breakStartTime!.isNotEmpty && breakEndTime!.isNotEmpty);
 
-  String get _startHm => formatWallClockHm(startAt) ?? startTime;
-  String get _endHm => formatWallClockHm(endAt) ?? endTime;
-  String get _breakStartHm => formatWallClockHm(breakStartAt) ?? (breakStartTime ?? '');
-  String get _breakEndHm => formatWallClockHm(breakEndAt) ?? (breakEndTime ?? '');
+  /// 표시용 시각 — 영업일보다 뒤인 날짜의 시각에 `+1` 마커(D5-4). 마커는 시각마다 붙는다.
+  String get startLabel => hmWithDayMarker(startAt, operatingDay, fallbackHm: startTime) ?? '';
+  String get endLabel => hmWithDayMarker(endAt, operatingDay, fallbackHm: endTime) ?? '';
+  String get breakStartLabel =>
+      hmWithDayMarker(breakStartAt, operatingDay, fallbackHm: breakStartTime) ?? '';
+  String get breakEndLabel =>
+      hmWithDayMarker(breakEndAt, operatingDay, fallbackHm: breakEndTime) ?? '';
 
-  /// 새벽 근무 — 실제 시작 달력일이 영업일(라벨)보다 뒤인지.
-  bool get startsNextDay {
-    if (startAt == null || operatingDay == null) return false;
-    final a = DateTime(startAt!.year, startAt!.month, startAt!.day);
-    final b = DateTime(operatingDay!.year, operatingDay!.month, operatingDay!.day);
-    return a.isAfter(b);
-  }
-
-  String get timeRange {
-    final suffix = startsNextDay ? ' (+1d)' : '';
-    return hasBreak
-        ? '$_startHm–$_breakStartHm · $_breakEndHm–$_endHm$suffix'
-        : '$_startHm – $_endHm$suffix';
-  }
+  String get timeRange => hasBreak
+      ? '$startLabel–$breakStartLabel · $breakEndLabel–$endLabel'
+      : '$startLabel – $endLabel';
 
   String get netWorkDisplay {
     final h = netWorkMinutes ~/ 60;

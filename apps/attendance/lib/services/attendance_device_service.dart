@@ -14,6 +14,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../config/constants.dart';
 import '../utils/attendance_device_storage.dart';
+import 'app_version_header_interceptor.dart';
 
 /// Device attendance 서비스 Provider (전용 Dio 인스턴스 내장)
 final attendanceDeviceServiceProvider = Provider<AttendanceDeviceService>((ref) {
@@ -80,6 +81,9 @@ class AttendanceDeviceService {
     ));
     // device token 자동 주입 (있을 때만)
     _dio.interceptors.add(_DeviceAuthInterceptor());
+    // X-App-Version 요청 헤더 — 서버가 구버전 어댑터(force 강제)를 켤지 판단한다.
+    // 응답 헤더로 오는 X-App-* 와 방향이 반대다 (이건 우리가 보내는 쪽).
+    _dio.interceptors.add(AppVersionHeaderInterceptor());
     _dio.interceptors.add(_ManageSessionInterceptor(() => _manageToken));
     // 응답 헤더에서 X-App-* 추출 → versionBroadcast 갱신
     _dio.interceptors.add(_VersionBroadcastInterceptor(versionBroadcast));
@@ -361,9 +365,21 @@ class AttendanceDeviceService {
     setManageToken(null);
   }
 
-  /// 오늘 매장 스케줄 (관리자 모드 리스트).
-  Future<List<Map<String, dynamic>>> manageListSchedules() async {
-    final response = await _dio.get('/attendance/manage/schedules');
+  /// 한 영업일의 매장 스케줄 (관리자 모드 리스트).
+  ///
+  /// [operatingDay] "YYYY-MM-DD" 를 주면 그 영업일, 안 주면 기기가 보는 오늘.
+  /// 날짜는 **영업일 라벨**이지 달력 날짜가 아니다 — 새벽조는 달력일이 다르다.
+  /// 형식이 날짜가 아니면 서버가 422 를 준다.
+  Future<List<Map<String, dynamic>>> manageListSchedules({
+    String? operatingDay,
+  }) async {
+    final response = await _dio.get(
+      '/attendance/manage/schedules',
+      queryParameters: {
+        if (operatingDay != null && operatingDay.isNotEmpty)
+          'operating_day': operatingDay,
+      },
+    );
     final data = response.data;
     if (data is List) {
       return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
@@ -443,41 +459,70 @@ class AttendanceDeviceService {
     String? workRoleId,
     required String startHHmm,
     required String endHHmm,
+    // 휴게 (선택). 짝으로만 유효 — 한쪽만 보내면 서버가 BREAK_PAIR_INCOMPLETE.
+    // HH:mm 은 서버가 **근무 시작에 앵커**해 날짜를 붙인다 (시작보다 이른 값이면
+    // 자정 넘긴 근무 안의 휴게로 보고 +1일). 그래서 날짜를 앱이 날조할 필요가 없다.
+    String? breakStartHHmm,
+    String? breakEndHHmm,
     // 전환기 벽시계 datetime 인코딩 (있으면 함께 전송, 서버가 우선 사용)
     String? operatingDay,
     String? startAt,
     String? endAt,
+    // 경고를 사용자에게 보여주고 확인받았을 때만 true (D9-1). 무조건 true 로 보내면
+    // 확인 절차가 통째로 없어진다 — 예전 키오스크가 그래서 겹침을 조용히 저장했다.
+    bool force = false,
   }) async {
     final response = await _dio.post('/attendance/manage/schedules', data: {
       'user_id': userId,
       if (workRoleId != null) 'work_role_id': workRoleId,
       'start_time': startHHmm,
       'end_time': endHHmm,
+      if (breakStartHHmm != null) 'break_start_time': breakStartHHmm,
+      if (breakEndHHmm != null) 'break_end_time': breakEndHHmm,
       if (operatingDay != null) 'operating_day': operatingDay,
       if (startAt != null) 'start_at': startAt,
       if (endAt != null) 'end_at': endAt,
+      if (force) 'force': true,
     });
     return Map<String, dynamic>.from(response.data as Map);
   }
 
+  /// 스케줄 수정.
+  ///
+  /// ⚠️ **휴게 두 키는 항상 실린다** (값 또는 `null`). 서버 계약 B7 에서
+  ///    키 있음+값 = 설정 / 키 있음+null = **삭제** / 키 생략 = 유지 이고,
+  ///    D7-3 "항상 전체 전송"인 신 클라이언트에게 '생략'이라는 선택지는 없다.
+  ///    따라서 이 함수를 호출하는 쪽은 **반드시 현재 휴게 상태를 계산해서** 넘겨야
+  ///    한다 — 안 넘기면 그 스케줄의 휴게가 지워진다.
   Future<Map<String, dynamic>> manageUpdateSchedule({
     required String scheduleId,
     String? userId,
     String? workRoleId,
     String? startHHmm,
     String? endHHmm,
+    String? breakStartHHmm,
+    String? breakEndHHmm,
     String? operatingDay,
     String? startAt,
     String? endAt,
+    bool force = false,
   }) async {
+    // 시각은 **항상 둘 다** 실어 보낸다 (D7-3). 서버가 "보낸 필드"가 아니라
+    // "기존 값과 달라진 필드"만 검사하므로 부분 전송이 필요 없어졌고, 오히려
+    // 한쪽만 보내면 영업일 번역이 스킵돼 새벽조 날짜가 틀어졌다.
     final body = <String, dynamic>{
       if (userId != null) 'user_id': userId,
       if (workRoleId != null) 'work_role_id': workRoleId,
       if (startHHmm != null) 'start_time': startHHmm,
       if (endHHmm != null) 'end_time': endHHmm,
+      // null 도 그대로 보낸다 (= 휴게 삭제). `if (x != null)` 로 감싸면 삭제할 방법이
+      // 사라진다 — 서버는 키 생략을 "구버전이라 유지"로 읽는다.
+      'break_start_time': breakStartHHmm,
+      'break_end_time': breakEndHHmm,
       if (operatingDay != null) 'operating_day': operatingDay,
       if (startAt != null) 'start_at': startAt,
       if (endAt != null) 'end_at': endAt,
+      if (force) 'force': true,
     };
     final response = await _dio.patch(
       '/attendance/manage/schedules/$scheduleId',

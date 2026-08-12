@@ -2244,6 +2244,54 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Following system brightness'**
   String get attSettingsBrightnessFollowingSystem;
+
+  /// No description provided for @errNetworkTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The server is not responding. Check the connection and try again.'**
+  String get errNetworkTimeout;
+
+  /// No description provided for @errNetworkUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t reach the server. Check the network connection and try again.'**
+  String get errNetworkUnreachable;
+
+  /// No description provided for @errNetworkInsecure.
+  ///
+  /// In en, this message translates to:
+  /// **'The secure connection could not be verified. Contact support.'**
+  String get errNetworkInsecure;
+
+  /// No description provided for @errRequestCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'The request was cancelled. Try again.'**
+  String get errRequestCancelled;
+
+  /// No description provided for @errNetworkGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach the server. Try again.'**
+  String get errNetworkGeneric;
+
+  /// No description provided for @errServerFault.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong on our side. Try again in a moment.'**
+  String get errServerFault;
+
+  /// No description provided for @errValidation.
+  ///
+  /// In en, this message translates to:
+  /// **'Some fields are invalid. Please review your input.'**
+  String get errValidation;
+
+  /// No description provided for @errUnexpected.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Try again.'**
+  String get errUnexpected;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

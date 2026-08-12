@@ -117,7 +117,8 @@ class _Detail extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _row('Scheduled', '${view.scheduledStart ?? '--:--'} – ${view.scheduledEnd ?? '--:--'}'),
+                // `+1` 마커 포함 — 같은 시각을 두 화면이 다르게 적으면 그 자체가 버그의 씨앗이다(D5-4).
+                _row('Scheduled', '${view.scheduledStartLabel ?? '--:--'} – ${view.scheduledEndLabel ?? '--:--'}'),
                 const SizedBox(height: 6),
                 _row('Clock In', view.clockIn ?? '—', sub: workedSub),
                 const SizedBox(height: 6),

@@ -159,28 +159,24 @@ class MySchedule {
       (breakStartTime != null && breakEndTime != null &&
           breakStartTime!.isNotEmpty && breakEndTime!.isNotEmpty);
 
-  /// 표시용 시각 문자열 — start_at/end_at 있으면 그것의 HH:mm, 없으면 구 String fallback.
-  String? get _startHm => formatWallClockHm(startAt) ?? startTime;
-  String? get _endHm => formatWallClockHm(endAt) ?? endTime;
-  String? get _breakStartHm => formatWallClockHm(breakStartAt) ?? breakStartTime;
-  String? get _breakEndHm => formatWallClockHm(breakEndAt) ?? breakEndTime;
+  /// 표시용 시각 — 영업일보다 뒤인 날짜의 시각에는 `+1` 마커가 붙는다(D5-4).
+  /// start_at/end_at 이 있으면 그쪽이 정본, 없으면 구 HH:mm 문자열 fallback(마커 없음).
+  String? get startLabel => hmWithDayMarker(startAt, operatingDay, fallbackHm: startTime);
+  String? get endLabel => hmWithDayMarker(endAt, operatingDay, fallbackHm: endTime);
+  String? get breakStartLabel =>
+      hmWithDayMarker(breakStartAt, operatingDay, fallbackHm: breakStartTime);
+  String? get breakEndLabel =>
+      hmWithDayMarker(breakEndAt, operatingDay, fallbackHm: breakEndTime);
 
-  /// 새벽 근무 — 실제 시작 달력일이 영업일(라벨)보다 뒤인지.
-  bool get startsNextDay {
-    if (startAt == null || operatingDay == null) return false;
-    final a = DateTime(startAt!.year, startAt!.month, startAt!.day);
-    final b = DateTime(operatingDay!.year, operatingDay!.month, operatingDay!.day);
-    return a.isAfter(b);
-  }
-
-  /// 시간 범위 표시 ("09:00~17:00" 또는 "09:00~12:00 · 13:00~17:00").
-  /// 새벽 근무(+1d)는 " (+1d)" 표기로 당일 새벽 시작과 구분.
+  /// 시간 범위 표시 ("09:00~17:00" 또는 "21:00~23:00 · 23:30 +1~02:00 +1").
+  ///
+  /// 마커는 **시각마다** 붙는다. 예전처럼 범위 끝에 " (+1d)" 를 한 번만 붙이면
+  /// 무엇이 다음 날인지(시작인지 휴게인지 종료인지) 알 수 없다.
   String get timeRange {
-    final s = _startHm, e = _endHm;
+    final s = startLabel, e = endLabel;
     if (s == null || e == null) return '';
-    final suffix = startsNextDay ? ' (+1d)' : '';
-    if (hasBreak) return '$s~$_breakStartHm · $_breakEndHm~$e$suffix';
-    return '$s~$e$suffix';
+    if (hasBreak) return '$s~$breakStartLabel · $breakEndLabel~$e';
+    return '$s~$e';
   }
 
   /// 실근무시간 (시간 단위)

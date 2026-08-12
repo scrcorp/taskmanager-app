@@ -132,10 +132,11 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       if (e.requestId != null) entryRequestIds.add(e.requestId!);
       items.add(_ShiftItem(
         date: e.workDate,
-        startTime: e.startTime,
-        endTime: e.endTime,
-        breakStartTime: e.breakStartTime,
-        breakEndTime: e.breakEndTime,
+        // `+1` 마커가 붙은 라벨 (D5-4) — 새벽 근무를 당일 새벽과 구분한다.
+        startTime: e.startLabel,
+        endTime: e.endLabel,
+        breakStartTime: e.hasBreak ? e.breakStartLabel : null,
+        breakEndTime: e.hasBreak ? e.breakEndLabel : null,
         storeName: e.storeName ?? '',
         workRoleName: e.workRoleName ?? '',
         status: 'confirmed',
