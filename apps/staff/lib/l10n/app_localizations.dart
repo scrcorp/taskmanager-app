@@ -1441,6 +1441,96 @@ abstract class AppL10n {
   /// **'Not set'**
   String get settingsAvailabilityNotSet;
 
+  /// Settings row that installs the web app as a home screen icon. Hidden when already installed
+  ///
+  /// In en, this message translates to:
+  /// **'Add to Home Screen'**
+  String get settingsAddToHomeScreen;
+
+  /// Title of the sheet explaining how to install the app on iOS
+  ///
+  /// In en, this message translates to:
+  /// **'Add HTM to Home Screen'**
+  String get addToHomeTitle;
+
+  /// Intro line of the Add to Home Screen sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Open HTM straight from your home screen, without the browser address bar.'**
+  String get addToHomeIntro;
+
+  /// iOS install instructions, step 1
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the Share button at the bottom of the browser.'**
+  String get addToHomeIosStep1;
+
+  /// iOS install instructions, step 2
+  ///
+  /// In en, this message translates to:
+  /// **'Scroll down and tap \"Add to Home Screen\".'**
+  String get addToHomeIosStep2;
+
+  /// iOS install instructions, step 3
+  ///
+  /// In en, this message translates to:
+  /// **'Tap \"Add\" in the top right corner.'**
+  String get addToHomeIosStep3;
+
+  /// Toast shown after the browser install prompt is accepted
+  ///
+  /// In en, this message translates to:
+  /// **'HTM was added to your home screen.'**
+  String get addToHomeInstalled;
+
+  /// Error shown when the install prompt is no longer available
+  ///
+  /// In en, this message translates to:
+  /// **'Your browser can\'t add HTM to the home screen right now.'**
+  String get addToHomeUnavailable;
+
+  /// Settings row toggling browser push notifications
+  ///
+  /// In en, this message translates to:
+  /// **'Push Notifications'**
+  String get settingsPushNotifications;
+
+  /// Shown under the push row when browser permission is denied. The app cannot reopen the permission prompt
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked in your browser settings. Allow notifications for this site, then reopen the app.'**
+  String get pushBlockedNotice;
+
+  /// Error shown when enabling push fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t turn on push notifications. Please try again.'**
+  String get pushEnableFailed;
+
+  /// Toast after push is successfully enabled
+  ///
+  /// In en, this message translates to:
+  /// **'Push notifications are on.'**
+  String get pushEnabledToast;
+
+  /// Developer-only settings row that sends a test push to the current user
+  ///
+  /// In en, this message translates to:
+  /// **'Send Test Notification'**
+  String get pushSendTest;
+
+  /// Toast after a test push is dispatched
+  ///
+  /// In en, this message translates to:
+  /// **'Test notification sent.'**
+  String get pushTestSent;
+
+  /// Toast when the test push request fails
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send the test notification.'**
+  String get pushTestFailed;
+
   /// No description provided for @fieldCurrentPassword.
   ///
   /// In en, this message translates to:
@@ -1696,7 +1786,7 @@ abstract class AppL10n {
   /// No description provided for @alertSettingsIntro.
   ///
   /// In en, this message translates to:
-  /// **'Choose which categories you receive in the app and via email. A dash (—) means email isn\'t available for that category.'**
+  /// **'Choose which categories you receive in the app, by email, and as push notifications. A dash (—) means that channel isn\'t available for the category.'**
   String get alertSettingsIntro;
 
   /// No description provided for @alertSettingsHeaderInApp.
@@ -1710,6 +1800,12 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'EMAIL'**
   String get alertSettingsHeaderEmail;
+
+  /// Column header for the web push channel in the alert settings grid
+  ///
+  /// In en, this message translates to:
+  /// **'PUSH'**
+  String get alertSettingsHeaderPush;
 
   /// No description provided for @actionChange.
   ///

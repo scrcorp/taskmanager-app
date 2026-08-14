@@ -312,6 +312,25 @@
   "settingsSectionGeneral": "General",
   "settingsAvailabilityNotSet": "Sin definir",
 
+
+  "settingsAddToHomeScreen": "Agregar a la pantalla de inicio",
+  "addToHomeTitle": "Agregar HTM a la pantalla de inicio",
+  "addToHomeIntro": "Abre HTM directamente desde tu pantalla de inicio, sin la barra de direcciones del navegador.",
+  "addToHomeIosStep1": "Toca el botón Compartir en la parte inferior del navegador.",
+  "addToHomeIosStep2": "Desplázate hacia abajo y toca \"Agregar a inicio\".",
+  "addToHomeIosStep3": "Toca \"Agregar\" en la esquina superior derecha.",
+  "addToHomeInstalled": "HTM se agregó a tu pantalla de inicio.",
+  "addToHomeUnavailable": "Tu navegador no puede agregar HTM a la pantalla de inicio en este momento.",
+
+
+  "settingsPushNotifications": "Notificaciones push",
+  "pushBlockedNotice": "Bloqueadas en la configuración de tu navegador. Permite las notificaciones para este sitio y vuelve a abrir la app.",
+  "pushEnableFailed": "No se pudieron activar las notificaciones push. Inténtalo de nuevo.",
+  "pushEnabledToast": "Las notificaciones push están activadas.",
+  "pushSendTest": "Enviar notificación de prueba",
+  "pushTestSent": "Notificación de prueba enviada.",
+  "pushTestFailed": "No se pudo enviar la notificación de prueba.",
+
   "fieldCurrentPassword": "Contraseña actual",
   "fieldConfirmNewPassword": "Confirmar nueva contraseña",
   "hintEnterCurrentPassword": "Ingresa la contraseña actual",
@@ -371,9 +390,10 @@
   "alertSettingsResetTitle": "¿Restablecer a predeterminado?",
   "alertSettingsResetMessage": "Todas las categorías volverán a activarse. Puedes ajustarlas de nuevo más tarde.",
   "alertSettingsResetButton": "Restablecer a predeterminado",
-  "alertSettingsIntro": "Elige qué categorías recibes en la app y por correo. Un guion (—) indica que el correo no está disponible.",
+  "alertSettingsIntro": "Elige qué categorías recibes en la app, por correo y como notificaciones push. Un guion (—) indica que ese canal no está disponible.",
   "alertSettingsHeaderInApp": "APP",
   "alertSettingsHeaderEmail": "CORREO",
+  "alertSettingsHeaderPush": "PUSH",
 
   "actionChange": "Cambiar",
   "commonStaff": "Personal",

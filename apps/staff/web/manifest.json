@@ -1,11 +1,11 @@
 {
-    "name": "app",
-    "short_name": "app",
+    "name": "HTM",
+    "short_name": "HTM",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#F5EDF0",
+    "theme_color": "#3B8DD9",
+    "description": "HTM staff app — schedules, checklists, and daily reports.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

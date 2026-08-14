@@ -15,6 +15,7 @@ import 'package:htm_core/htm_core.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/task.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/push_service.dart';
 import '../../providers/my_schedule_provider.dart';
 import '../../providers/task_provider.dart';
 import '../../providers/notice_provider.dart';
@@ -76,6 +77,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ref.read(myScheduleProvider.notifier).loadSchedules();
       ref.read(taskProvider.notifier).loadTasks();
       ref.read(noticeProvider.notifier).loadNotices();
+      // 푸시 구독 대조 — 서버는 구독이 끊긴 걸 통보받지 못하므로, 앱이 열릴 때
+      // 실제 브라우저 상태와 맞춰주는 게 유일한 주 경로다. 권한이 살아 있는데
+      // 구독만 사라졌고 사용자가 켜둔 상태였다면 조용히 재구독한다.
+      // 실패해도 홈 화면 로딩에 영향을 주지 않는다(내부에서 삼킨다).
+      ref.read(pushServiceProvider).reconcile();
     });
   }
 
