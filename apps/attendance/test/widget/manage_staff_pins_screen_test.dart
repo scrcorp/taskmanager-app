@@ -320,29 +320,6 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('409 reason=prefix → 앞자리 겹침 문구', (tester) async {
-    await useTabletSurface(tester);
-    await tester.pumpWidget(
-      _wrap(
-        _Conflict409Service(
-          {'code': 'pin_conflict', 'reason': 'prefix', 'other_store': false},
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await submitPinChange(tester);
-
-    expect(
-      find.text(
-        'This PIN overlaps with another PIN (numbers that start the same). '
-        'Pick a different number.',
-      ),
-      findsOneWidget,
-    );
-    await drainSnackBar(tester);
-  });
-
   testWidgets('409 other_store=true → 다른 매장 사용중 문구', (tester) async {
     await useTabletSurface(tester);
     await tester.pumpWidget(

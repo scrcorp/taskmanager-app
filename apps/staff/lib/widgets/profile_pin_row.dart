@@ -77,12 +77,10 @@ class ProfilePinRowState extends ConsumerState<ProfilePinRow> {
       if (!mounted) return;
       setState(() => _saving = false);
       final t = AppL10n.of(context);
-      // 사유별 안내: 409 pin_conflict(exact/prefix) / 422 형식 / 그 외(네트워크 등)
+      // 사유별 안내: 409 pin_conflict(같은 번호 사용중) / 422 형식 / 그 외(네트워크 등)
       final String message;
       if (e is PinUpdateException && e.isPinConflict) {
-        message = e.reason == 'prefix'
-            ? t.myPinConflictPrefix
-            : t.myPinConflictInUse;
+        message = t.myPinConflictInUse;
       } else if (e is PinUpdateException && e.isInvalidFormat) {
         message = t.myPinInvalidFormat;
       } else {

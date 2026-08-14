@@ -969,7 +969,6 @@
   "myPinEdit": "Edit PIN",
   "myPinSaveFailedTitle": "Could not save PIN",
   "myPinConflictInUse": "This PIN is already in use by another employee. Enter a different number.",
-  "myPinConflictPrefix": "This PIN overlaps with another employee's PIN (numbers that start the same). Enter a different number.",
   "myPinInvalidFormat": "PIN must be 4-6 digits.",
   "myPinSaveFailedRetry": "Something went wrong. Check your connection and try again.",
 

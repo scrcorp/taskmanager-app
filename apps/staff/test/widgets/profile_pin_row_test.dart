@@ -7,7 +7,7 @@
 ///  - PIN 없을 때 → em dash + Edit 숨김
 ///  - Edit → 4자리 입력 → Save → updatePin 호출 + PIN 갱신
 ///  - Edit → 3자리 → Save 무반응
-///  - updatePin 실패 — 409 exact/prefix, 422 형식, 그 외 사유별 모달 문구
+///  - updatePin 실패 — 409 중복, 422 형식, 그 외 사유별 모달 문구
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -143,24 +143,6 @@ void main() {
     expect(
       find.text(
           'This PIN is already in use by another employee. Enter a different number.'),
-      findsOneWidget,
-    );
-  });
-
-  testWidgets('409 prefix 충돌 → overlap 문구 모달', (tester) async {
-    final fake = _FakeService()
-      ..currentPin = '123456'
-      ..throwOnUpdate = _conflict('prefix');
-    await tester.pumpWidget(_wrap(const ProfilePinRow(), fake));
-    await tester.pumpAndSettle();
-
-    await submitPin(tester, '43210');
-
-    expect(fake.updateCount, 1);
-    expect(find.text('Could not save PIN'), findsOneWidget);
-    expect(
-      find.text(
-          "This PIN overlaps with another employee's PIN (numbers that start the same). Enter a different number."),
       findsOneWidget,
     );
   });

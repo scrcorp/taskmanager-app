@@ -2388,10 +2388,6 @@ class AppL10nEs extends AppL10n {
       'Este PIN ya está en uso por otro empleado. Ingresa un número diferente.';
 
   @override
-  String get myPinConflictPrefix =>
-      'Este PIN coincide con el inicio del PIN de otro empleado (números que empiezan igual). Ingresa un número diferente.';
-
-  @override
   String get myPinInvalidFormat => 'El PIN debe tener de 4 a 6 dígitos.';
 
   @override
