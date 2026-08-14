@@ -31,12 +31,14 @@ import '../../models/early_clock_out_reason.dart';
 import '../../utils/early_clock_in_logic.dart';
 import '../../widgets/break_reason_dialog.dart';
 import '../../models/identify_response.dart';
+import '../../models/store_manager_option.dart';
 import '../../models/tip_models.dart';
 import '../../providers/attendance_dashboard_provider.dart';
 import '../../providers/attendance_device_provider.dart';
 import '../../utils/main_flow_state.dart';
 import '../../utils/minute_time.dart';
 import '../../utils/main_flow_transitions.dart' as flow;
+import '../../utils/shift_pick_logic.dart';
 import '../../utils/store_time.dart';
 import '../../widgets/action_sheet.dart';
 import '../../widgets/battery_indicator.dart';
@@ -44,7 +46,9 @@ import '../../widgets/early_clock_in_dialog.dart';
 import '../../widgets/early_clock_out_dialog.dart';
 import '../../widgets/identity_confirm_dialog.dart';
 import '../../widgets/language_switcher.dart';
+import '../../widgets/overlap_confirm_dialog.dart';
 import '../../widgets/pin_numpad.dart';
+import '../../widgets/shift_picker_dialog.dart';
 import '../../widgets/success_modal.dart';
 import '../../widgets/tip_entry_dialog.dart';
 import 'attendance_schedule_screen.dart';
@@ -72,6 +76,18 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
   /// L5: manual add 검색 풀 — store 전체 active 직원. Tip dialog 진입 시 같이 fetch.
   List<TipReceiver> _storeEmployeesPool = const [];
   bool _loadingReceivers = false;
+
+  /// early 사유의 "누가 불렀나" 후보 — 매장 Manager/SV (계약 §4).
+  ///
+  /// **사유 단계에 들어갈 때마다 새로 받아온다.** 상시 프리페치·세션 캐시 금지:
+  /// 매니저 명단은 사회공학 표적 정보라 노출을 최소로 두고, 매니저가 바뀌면 즉시
+  /// 반영돼야 한다.
+  List<StoreManagerOption> _managers = const [];
+  bool _managersLoading = false;
+  bool _managersFailed = false;
+
+  /// shift picker 상단 안내 — "그 shift 는 이제 못 고른다" 같은 재선택 사유.
+  String? _shiftPickerNotice;
 
   /// 5-tap hidden unlock 게이지 (헤더 store name).
   int _hiddenTapCount = 0;
@@ -134,7 +150,9 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     try {
       final user = await ref.read(attendanceDeviceProvider.notifier).identifyUserByPin(pin);
       if (!mounted) return;
-      setState(() => _flow = flow.identifySucceeded(_flow, user));
+      // identifiedAt = **응답을 받은 로컬 시각**. 프리뷰가 낡았는지만 재는 값이라
+      // 서버 시각과 빼지 않는다 (기기 시계 오차가 섞인다).
+      setState(() => _flow = flow.identifySucceeded(_flow, user, at: DateTime.now()));
     } catch (e) {
       if (!mounted) return;
       setState(() => _flow = flow.identifyFailed(_flow, _errMessage(e, fallback: 'Invalid PIN')));
@@ -175,6 +193,41 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     setState(() => _flow = flow.cancelAction(_flow));
   }
 
+  // ─── shift 선택 (④) ──────────────────────────────────────────────────────
+
+  /// "Not this one" — 그때서야 목록을 연다 (D14).
+  void _onChangeShift() {
+    setState(() {
+      _shiftPickerNotice = null;
+      _flow = flow.openShiftPicker(_flow);
+    });
+  }
+
+  void _onShiftPicked(TodayAttendanceItem item) {
+    setState(() {
+      _shiftPickerNotice = null;
+      _flow = flow.chooseShift(_flow, item);
+    });
+  }
+
+  void _onShiftPickerCancel() {
+    setState(() {
+      _shiftPickerNotice = null;
+      _flow = flow.cancelShiftPicker(_flow);
+    });
+  }
+
+  // ─── 겹침 확인 (⑤) ───────────────────────────────────────────────────────
+
+  Future<void> _onOverlapConfirm() async {
+    setState(() => _flow = flow.confirmOverlap(_flow));
+    await _performClockAction();
+  }
+
+  void _onOverlapCancel() {
+    setState(() => _flow = flow.cancelOverlap(_flow));
+  }
+
   Future<void> _onEarlyReasonSubmit(EarlyClockOutReason reason, String? detail) async {
     final tipEnabled =
         ref.read(attendanceDeviceProvider).device?.tipEntryEnabled ?? false;
@@ -202,8 +255,15 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     setState(() => _flow = flow.cancelBreakReason(_flow));
   }
 
-  Future<void> _onEarlyClockInReasonSubmit(String reason) async {
-    setState(() => _flow = flow.submitEarlyClockInReason(_flow, reason));
+  Future<void> _onEarlyClockInReasonSubmit(
+    String reason,
+    String? requestedBy,
+  ) async {
+    setState(() => _flow = flow.submitEarlyClockInReason(
+          _flow,
+          reason,
+          requestedBy: requestedBy,
+        ));
     await _performClockAction();
   }
 
@@ -264,9 +324,109 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     }
   }
 
+  /// early 사유의 "누가 불렀나" 후보 조회. 실패해도 다이얼로그는 열린다 —
+  /// `managersFailed` 로 "Someone else" 만 남기고 진행시킨다(계약 §4).
+  Future<void> _loadStoreManagers() async {
+    final user = _flow.user;
+    final pin = _flow.enteredPin;
+    if (user == null || pin == null) return;
+    setState(() {
+      _managers = const [];
+      _managersLoading = true;
+      _managersFailed = false;
+    });
+    try {
+      final list = await ref
+          .read(attendanceDeviceProvider.notifier)
+          .getStoreManagers(userId: user.userId, pin: pin);
+      if (!mounted) return;
+      setState(() {
+        _managers = list;
+        _managersLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _managers = const [];
+        _managersLoading = false;
+        _managersFailed = true;
+      });
+    }
+  }
+
+  /// identify 를 다시 불러 후보/프리뷰를 갱신한다. 실패하면 null.
+  ///
+  /// [preferScheduleId] 가 아직 고를 수 있는 후보면 그 선택을 유지한다 —
+  /// 사람이 이미 내린 판단을 서버 기본값으로 덮지 않는다.
+  Future<IdentifyResponse?> _reidentify({String? preferScheduleId}) async {
+    final pin = _flow.enteredPin;
+    if (pin == null) return null;
+    try {
+      final fresh = await ref
+          .read(attendanceDeviceProvider.notifier)
+          .identifyUserByPin(pin);
+      if (!mounted) return null;
+      TodayAttendanceItem? keep;
+      if (preferScheduleId != null) {
+        for (final item in fresh.todayAttendances) {
+          if (item.scheduleId == preferScheduleId && isShiftSelectable(item)) {
+            keep = item;
+            break;
+          }
+        }
+      }
+      final picked = keep ?? pickDefaultShift(fresh);
+      return picked == null ? fresh : fresh.withSelectedSchedule(picked);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// 고른 shift 가 더 이상 후보가 아니다 → 목록을 새로 열어 다시 고르게 한다.
+  ///
+  /// 그냥 에러로 끝내면 사용자는 "왜 안 되는지" 를 모른 채 처음부터 다시 해야 한다.
+  Future<void> _handleShiftUnavailable() async {
+    final notice = AppL10n.of(context).pfShiftNotAvailable;
+    final fresh = await _reidentify();
+    if (!mounted) return;
+    if (fresh == null) {
+      setState(() => _flow = flow.submitFailed(_flow, notice));
+      return;
+    }
+    setState(() {
+      _shiftPickerNotice = notice;
+      _flow = _flow.copyWith(
+        stage: MainFlowStage.choosingShift,
+        user: fresh,
+        identifiedAt: DateTime.now(),
+      );
+    });
+  }
+
   Future<void> _performClockAction() async {
     final action = _flow.pickedAction!;
     final pin = _flow.enteredPin!;
+
+    // 프리뷰가 낡았으면 제출 전에 identify 를 다시 부른다 (계약 §1.2).
+    // picker 를 열어둔 채 시간이 흐르면 "12m late" 가 사실과 어긋난 채로 제출된다.
+    if (action == AttendanceAction.clockIn &&
+        isPreviewStale(identifiedAt: _flow.identifiedAt, now: DateTime.now())) {
+      final prefer = _flow.user?.selectedScheduleId;
+      final fresh = await _reidentify(preferScheduleId: prefer);
+      if (!mounted) return;
+      if (fresh != null) {
+        // 명시 선택했던 shift 가 사라졌으면 조용히 다른 데 붙이지 않는다.
+        if (prefer != null && fresh.selectedScheduleId != prefer) {
+          await _handleShiftUnavailable();
+          return;
+        }
+        setState(() => _flow = _flow.copyWith(
+              user: fresh,
+              identifiedAt: DateTime.now(),
+            ));
+      }
+    }
+
     final user = _flow.user!;
     // 세 액션이 같은 body 필드(reason)를 공유한다:
     //   clock_out → 조기 퇴근 사유 / break_end → 초과 사유 / clock_in → 조기 출근 사유.
@@ -292,6 +452,10 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
       // 보내면 안 된다(clocked_out 재출근 시 "not available" 오거부 원인). null 로 보냄.
       scheduleId: isWalkIn ? null : user.selectedScheduleId, // (Issue 8) 선택된 schedule
       walkIn: isWalkIn,
+      // early override 가 성립할 때만 서버가 소비한다. 그 외엔 조용히 무시(§2.1).
+      earlyClockInRequestedBy: _flow.earlyClockInRequestedBy,
+      // 사용자가 겹침 경고를 보고 확인했을 때만 true (§3.1).
+      allowOverlap: _flow.allowOverlap,
     );
     if (!mounted) return;
 
@@ -303,6 +467,26 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
               _flow,
               minutesEarlyFromDetail(result.errorDetail),
             ));
+        await _loadStoreManagers();
+        return;
+      }
+      // 다른 shift 가 아직 열려 있다 — 경고를 보여주고, 확인하면 같은 요청에
+      // allow_overlap 만 붙여 재전송한다 (사유 재시도와 같은 형태, §3.2).
+      if (result.errorCode == kOverlappingClockInConfirmationRequired) {
+        setState(() =>
+            _flow = flow.requireOverlapConfirm(_flow, result.errorDetail));
+        return;
+      }
+      // 요청자 id 가 거부됐다 — id 만 떼고 1회 재시도(§5). 현장에서 출근이 막히면 안 된다.
+      // 재시도 후에도 같은 코드면 아래 일반 실패로 떨어진다(무한 루프 방지).
+      if (result.errorCode == kInvalidReasonUser && !_flow.requesterDropped) {
+        setState(() => _flow = flow.retryWithoutRequester(_flow));
+        await _performClockAction();
+        return;
+      }
+      // 명시 선택한 shift 가 후보에서 빠졌다 — 목록을 새로 열어 다시 고르게 한다.
+      if (result.errorCode == kShiftNotAvailable) {
+        await _handleShiftUnavailable();
         return;
       }
       setState(() => _flow = flow.submitFailed(_flow, result.message));
@@ -315,7 +499,7 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
     if (data != null) {
       try {
         final patched = TodayStaffRow.fromClockResponse(data);
-        ref.read(attendanceDashboardProvider.notifier).patchStaffByUserId(patched);
+        ref.read(attendanceDashboardProvider.notifier).patchStaffRow(patched);
       } catch (_) {
         // 응답 schema 변형/누락 시 무시 — 다음 polling tick 에 정상화
       }
@@ -337,7 +521,11 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
       }
     }
 
-    setState(() => _flow = flow.submitSucceeded(_flow));
+    // 겹쳐서 찍혔는가 — 트리거는 서버 응답의 overlap.is_overlapping 하나뿐이다(§3.4).
+    setState(() => _flow = flow.submitSucceeded(
+          _flow,
+          overlapped: isOverlappingClockInResponse(data),
+        ));
   }
 
   String? _composeReasonText(EarlyClockOutReason? r, String? detail) {
@@ -523,6 +711,33 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                 onCancel: _onActionCancel,
                 now: _now,
                 walkInAllowed: device?.walkInAllowed ?? false,
+                // 후보가 1개뿐이면 버튼 자체를 안 낸다 (D1).
+                onChangeShift:
+                    canChooseShift(_flow.user!) ? _onChangeShift : null,
+                todayOperatingDay: device?.workDate,
+              ),
+            ),
+          if (_flow.stage == MainFlowStage.choosingShift && _flow.user != null)
+            _BarrierWrap(
+              child: ShiftPickerDialog(
+                userName: _flow.user!.userName,
+                items: _flow.user!.todayAttendances,
+                selectedScheduleId: _flow.user!.selectedScheduleId,
+                notice: _shiftPickerNotice,
+                todayOperatingDay: device?.workDate,
+                onPick: _onShiftPicked,
+                onCancel: _onShiftPickerCancel,
+              ),
+            ),
+          if (_flow.stage == MainFlowStage.overlapConfirm && _flow.user != null)
+            _BarrierWrap(
+              child: OverlapConfirmDialog(
+                openStartDisplay:
+                    openShiftWindowFromDetail(_flow.overlapDetail)?.start,
+                openEndDisplay:
+                    openShiftWindowFromDetail(_flow.overlapDetail)?.end,
+                onConfirm: _onOverlapConfirm,
+                onCancel: _onOverlapCancel,
               ),
             ),
           if (_flow.stage == MainFlowStage.earlyReason && _flow.user != null)
@@ -540,6 +755,9 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
               child: EarlyClockInDialog(
                 userName: _flow.user!.userName,
                 minutesEarly: _flow.minutesEarly ?? 0,
+                managers: _managers,
+                managersLoading: _managersLoading,
+                managersFailed: _managersFailed,
                 onSubmit: _onEarlyClockInReasonSubmit,
                 onCancel: _onEarlyClockInReasonCancel,
               ),
@@ -571,6 +789,15 @@ class _AttendanceMainScreenState extends ConsumerState<AttendanceMainScreen> {
                 userName: _flow.user!.userName,
                 action: _flow.pickedAction!,
                 onClose: _onCloseSuccess,
+                // 겹침이 최우선 — 급여 이중 지급으로 이어지는 유일한 안내다.
+                // 요청자 미매칭은 그다음(기록은 남았고 사람만 못 붙었다).
+                noticeTitle: _flow.overlapped
+                    ? t.pfOverlapNoticeTitle
+                    : (_flow.requesterDropped
+                        ? t.pfEarlyInRequesterDropped
+                        : null),
+                noticeBody:
+                    _flow.overlapped ? t.pfOverlapNoticeBody : null,
               ),
             ),
           if (_flow.stage == MainFlowStage.error)

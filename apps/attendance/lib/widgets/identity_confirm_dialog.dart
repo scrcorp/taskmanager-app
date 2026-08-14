@@ -17,6 +17,7 @@ import '../l10n/app_localizations.dart';
 import '../models/identify_response.dart';
 import '../utils/identity_confirm_logic.dart';
 import '../utils/minute_time.dart';
+import '../utils/shift_pick_logic.dart';
 import '../utils/staff_status_utils.dart';
 
 /// status → 표시 라벨 (l10n).
@@ -129,6 +130,12 @@ class IdentityConfirmDialog extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 _StatusPanel(user: user, now: now ?? DateTime.now(), walkInAllowed: walkInAllowed),
+                // 겹쳐 열린 shift 가 있으면 **해소될 때까지 매번** 알린다 (계약 §3.4).
+                // 겹침 직후 한 번만 보여주면 교대가 끝날 때까지 아무도 모른다.
+                if (hasOverlappingShift(user)) ...[
+                  const SizedBox(height: 16),
+                  const _OverlapWarning(),
+                ],
                 if (user.staleAttendances.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   _StaleWarning(items: user.staleAttendances),
@@ -195,6 +202,54 @@ class IdentityConfirmDialog extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// 겹쳐 열린 shift 경고 배너 (계약 §3.4).
+///
+/// 문구는 서버가 내려보내지 않는다(R0-3) — 트리거만 `overlapping: true` 다.
+/// 직원이 스스로 고칠 수 있는 일이 아니라서 "매니저에게 알려라" 가 유일한 행동 지시다.
+class _OverlapWarning extends StatelessWidget {
+  const _OverlapWarning();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.dangerBg,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.error_outline,
+                  size: 18, color: AppColors.danger),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  t.pfOverlapNoticeTitle,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.danger,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            t.pfOverlapNoticeBody,
+            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          ),
+        ],
+      ),
     );
   }
 }

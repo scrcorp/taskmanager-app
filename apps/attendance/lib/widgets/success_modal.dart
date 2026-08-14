@@ -36,6 +36,13 @@ class SuccessModal extends StatefulWidget {
   final bool autoClose;
   final Duration autoCloseAfter;
 
+  /// 성공했지만 사람이 읽어야 하는 안내 (겹침 clock-in 등).
+  ///
+  /// 있으면 **자동 닫힘을 끈다** — "매니저에게 알려라" 를 5초 뒤에 지워버리면
+  /// 안내를 안 한 것과 같다.
+  final String? noticeTitle;
+  final String? noticeBody;
+
   const SuccessModal({
     super.key,
     required this.userName,
@@ -43,7 +50,12 @@ class SuccessModal extends StatefulWidget {
     required this.onClose,
     this.autoClose = true,
     this.autoCloseAfter = const Duration(seconds: 5),
+    this.noticeTitle,
+    this.noticeBody,
   });
+
+  /// 안내가 붙으면 자동 닫힘은 무조건 꺼진다.
+  bool get effectiveAutoClose => autoClose && noticeTitle == null;
 
   @override
   State<SuccessModal> createState() => _SuccessModalState();
@@ -55,7 +67,7 @@ class _SuccessModalState extends State<SuccessModal> {
   @override
   void initState() {
     super.initState();
-    if (widget.autoClose) {
+    if (widget.effectiveAutoClose) {
       _timer = Timer(widget.autoCloseAfter, widget.onClose);
     }
   }
@@ -117,6 +129,40 @@ class _SuccessModalState extends State<SuccessModal> {
                     height: 1.25,
                   ),
                 ),
+                if (widget.noticeTitle != null) ...[
+                  const SizedBox(height: 20),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.dangerBg,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          widget.noticeTitle!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.danger,
+                          ),
+                        ),
+                        if (widget.noticeBody != null) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            widget.noticeBody!,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 32),
                 SizedBox(
                   height: 56,
@@ -133,7 +179,7 @@ class _SuccessModalState extends State<SuccessModal> {
                     ),
                   ),
                 ),
-                if (widget.autoClose) ...[
+                if (widget.effectiveAutoClose) ...[
                   const SizedBox(height: 12),
                   Text(
                     t.pfSuccessAutoClose,

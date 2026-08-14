@@ -9,6 +9,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/identify_response.dart';
+import '../models/store_manager_option.dart';
 import '../models/tip_models.dart';
 import '../services/attendance_device_service.dart';
 import '../utils/attendance_device_storage.dart';
@@ -306,6 +307,8 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
   /// [breakType] — break-start 에만 사용 ('paid_10min' | 'unpaid_meal')
   /// [walkIn] — true 이면 스케줄 없는 워크인 클락인 (body 에 walk_in=true 포함)
   /// 반환: { success: bool, message: String, data: Map? }
+  /// [earlyClockInRequestedBy] — 조기 출근을 요청한 사람 user_id (계약 §2.1).
+  /// [allowOverlap] — 겹침 경고를 사용자가 확인한 뒤의 재전송에만 true (계약 §3.1).
   Future<ClockActionResult> performClockAction({
     required String action,
     required String userId,
@@ -314,6 +317,8 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
     String? reason,
     String? scheduleId,
     bool walkIn = false,
+    String? earlyClockInRequestedBy,
+    bool allowOverlap = false,
   }) async {
     try {
       Map<String, dynamic> result;
@@ -325,10 +330,20 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
             scheduleId: scheduleId,
             walkIn: walkIn,
             reason: reason,
+            earlyClockInRequestedBy: earlyClockInRequestedBy,
+            allowOverlap: allowOverlap,
           );
           break;
+        // clock-in 외 액션도 **schedule_id 를 그대로 실어 보낸다** (계약 §3.9).
+        // 겹침(D15) 이후엔 열린 row 가 둘일 수 있어, 안 보내면 서버가 어느 shift 를
+        // 닫는지/휴식시키는지 임의로 고른다 — 화면이 가리킨 shift 와 갈린다.
         case 'clock-out':
-          result = await _service.clockOut(userId: userId, pin: pin, reason: reason);
+          result = await _service.clockOut(
+            userId: userId,
+            pin: pin,
+            reason: reason,
+            scheduleId: scheduleId,
+          );
           break;
         case 'break-start':
           if (breakType == null || breakType.isEmpty) {
@@ -341,11 +356,17 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
             userId: userId,
             pin: pin,
             breakType: breakType,
+            scheduleId: scheduleId,
           );
           break;
         case 'break-end':
           // break 초과 사유 — unpaid_meal 35분 이상이면 서버가 필수로 요구한다.
-          result = await _service.breakEnd(userId: userId, pin: pin, reason: reason);
+          result = await _service.breakEnd(
+            userId: userId,
+            pin: pin,
+            reason: reason,
+            scheduleId: scheduleId,
+          );
           break;
         default:
           return const ClockActionResult(
@@ -393,6 +414,17 @@ class AttendanceDeviceNotifier extends StateNotifier<AttendanceDeviceState> {
   }) async {
     final raw = await _service.getTipEligibleReceivers(userId: userId, pin: pin);
     return raw.map(TipReceiver.fromJson).toList();
+  }
+
+  /// 매장 Manager/SV 목록 — early clock-in "누가 불렀나" 선택지 (계약 §4).
+  ///
+  /// 실패해도 다이얼로그는 열려야 한다 — 호출부가 catch 해서 "직접 입력" 만 남긴다.
+  Future<List<StoreManagerOption>> getStoreManagers({
+    required String userId,
+    required String pin,
+  }) async {
+    final raw = await _service.getStoreManagers(userId: userId, pin: pin);
+    return raw.map(StoreManagerOption.fromJson).toList();
   }
 
   /// 매장 전체 active 직원 — manual receiver 추가 검색용 (L5).

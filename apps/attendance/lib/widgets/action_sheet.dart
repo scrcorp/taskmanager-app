@@ -19,6 +19,7 @@ import '../utils/attendance_action_policy.dart';
 import '../utils/minute_time.dart';
 import '../utils/staff_status_utils.dart';
 import 'identity_confirm_dialog.dart' show localizedBreakLabel, localizedBreakHint;
+import 'shift_summary_card.dart';
 
 /// AttendanceAction → 표시 라벨 + subtitle (l10n).
 ({String label, String sub}) localizedAction(AppL10n t, AttendanceAction a) => switch (a) {
@@ -37,6 +38,13 @@ class ActionSheet extends StatelessWidget {
   /// 매장의 워크인 허용 여부 — 스케줄 없을 때 Clock In 활성화 여부 결정.
   final bool walkInAllowed;
 
+  /// "Not this one" — 후보가 2개 이상일 때만 넘어온다 (D1/D14).
+  /// null 이면 버튼 자체가 없다: 바꿀 대상이 없는데 선택지를 만들면 탭만 는다.
+  final VoidCallback? onChangeShift;
+
+  /// 기기가 보는 영업일 라벨 ("YYYY-MM-DD") — 어제 shift 배지 판단용 (D4).
+  final String? todayOperatingDay;
+
   const ActionSheet({
     super.key,
     required this.user,
@@ -44,11 +52,16 @@ class ActionSheet extends StatelessWidget {
     required this.onCancel,
     this.now,
     this.walkInAllowed = false,
+    this.onChangeShift,
+    this.todayOperatingDay,
   });
 
   @override
   Widget build(BuildContext context) {
     final n = now ?? DateTime.now();
+    // 기본 제시 카드는 **목록 대신** 여기 한 줄로 산다 (D14).
+    // 정상 출근자는 이 카드를 보고 그대로 Clock In 을 누른다 — 탭이 늘지 않는다.
+    final shift = user.selectedItem;
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 720),
@@ -62,6 +75,14 @@ class ActionSheet extends StatelessWidget {
               children: [
                 _Header(userName: user.userName, onCancel: onCancel),
                 const SizedBox(height: 20),
+                if (shift != null) ...[
+                  ShiftSummaryCard(
+                    item: shift,
+                    onChange: onChangeShift,
+                    todayOperatingDay: todayOperatingDay,
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 if (user.todayStatus == 'on_break' && user.currentBreak != null)
                   _BreakInfo(user: user, now: n),
                 if (user.todayStatus == 'on_break' && user.currentBreak != null)
