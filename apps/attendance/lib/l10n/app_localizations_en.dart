@@ -1197,10 +1197,6 @@ class AppL10nEn extends AppL10n {
       'This PIN is already used by an employee at another store. Pick a different number.';
 
   @override
-  String get mgPinErrorConflictPrefix =>
-      'This PIN overlaps with another PIN (numbers that start the same). Pick a different number.';
-
-  @override
   String get mgPinErrorForbidden =>
       'You don\'t have permission to manage PINs.';
 

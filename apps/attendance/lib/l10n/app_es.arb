@@ -504,7 +504,6 @@
   "mgPinErrorTaken": "Este PIN ya está en uso. Introduce otro número.",
   "mgPinErrorConflict": "Este PIN entra en conflicto con el de otro empleado. Introduce otro número.",
   "mgPinErrorConflictOtherStore": "Este PIN ya lo usa un empleado de otra tienda. Elige otro número.",
-  "mgPinErrorConflictPrefix": "Este PIN se solapa con otro PIN (números que empiezan igual). Elige otro número.",
   "mgPinErrorForbidden": "No tienes permiso para gestionar los PIN.",
   "mgPinErrorNotFound": "Este empleado ya no está asignado a esta tienda.",
   "mgPinErrorLoad": "No se pudo cargar la lista de empleados. Desliza hacia abajo para reintentar.",

@@ -144,16 +144,18 @@ class _AttendanceManageStaffPinsScreenState
 
   /// 409 detail 이 구조화된 pin_conflict dict 면 사유별 문구 (2-C).
   /// 서버는 사유 코드만 보내고 타인의 PIN/이름은 싣지 않는다 — 여기서도
-  /// "다른 매장 사용중 / 앞자리 겹침" 수준의 사유만 보여준다.
+  /// "다른 매장에서 사용중" 수준의 사유만 보여준다.
+  ///
+  /// 충돌은 같은 번호 하나뿐이다 (2026-08-13 규칙 개정 — 앞자리가 겹치는
+  /// 다른 길이의 PIN 은 이제 정상 공존한다).
   String _conflictMessageFor(Object e, AppL10n t) {
     final detail = _detailOf(e);
     if (detail is Map && detail['code'] == 'pin_conflict') {
-      if (detail['reason'] == 'prefix') return t.mgPinErrorConflictPrefix;
       if (detail['other_store'] == true) {
         return t.mgPinErrorConflictOtherStore;
       }
     }
-    // dict 가 아니거나(구버전 서버) exact + 같은 매장이면 기존 문구.
+    // dict 가 아니거나(구버전 서버) 같은 매장이면 기존 문구.
     return t.mgPinErrorConflict;
   }
 

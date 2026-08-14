@@ -111,24 +111,6 @@ void main() {
       );
     });
 
-    test('409 pin_conflict(prefix) — reason 구분 보존', () async {
-      adapter.handler = (_) => _json(409, {
-            'detail': {
-              'code': 'pin_conflict',
-              'reason': 'prefix',
-              'other_store': null,
-              'message':
-                  "This PIN overlaps with another employee's PIN (numbers that start the same).",
-            },
-          });
-
-      await expectLater(
-        () => service.updatePin('12345'),
-        throwsA(predicate((e) =>
-            e is PinUpdateException && e.isPinConflict && e.reason == 'prefix')),
-      );
-    });
-
     test('409 detail 이 dict 아님(문자열 fallback) — 빈 detail 로 보존', () async {
       adapter.handler = (_) => _json(409, {'detail': 'Not available'});
 

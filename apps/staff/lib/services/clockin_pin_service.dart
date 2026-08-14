@@ -12,10 +12,12 @@ final clockinPinServiceProvider = Provider<ClockinPinService>((ref) {
 });
 
 /// PIN 저장 실패 (409 충돌 / 422 형식 오류) — 서버 detail(dict)을 보존해
-/// UI 가 사유(exact/prefix)별로 다른 안내를 표시할 수 있게 한다.
+/// UI 가 사유별로 다른 안내를 표시할 수 있게 한다.
 ///
-/// 409 계약: detail = {code: "pin_conflict", reason: "exact"|"prefix",
+/// 409 계약: detail = {code: "pin_conflict", reason: "exact",
 ///           other_store: bool|null, message: "<영어 사유 문장>"}
+/// (reason 은 exact 하나뿐 — 앞자리가 겹치는 다른 길이의 PIN 은 2026-08-13 부터
+///  정상 공존한다.)
 /// 422: FastAPI validation error (detail 이 dict 가 아닐 수 있음 → 빈 맵).
 class PinUpdateException implements Exception {
   /// 409 또는 422
