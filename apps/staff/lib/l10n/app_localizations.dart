@@ -4507,12 +4507,6 @@ abstract class AppL10n {
   /// **'This PIN is already in use by another employee. Enter a different number.'**
   String get myPinConflictInUse;
 
-  /// No description provided for @myPinConflictPrefix.
-  ///
-  /// In en, this message translates to:
-  /// **'This PIN overlaps with another employee\'s PIN (numbers that start the same). Enter a different number.'**
-  String get myPinConflictPrefix;
-
   /// No description provided for @myPinInvalidFormat.
   ///
   /// In en, this message translates to:

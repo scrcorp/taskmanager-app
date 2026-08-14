@@ -1204,10 +1204,6 @@ class AppL10nEs extends AppL10n {
       'Este PIN ya lo usa un empleado de otra tienda. Elige otro número.';
 
   @override
-  String get mgPinErrorConflictPrefix =>
-      'Este PIN se solapa con otro PIN (números que empiezan igual). Elige otro número.';
-
-  @override
   String get mgPinErrorForbidden => 'No tienes permiso para gestionar los PIN.';
 
   @override

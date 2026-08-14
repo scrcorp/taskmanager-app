@@ -2155,12 +2155,6 @@ abstract class AppL10n {
   /// **'This PIN is already used by an employee at another store. Pick a different number.'**
   String get mgPinErrorConflictOtherStore;
 
-  /// No description provided for @mgPinErrorConflictPrefix.
-  ///
-  /// In en, this message translates to:
-  /// **'This PIN overlaps with another PIN (numbers that start the same). Pick a different number.'**
-  String get mgPinErrorConflictPrefix;
-
   /// No description provided for @mgPinErrorForbidden.
   ///
   /// In en, this message translates to:

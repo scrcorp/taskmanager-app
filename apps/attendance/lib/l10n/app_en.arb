@@ -526,7 +526,6 @@
   "mgPinErrorTaken": "This PIN is already in use. Please enter a different number.",
   "mgPinErrorConflict": "This PIN conflicts with another employee's PIN. Please enter a different number.",
   "mgPinErrorConflictOtherStore": "This PIN is already used by an employee at another store. Pick a different number.",
-  "mgPinErrorConflictPrefix": "This PIN overlaps with another PIN (numbers that start the same). Pick a different number.",
   "mgPinErrorForbidden": "You don't have permission to manage PINs.",
   "mgPinErrorNotFound": "This employee is no longer assigned to this store.",
   "mgPinErrorLoad": "Couldn't load the employee list. Pull down to retry.",
