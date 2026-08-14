@@ -1,6 +1,6 @@
 /// 알림 설정 화면
 ///
-/// 카테고리×채널(in-app/email) 격자 토글. 서버가 카테고리 메타를 내려주므로
+/// 카테고리×채널(in-app/email/push) 격자 토글. 서버가 카테고리 메타를 내려주므로
 /// 클라이언트는 받은 그대로 렌더만 한다. Save 시 변경된 카테고리만 PUT.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,7 +21,7 @@ class _AlertSettingsScreenState extends ConsumerState<AlertSettingsScreen> {
   bool _saving = false;
   String? _loadError;
   List<_Category> _categories = const [];
-  // 사용자 변경분 — { code: { in_app: bool?, email: bool? } }
+  // 사용자 변경분 — { code: { in_app: bool?, email: bool?, push: bool? } }
   Map<String, Map<String, bool>> _local = {};
   Map<String, Map<String, bool>> _server = {};
 
@@ -64,6 +64,7 @@ class _AlertSettingsScreenState extends ConsumerState<AlertSettingsScreen> {
         final entry = <String, bool>{};
         if (v['in_app'] is bool) entry['in_app'] = v['in_app'] as bool;
         if (v['email'] is bool) entry['email'] = v['email'] as bool;
+        if (v['push'] is bool) entry['push'] = v['push'] as bool;
         if (entry.isNotEmpty) out[k] = entry;
       }
     });
@@ -94,6 +95,7 @@ class _AlertSettingsScreenState extends ConsumerState<AlertSettingsScreen> {
       if (s == null) return true;
       if (s['in_app'] != entry.value['in_app']) return true;
       if (s['email'] != entry.value['email']) return true;
+      if (s['push'] != entry.value['push']) return true;
     }
     return false;
   }
@@ -209,8 +211,10 @@ class _AlertSettingsScreenState extends ConsumerState<AlertSettingsScreen> {
                   email: _categories[i].emailAvailable
                       ? _isOn(_categories[i].code, 'email')
                       : false,
+                  push: _isOn(_categories[i].code, 'push'),
                   onChangedInApp: (v) => _setChannel(_categories[i].code, 'in_app', v),
                   onChangedEmail: (v) => _setChannel(_categories[i].code, 'email', v),
+                  onChangedPush: (v) => _setChannel(_categories[i].code, 'push', v),
                 ),
               ],
             ],
@@ -312,6 +316,17 @@ class _GridHeader extends StatelessWidget {
               ),
             ),
           ),
+          SizedBox(
+            width: 56,
+            child: Text(
+              t.alertSettingsHeaderPush,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textMuted,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -322,15 +337,19 @@ class _CategoryRow extends StatelessWidget {
   final _Category category;
   final bool inApp;
   final bool email;
+  final bool push;
   final ValueChanged<bool> onChangedInApp;
   final ValueChanged<bool> onChangedEmail;
+  final ValueChanged<bool> onChangedPush;
 
   const _CategoryRow({
     required this.category,
     required this.inApp,
     required this.email,
+    required this.push,
     required this.onChangedInApp,
     required this.onChangedEmail,
+    required this.onChangedPush,
   });
 
   @override
@@ -374,6 +393,15 @@ class _CategoryRow extends StatelessWidget {
                       style: TextStyle(color: AppColors.textMuted, fontSize: 16),
                     ),
             ),
+          ),
+          // 푸시는 전 카테고리 지원 — email 과 달리 '—' 케이스가 없다.
+          SizedBox(
+            width: 56,
+            child: Center(child: Switch(
+              value: push,
+              onChanged: onChangedPush,
+              activeColor: AppColors.accent,
+            )),
           ),
         ],
       ),

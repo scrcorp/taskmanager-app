@@ -320,8 +320,75 @@
     "description": "Section header on the Settings screen grouping general app settings"
   },
   "settingsAvailabilityNotSet": "Not set",
+
   "@settingsAvailabilityNotSet": {
     "description": "Small badge on the Work Availability settings row when availability hasn't been set yet"
+  },
+
+  "settingsAddToHomeScreen": "Add to Home Screen",
+  "@settingsAddToHomeScreen": {
+    "description": "Settings row that installs the web app as a home screen icon. Hidden when already installed"
+  },
+  "addToHomeTitle": "Add HTM to Home Screen",
+  "@addToHomeTitle": {
+    "description": "Title of the sheet explaining how to install the app on iOS"
+  },
+  "addToHomeIntro": "Open HTM straight from your home screen, without the browser address bar.",
+  "@addToHomeIntro": {
+    "description": "Intro line of the Add to Home Screen sheet"
+  },
+  "addToHomeIosStep1": "Tap the Share button at the bottom of the browser.",
+  "@addToHomeIosStep1": {
+    "description": "iOS install instructions, step 1"
+  },
+  "addToHomeIosStep2": "Scroll down and tap \"Add to Home Screen\".",
+  "@addToHomeIosStep2": {
+    "description": "iOS install instructions, step 2"
+  },
+  "addToHomeIosStep3": "Tap \"Add\" in the top right corner.",
+  "@addToHomeIosStep3": {
+    "description": "iOS install instructions, step 3"
+  },
+  "addToHomeInstalled": "HTM was added to your home screen.",
+  "@addToHomeInstalled": {
+    "description": "Toast shown after the browser install prompt is accepted"
+  },
+  "addToHomeUnavailable": "Your browser can't add HTM to the home screen right now.",
+  "@addToHomeUnavailable": {
+    "description": "Error shown when the install prompt is no longer available"
+  },
+
+  "@settingsAvailabilityNotSet": {
+    "description": "Small badge on the Work Availability settings row when availability hasn't been set yet"
+  },
+
+  "settingsPushNotifications": "Push Notifications",
+  "@settingsPushNotifications": {
+    "description": "Settings row toggling browser push notifications"
+  },
+  "pushBlockedNotice": "Blocked in your browser settings. Allow notifications for this site, then reopen the app.",
+  "@pushBlockedNotice": {
+    "description": "Shown under the push row when browser permission is denied. The app cannot reopen the permission prompt"
+  },
+  "pushEnableFailed": "Couldn't turn on push notifications. Please try again.",
+  "@pushEnableFailed": {
+    "description": "Error shown when enabling push fails"
+  },
+  "pushEnabledToast": "Push notifications are on.",
+  "@pushEnabledToast": {
+    "description": "Toast after push is successfully enabled"
+  },
+  "pushSendTest": "Send Test Notification",
+  "@pushSendTest": {
+    "description": "Developer-only settings row that sends a test push to the current user"
+  },
+  "pushTestSent": "Test notification sent.",
+  "@pushTestSent": {
+    "description": "Toast after a test push is dispatched"
+  },
+  "pushTestFailed": "Couldn't send the test notification.",
+  "@pushTestFailed": {
+    "description": "Toast when the test push request fails"
   },
 
   "fieldCurrentPassword": "Current Password",
@@ -383,9 +450,13 @@
   "alertSettingsResetTitle": "Reset to default?",
   "alertSettingsResetMessage": "All categories will be turned back on. You can adjust them again later.",
   "alertSettingsResetButton": "Reset to default",
-  "alertSettingsIntro": "Choose which categories you receive in the app and via email. A dash (—) means email isn't available for that category.",
+  "alertSettingsIntro": "Choose which categories you receive in the app, by email, and as push notifications. A dash (—) means that channel isn't available for the category.",
   "alertSettingsHeaderInApp": "IN-APP",
   "alertSettingsHeaderEmail": "EMAIL",
+  "alertSettingsHeaderPush": "PUSH",
+  "@alertSettingsHeaderPush": {
+    "description": "Column header for the web push channel in the alert settings grid"
+  },
 
   "actionChange": "Change",
   "commonStaff": "Staff",

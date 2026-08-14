@@ -768,6 +768,58 @@ class AppL10nEs extends AppL10n {
   String get settingsAvailabilityNotSet => 'Sin definir';
 
   @override
+  String get settingsAddToHomeScreen => 'Agregar a la pantalla de inicio';
+
+  @override
+  String get addToHomeTitle => 'Agregar HTM a la pantalla de inicio';
+
+  @override
+  String get addToHomeIntro =>
+      'Abre HTM directamente desde tu pantalla de inicio, sin la barra de direcciones del navegador.';
+
+  @override
+  String get addToHomeIosStep1 =>
+      'Toca el botón Compartir en la parte inferior del navegador.';
+
+  @override
+  String get addToHomeIosStep2 =>
+      'Desplázate hacia abajo y toca \"Agregar a inicio\".';
+
+  @override
+  String get addToHomeIosStep3 =>
+      'Toca \"Agregar\" en la esquina superior derecha.';
+
+  @override
+  String get addToHomeInstalled => 'HTM se agregó a tu pantalla de inicio.';
+
+  @override
+  String get addToHomeUnavailable =>
+      'Tu navegador no puede agregar HTM a la pantalla de inicio en este momento.';
+
+  @override
+  String get settingsPushNotifications => 'Notificaciones push';
+
+  @override
+  String get pushBlockedNotice =>
+      'Bloqueadas en la configuración de tu navegador. Permite las notificaciones para este sitio y vuelve a abrir la app.';
+
+  @override
+  String get pushEnableFailed =>
+      'No se pudieron activar las notificaciones push. Inténtalo de nuevo.';
+
+  @override
+  String get pushEnabledToast => 'Las notificaciones push están activadas.';
+
+  @override
+  String get pushSendTest => 'Enviar notificación de prueba';
+
+  @override
+  String get pushTestSent => 'Notificación de prueba enviada.';
+
+  @override
+  String get pushTestFailed => 'No se pudo enviar la notificación de prueba.';
+
+  @override
   String get fieldCurrentPassword => 'Contraseña actual';
 
   @override
@@ -923,13 +975,16 @@ class AppL10nEs extends AppL10n {
 
   @override
   String get alertSettingsIntro =>
-      'Elige qué categorías recibes en la app y por correo. Un guion (—) indica que el correo no está disponible.';
+      'Elige qué categorías recibes en la app, por correo y como notificaciones push. Un guion (—) indica que ese canal no está disponible.';
 
   @override
   String get alertSettingsHeaderInApp => 'APP';
 
   @override
   String get alertSettingsHeaderEmail => 'CORREO';
+
+  @override
+  String get alertSettingsHeaderPush => 'PUSH';
 
   @override
   String get actionChange => 'Cambiar';
