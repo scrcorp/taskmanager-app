@@ -179,4 +179,78 @@ void main() {
     expect(find.text('MEAL BREAK (UNPAID)'), findsOneWidget);
     expect(find.text('18m elapsed'), findsOneWidget);
   });
+
+  // ── shift 기본 제시 (페이즈 ④) ──────────────────────────────────────────
+  //
+  // 카드가 여기 사는 이유: 목록을 먼저 띄우면 정상 출근자의 탭이 는다(D14).
+  // 기본값 하나를 액션 화면 안에 얹고, 아니면 "Not this one" 으로 바꾸게 한다.
+
+  testWidgets('선택된 shift 가 있으면 시간대 + 프리뷰 카드가 액션 위에 뜬다', (tester) async {
+    await _useTabletSurface(tester);
+    await tester.pumpWidget(wrapForTest(ActionSheet(
+      user: _userWithShifts(),
+      onPick: (_) {},
+      onCancel: () {},
+    )));
+
+    expect(find.text('09:00 – 13:00'), findsOneWidget);
+    expect(find.text('3h 12m late'), findsOneWidget);
+  });
+
+  testWidgets('onChangeShift 가 없으면 "Not this one" 버튼도 없다 (후보 1개)',
+      (tester) async {
+    await _useTabletSurface(tester);
+    await tester.pumpWidget(wrapForTest(ActionSheet(
+      user: _userWithShifts(),
+      onPick: (_) {},
+      onCancel: () {},
+    )));
+
+    expect(find.text('Not this one'), findsNothing);
+  });
+
+  testWidgets('"Not this one" → onChangeShift 호출 (그때서야 목록이 열린다)',
+      (tester) async {
+    await _useTabletSurface(tester);
+    var changed = 0;
+    await tester.pumpWidget(wrapForTest(ActionSheet(
+      user: _userWithShifts(),
+      onPick: (_) {},
+      onCancel: () {},
+      onChangeShift: () => changed++,
+    )));
+
+    await tester.tap(find.text('Not this one'));
+    await tester.pump();
+    expect(changed, 1);
+  });
+
+  testWidgets('shift 정보가 없으면 카드 자체가 없다 (워크인 경로)', (tester) async {
+    await _useTabletSurface(tester);
+    await tester.pumpWidget(wrapForTest(ActionSheet(
+      user: _user(status: null),
+      onPick: (_) {},
+      onCancel: () {},
+    )));
+
+    expect(find.text('YOUR SHIFT'), findsNothing);
+  });
+}
+
+/// 선택된 shift 를 가진 사용자 — identify 응답 + withSelectedSchedule 결과 모양.
+IdentifyResponse _userWithShifts() {
+  const item = TodayAttendanceItem(
+    scheduleId: 's1',
+    status: 'no_show',
+    scheduledStartDisplay: '09:00',
+    scheduledEndDisplay: '13:00',
+    clockInPreview: ClockInPreview(kind: 'late', minutesLate: 192),
+  );
+  return const IdentifyResponse(
+    userId: 'u1',
+    userName: 'Marcus Lee',
+    todayStatus: 'no_show',
+    todayAttendances: [item],
+    selectedScheduleId: 's1',
+  ).withSelectedSchedule(item);
 }

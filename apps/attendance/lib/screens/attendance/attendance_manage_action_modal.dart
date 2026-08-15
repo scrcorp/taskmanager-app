@@ -269,6 +269,7 @@ class _AttendanceManageActionModalState
         case AdminAction.break10min:
           await service.manageClockAction(
             userId: widget.row.userId,
+            scheduleId: widget.row.scheduleId,
             action: 'break_start',
             breakType: 'paid_10min',
             reason: reason,
@@ -277,6 +278,7 @@ class _AttendanceManageActionModalState
         case AdminAction.breakMeal:
           await service.manageClockAction(
             userId: widget.row.userId,
+            scheduleId: widget.row.scheduleId,
             action: 'break_start',
             breakType: 'unpaid_meal',
             reason: reason,
@@ -285,6 +287,7 @@ class _AttendanceManageActionModalState
         case AdminAction.endBreak:
           await service.manageClockAction(
             userId: widget.row.userId,
+            scheduleId: widget.row.scheduleId,
             action: 'break_end',
             reason: reason,
           );
@@ -292,6 +295,7 @@ class _AttendanceManageActionModalState
         case AdminAction.undoClockIn:
           await service.manageClockAction(
             userId: widget.row.userId,
+            scheduleId: widget.row.scheduleId,
             action: 'cancel_clock_in',
             reason: reason,
           );
@@ -299,6 +303,7 @@ class _AttendanceManageActionModalState
         case AdminAction.reopenShift:
           await service.manageClockAction(
             userId: widget.row.userId,
+            scheduleId: widget.row.scheduleId,
             action: 'cancel_clock_out',
             reason: reason,
           );

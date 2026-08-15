@@ -11,13 +11,48 @@ void main() {
       expect(canSubmitEarlyClockIn(null, 'anything'), isFalse);
     });
 
-    test('프리셋 선택 → detail 없어도 true', () {
+    test('요청자 없는 프리셋 → detail 없어도 true', () {
       expect(
-        canSubmitEarlyClockIn(EarlyClockInReason.askedToComeEarly, ''),
+        canSubmitEarlyClockIn(EarlyClockInReason.coveringForSomeone, ''),
         isTrue,
       );
       expect(
-        canSubmitEarlyClockIn(EarlyClockInReason.coveringForSomeone, ''),
+        canSubmitEarlyClockIn(EarlyClockInReason.storeNeedsHelp, ''),
+        isTrue,
+      );
+    });
+
+    test('"불려서 왔다" + 요청자 미지정 → false (이 항목의 존재 이유가 대상자다)', () {
+      expect(
+        canSubmitEarlyClockIn(EarlyClockInReason.askedToComeEarly, ''),
+        isFalse,
+      );
+      // 직접 입력을 골라놓고 이름을 안 적은 경우도 같다.
+      expect(
+        canSubmitEarlyClockIn(
+          EarlyClockInReason.askedToComeEarly,
+          '',
+          requester: const EarlyRequester(name: '   '),
+        ),
+        isFalse,
+      );
+    });
+
+    test('"불려서 왔다" + 요청자 지정 → true (목록/직접 입력 둘 다)', () {
+      expect(
+        canSubmitEarlyClockIn(
+          EarlyClockInReason.askedToComeEarly,
+          '',
+          requester: const EarlyRequester(name: 'John Kim', userId: 'u-1'),
+        ),
+        isTrue,
+      );
+      expect(
+        canSubmitEarlyClockIn(
+          EarlyClockInReason.askedToComeEarly,
+          '',
+          requester: const EarlyRequester(name: 'Sam from HQ'),
+        ),
         isTrue,
       );
     });
@@ -38,8 +73,38 @@ void main() {
   group('earlyClockInReasonToSubmit', () {
     test('프리셋 → 라벨 텍스트를 그대로 보낸다 (서버가 자유 문자열로 기록)', () {
       expect(
-        earlyClockInReasonToSubmit(EarlyClockInReason.askedToComeEarly, ''),
-        'Asked to come in early',
+        earlyClockInReasonToSubmit(EarlyClockInReason.coveringForSomeone, ''),
+        'Covering for someone',
+      );
+    });
+
+    test('"불려서 왔다" → 괄호 안에 이름 (계약 §2.2, 항상 영어)', () {
+      expect(
+        earlyClockInReasonToSubmit(
+          EarlyClockInReason.askedToComeEarly,
+          '',
+          requester: const EarlyRequester(name: 'John Kim', userId: 'u-1'),
+        ),
+        'Asked to come in early (John Kim)',
+      );
+      expect(
+        earlyClockInReasonToSubmit(
+          EarlyClockInReason.askedToComeEarly,
+          '',
+          requester: const EarlyRequester(name: '  Sam from HQ  '),
+        ),
+        'Asked to come in early (Sam from HQ)',
+      );
+    });
+
+    test('D10 — 다른 프리셋엔 대상자를 붙이지 않는다', () {
+      expect(
+        earlyClockInReasonToSubmit(
+          EarlyClockInReason.coveringForSomeone,
+          '',
+          requester: const EarlyRequester(name: 'John Kim', userId: 'u-1'),
+        ),
+        'Covering for someone',
       );
     });
 
@@ -48,6 +113,47 @@ void main() {
         earlyClockInReasonToSubmit(EarlyClockInReason.other, '  Bus early  '),
         'Bus early',
       );
+    });
+  });
+
+  group('earlyClockInRequestedBy', () {
+    test('목록에서 고른 사람만 id 를 보낸다', () {
+      expect(
+        earlyClockInRequestedBy(
+          EarlyClockInReason.askedToComeEarly,
+          requester: const EarlyRequester(name: 'John Kim', userId: 'u-1'),
+        ),
+        'u-1',
+      );
+    });
+
+    test('"직접 입력" 은 id 를 보내지 않는다 (명단 밖 사람이라 id 가 없다, D9)', () {
+      expect(
+        earlyClockInRequestedBy(
+          EarlyClockInReason.askedToComeEarly,
+          requester: const EarlyRequester(name: 'Sam from HQ'),
+        ),
+        isNull,
+      );
+    });
+
+    test('다른 프리셋은 id 를 보내지 않는다 (서버가 조용히 무시할 값을 안 만든다)', () {
+      expect(
+        earlyClockInRequestedBy(
+          EarlyClockInReason.coveringForSomeone,
+          requester: const EarlyRequester(name: 'John Kim', userId: 'u-1'),
+        ),
+        isNull,
+      );
+      expect(earlyClockInRequestedBy(EarlyClockInReason.other), isNull);
+    });
+  });
+
+  group('EarlyRequester.withoutId', () {
+    test('이름은 남기고 id 만 뗀다 (invalid_reason_user 재시도)', () {
+      const r = EarlyRequester(name: 'John Kim', userId: 'u-1');
+      expect(r.withoutId.name, 'John Kim');
+      expect(r.withoutId.userId, isNull);
     });
   });
 

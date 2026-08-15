@@ -4,6 +4,7 @@
 /// 분리. admin /settings 와 같은 패턴.
 ///
 /// 항목:
+/// - Add to Home Screen (설치 안 된 웹에서만 노출)
 /// - Alert Settings → /my/alert-settings
 /// - Edit Username (dialog)
 /// - Preferred Language (bottom sheet picker) — 즉시 LocaleNotifier 반영
@@ -18,6 +19,8 @@ import '../../l10n/app_localizations.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/availability_provider.dart';
 import '../../providers/locale_provider.dart';
+import '../../services/pwa_install_service.dart';
+import '../../services/push_service.dart';
 import '../../utils/toast_manager.dart';
 import '../../widgets/app_header.dart';
 import '../../widgets/availability_strip.dart';
@@ -30,6 +33,143 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  static const _pwa = PwaInstallService();
+
+  /// "Add to Home Screen" 행 노출 방식. hidden 이면 행 자체를 그리지 않는다.
+  /// 이미 설치됐거나 네이티브 빌드면 hidden.
+  PwaInstallMode _installMode = PwaInstallMode.hidden;
+
+  /// 푸시 상태 — 브라우저 권한 + 살아있는 구독을 대조해서 얻는다.
+  /// unsupported 면 관련 행을 아예 그리지 않는다.
+  PushState _pushState = PushState.unsupported;
+  bool _pushBusy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _installMode = _pwa.mode;
+    Future.microtask(_refreshPushState);
+  }
+
+  Future<void> _refreshPushState() async {
+    final state = await ref.read(pushServiceProvider).reconcile();
+    if (!mounted) return;
+    setState(() => _pushState = state);
+  }
+
+  /// 푸시 토글. 켤 때는 권한 팝업이 뜰 수 있어 반드시 탭 핸들러에서 바로 호출한다.
+  Future<void> _onTogglePush(bool turnOn) async {
+    if (_pushBusy) return;
+    final t = AppL10n.of(context);
+    final service = ref.read(pushServiceProvider);
+    setState(() => _pushBusy = true);
+    try {
+      if (turnOn) {
+        final ok = await service.enable();
+        if (!mounted) return;
+        if (!ok) {
+          // 거부/실패 — 실제 상태를 다시 읽어 blocked 인지 구분해 보여준다.
+          ToastManager().error(context, t.pushEnableFailed);
+        } else {
+          ToastManager().success(context, t.pushEnabledToast);
+        }
+      } else {
+        await service.disable();
+      }
+    } finally {
+      if (mounted) setState(() => _pushBusy = false);
+    }
+    await _refreshPushState();
+  }
+
+  Future<void> _onSendTestPush() async {
+    final t = AppL10n.of(context);
+    try {
+      await ref.read(pushServiceProvider).sendTest();
+      if (!mounted) return;
+      ToastManager().success(context, t.pushTestSent);
+    } catch (_) {
+      if (!mounted) return;
+      ToastManager().error(context, t.pushTestFailed);
+    }
+  }
+
+  /// "Add to Home Screen" 탭 처리.
+  ///
+  /// iOS 는 설치 API 가 없어 수동 안내 시트를, Chrome 계열은 네이티브 설치창을 띄운다.
+  /// 반드시 탭 핸들러 안에서 바로 호출해야 한다 — 브라우저가 사용자 제스처 밖의
+  /// 설치 프롬프트를 무시하기 때문.
+  Future<void> _onAddToHomeScreen() async {
+    if (_installMode == PwaInstallMode.iosManual) {
+      await _showIosInstallSheet();
+      return;
+    }
+    final t = AppL10n.of(context);
+    final result = await _pwa.promptInstall();
+    if (!mounted) return;
+    if (result == PwaInstallResult.accepted) {
+      ToastManager().success(context, t.addToHomeInstalled);
+    } else if (result == PwaInstallResult.unavailable) {
+      ToastManager().error(context, t.addToHomeUnavailable);
+    }
+    // dismissed(사용자 취소)는 조용히 넘어간다.
+    // 프롬프트는 1회용이므로 소비된 뒤 상태를 다시 읽어 행을 갱신한다.
+    setState(() => _installMode = _pwa.mode);
+  }
+
+  /// iOS 수동 설치 안내 시트 — 공유 → 홈 화면에 추가 3단계.
+  Future<void> _showIosInstallSheet() async {
+    final t = AppL10n.of(context);
+    await showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                      color: AppColors.border,
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              Text(t.addToHomeTitle,
+                  style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.text)),
+              const SizedBox(height: 8),
+              Text(t.addToHomeIntro,
+                  style: const TextStyle(
+                      fontSize: 13, color: AppColors.textSecondary, height: 1.4)),
+              const SizedBox(height: 16),
+              _InstallStep(number: 1, text: t.addToHomeIosStep1, icon: Icons.ios_share),
+              _InstallStep(number: 2, text: t.addToHomeIosStep2, icon: Icons.add_box_outlined),
+              _InstallStep(number: 3, text: t.addToHomeIosStep3),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: Text(t.actionClose),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   String _languageLabel(String? code) {
     switch (code) {
       case 'es':
@@ -183,10 +323,35 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     child: Column(
                       children: [
+                        // 설치 가능할 때만 노출 — 설치되면 사라진다.
+                        if (_installMode != PwaInstallMode.hidden) ...[
+                          _SettingsItem(
+                            label: t.settingsAddToHomeScreen,
+                            onTap: _onAddToHomeScreen,
+                          ),
+                          const Divider(height: 1, color: AppColors.border),
+                        ],
                         _SettingsItem(
                           label: t.settingsAlertSettings,
                           onTap: () => context.push('/my/alert-settings'),
                         ),
+                        // 푸시는 브라우저가 지원할 때만 노출. 차단 상태면 토글 대신
+                        // 안내문을 보여준다 — 앱에서 권한 팝업을 되살릴 방법이 없다.
+                        if (_pushState != PushState.unsupported) ...[
+                          const Divider(height: 1, color: AppColors.border),
+                          _PushSettingsRow(
+                            state: _pushState,
+                            busy: _pushBusy,
+                            onChanged: _onTogglePush,
+                          ),
+                          if (_pushState == PushState.enabled) ...[
+                            const Divider(height: 1, color: AppColors.border),
+                            _SettingsItem(
+                              label: t.pushSendTest,
+                              onTap: _onSendTestPush,
+                            ),
+                          ],
+                        ],
                         const Divider(height: 1, color: AppColors.border),
                         _SettingsItem(
                           label: t.settingsEditUsername,
@@ -222,6 +387,109 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// iOS 설치 안내 시트의 단계 한 줄 — 번호 배지 + 설명(+ 해당 단계의 아이콘).
+class _InstallStep extends StatelessWidget {
+  final int number;
+  final String text;
+  final IconData? icon;
+  const _InstallStep({required this.number, required this.text, this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 22,
+            height: 22,
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+                color: AppColors.accentBg, shape: BoxShape.circle),
+            child: Text('$number',
+                style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.accent)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(text,
+                style: const TextStyle(
+                    fontSize: 14, color: AppColors.text, height: 1.4)),
+          ),
+          if (icon != null) ...[
+            const SizedBox(width: 8),
+            Icon(icon, size: 18, color: AppColors.textSecondary),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// 푸시 알림 설정 행 — 토글 + (차단 시) 복구 안내.
+///
+/// 토글만 두면 "켜져 있는데 왜 안 와요" 문의가 생긴다. 브라우저가 차단한
+/// 상태를 반드시 눈에 보이게 알려줘야 한다.
+class _PushSettingsRow extends StatelessWidget {
+  final PushState state;
+  final bool busy;
+  final ValueChanged<bool> onChanged;
+
+  const _PushSettingsRow({
+    required this.state,
+    required this.busy,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppL10n.of(context);
+    final blocked = state == PushState.blocked;
+    final on = state == PushState.enabled;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(t.settingsPushNotifications,
+                    style: const TextStyle(fontSize: 15, color: AppColors.text)),
+              ),
+              if (busy)
+                const SizedBox(
+                  width: 20, height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                Switch(
+                  value: on,
+                  // 차단 상태에서는 토글을 잠근다 — 눌러도 팝업이 안 뜨므로
+                  // 조작 가능한 것처럼 보이면 안 된다.
+                  onChanged: blocked ? null : onChanged,
+                ),
+            ],
+          ),
+          if (blocked)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8, right: 40),
+              child: Text(
+                t.pushBlockedNotice,
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.warning, height: 1.4),
+              ),
+            ),
         ],
       ),
     );

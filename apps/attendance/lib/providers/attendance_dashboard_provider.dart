@@ -55,6 +55,11 @@ class TodayStaffRow {
   final int paidBreakMinutes;
   final int unpaidBreakMinutes;
 
+  /// shift 단위 식별자. row 는 사람이 아니라 **shift** 단위라 userId 로 식별하면
+  /// 하루 2 shift 인 사람의 두 행이 같은 것으로 취급된다 (선택 시 둘 다 하이라이트,
+  /// 상세는 앞엣것만, patch 는 첫 행만 갱신). scheduleId 가 없는 예외 행만 userId 로 떨어진다.
+  String get shiftKey => scheduleId ?? 'user:$userId';
+
   const TodayStaffRow({
     required this.userId,
     required this.userName,
@@ -269,13 +274,17 @@ class AttendanceDashboardNotifier
     }
   }
 
-  /// 해당 user 의 row 를 응답 row 로 교체 (refresh 호출 없이 즉시 반영).
+  /// 해당 **shift** 의 row 를 응답 row 로 교체 (refresh 호출 없이 즉시 반영).
   ///
   /// Issue 3 트랙 A: clock action 응답을 그대로 활용해 dashboard state 만 patch.
   /// 폴링/refresh 호출 없음 — 폴링은 multi-device sync backstop 으로만 유지.
-  /// row.userId 가 staff list 에 없으면 무시 (안전망 — 다음 polling tick 에 들어옴).
-  void patchStaffByUserId(TodayStaffRow row) {
-    final idx = state.staff.indexWhere((r) => r.userId == row.userId);
+  ///
+  /// 식별은 [TodayStaffRow.shiftKey] 로 한다. 예전엔 userId 로 찾아서 하루 2 shift 인
+  /// 사람의 **첫 행만** 교체됐고, 두 번째 shift 의 clock 이벤트가 앞 행에 잘못 반영됐다.
+  /// 매칭되는 shift 가 없으면 무시한다 (안전망 — 다음 polling tick 에 들어옴).
+  /// 워크인 재출근처럼 서버가 새 schedule 을 만든 경우도 여기 해당하며, polling 이 받는다.
+  void patchStaffRow(TodayStaffRow row) {
+    final idx = state.staff.indexWhere((r) => r.shiftKey == row.shiftKey);
     if (idx < 0) return;
     final next = List<TodayStaffRow>.of(state.staff);
     next[idx] = row;

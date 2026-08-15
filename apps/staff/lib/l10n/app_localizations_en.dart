@@ -756,6 +756,56 @@ class AppL10nEn extends AppL10n {
   String get settingsAvailabilityNotSet => 'Not set';
 
   @override
+  String get settingsAddToHomeScreen => 'Add to Home Screen';
+
+  @override
+  String get addToHomeTitle => 'Add HTM to Home Screen';
+
+  @override
+  String get addToHomeIntro =>
+      'Open HTM straight from your home screen, without the browser address bar.';
+
+  @override
+  String get addToHomeIosStep1 =>
+      'Tap the Share button at the bottom of the browser.';
+
+  @override
+  String get addToHomeIosStep2 => 'Scroll down and tap \"Add to Home Screen\".';
+
+  @override
+  String get addToHomeIosStep3 => 'Tap \"Add\" in the top right corner.';
+
+  @override
+  String get addToHomeInstalled => 'HTM was added to your home screen.';
+
+  @override
+  String get addToHomeUnavailable =>
+      'Your browser can\'t add HTM to the home screen right now.';
+
+  @override
+  String get settingsPushNotifications => 'Push Notifications';
+
+  @override
+  String get pushBlockedNotice =>
+      'Blocked in your browser settings. Allow notifications for this site, then reopen the app.';
+
+  @override
+  String get pushEnableFailed =>
+      'Couldn\'t turn on push notifications. Please try again.';
+
+  @override
+  String get pushEnabledToast => 'Push notifications are on.';
+
+  @override
+  String get pushSendTest => 'Send Test Notification';
+
+  @override
+  String get pushTestSent => 'Test notification sent.';
+
+  @override
+  String get pushTestFailed => 'Couldn\'t send the test notification.';
+
+  @override
   String get fieldCurrentPassword => 'Current Password';
 
   @override
@@ -910,13 +960,16 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get alertSettingsIntro =>
-      'Choose which categories you receive in the app and via email. A dash (—) means email isn\'t available for that category.';
+      'Choose which categories you receive in the app, by email, and as push notifications. A dash (—) means that channel isn\'t available for the category.';
 
   @override
   String get alertSettingsHeaderInApp => 'IN-APP';
 
   @override
   String get alertSettingsHeaderEmail => 'EMAIL';
+
+  @override
+  String get alertSettingsHeaderPush => 'PUSH';
 
   @override
   String get actionChange => 'Change';

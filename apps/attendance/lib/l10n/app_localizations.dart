@@ -1813,6 +1813,180 @@ abstract class AppL10n {
   /// **'Submit & Clock In'**
   String get pfEarlyInSubmit;
 
+  /// No description provided for @pfEarlyInWhoAsked.
+  ///
+  /// In en, this message translates to:
+  /// **'Who asked you to come in early?'**
+  String get pfEarlyInWhoAsked;
+
+  /// No description provided for @pfEarlyInManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Someone else'**
+  String get pfEarlyInManual;
+
+  /// No description provided for @pfEarlyInManualHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Name of the person who asked'**
+  String get pfEarlyInManualHint;
+
+  /// No description provided for @pfEarlyInManagersLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading managers...'**
+  String get pfEarlyInManagersLoading;
+
+  /// No description provided for @pfEarlyInManagersEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No managers listed for this store. Enter the name below.'**
+  String get pfEarlyInManagersEmpty;
+
+  /// No description provided for @pfEarlyInManagersFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load the manager list. Enter the name below.'**
+  String get pfEarlyInManagersFailed;
+
+  /// No description provided for @pfEarlyInRequesterDropped.
+  ///
+  /// In en, this message translates to:
+  /// **'We could not match that person, so only the name was saved.'**
+  String get pfEarlyInRequesterDropped;
+
+  /// No description provided for @pfShiftCardHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'YOUR SHIFT'**
+  String get pfShiftCardHeader;
+
+  /// No description provided for @pfShiftTimeRange.
+  ///
+  /// In en, this message translates to:
+  /// **'{start} – {end}'**
+  String pfShiftTimeRange(String start, String end);
+
+  /// No description provided for @pfShiftTimeUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Time not set'**
+  String get pfShiftTimeUnknown;
+
+  /// No description provided for @pfShiftNotThisOne.
+  ///
+  /// In en, this message translates to:
+  /// **'Not this one'**
+  String get pfShiftNotThisOne;
+
+  /// No description provided for @pfShiftPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Which shift are you clocking in for?'**
+  String get pfShiftPickerTitle;
+
+  /// No description provided for @pfShiftPickerBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the shift you are starting now. What you pick is what gets recorded.'**
+  String get pfShiftPickerBody;
+
+  /// No description provided for @pfShiftPickerCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get pfShiftPickerCancel;
+
+  /// No description provided for @pfShiftOnTime.
+  ///
+  /// In en, this message translates to:
+  /// **'On time'**
+  String get pfShiftOnTime;
+
+  /// No description provided for @pfShiftLate.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} late'**
+  String pfShiftLate(String duration);
+
+  /// No description provided for @pfShiftEarly.
+  ///
+  /// In en, this message translates to:
+  /// **'{duration} early'**
+  String pfShiftEarly(String duration);
+
+  /// No description provided for @pfShiftReasonRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Reason required'**
+  String get pfShiftReasonRequired;
+
+  /// No description provided for @pfShiftAlreadyDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Already done'**
+  String get pfShiftAlreadyDone;
+
+  /// No description provided for @pfShiftClockedIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Clocked in'**
+  String get pfShiftClockedIn;
+
+  /// No description provided for @pfShiftYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get pfShiftYesterday;
+
+  /// No description provided for @pfShiftNotAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'That shift is no longer available. Pick another one.'**
+  String get pfShiftNotAvailable;
+
+  /// No description provided for @pfOverlapConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You are still clocked in'**
+  String get pfOverlapConfirmTitle;
+
+  /// No description provided for @pfOverlapConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You have not clocked out of another shift yet. Clock in to this one anyway?'**
+  String get pfOverlapConfirmBody;
+
+  /// No description provided for @pfOverlapConfirmShift.
+  ///
+  /// In en, this message translates to:
+  /// **'Still open: {start} – {end}'**
+  String pfOverlapConfirmShift(String start, String end);
+
+  /// No description provided for @pfOverlapConfirmYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Clock in anyway'**
+  String get pfOverlapConfirmYes;
+
+  /// No description provided for @pfOverlapConfirmNo.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get pfOverlapConfirmNo;
+
+  /// No description provided for @pfOverlapNoticeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You are clocked in to two shifts.'**
+  String get pfOverlapNoticeTitle;
+
+  /// No description provided for @pfOverlapNoticeBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell your manager to fix one of them.'**
+  String get pfOverlapNoticeBody;
+
   /// No description provided for @pfTipHeader.
   ///
   /// In en, this message translates to:
