@@ -23,6 +23,14 @@ jobs:
       - run: flutter pub get
       - run: flutter build web --release --dart-define=API_BASE_URL=https://stg-api.hermesops.site/api/v1 --dart-define=SITE_BASE_URL=https://stg.hermesops.site --dart-define=APP_ENV=staging
 
+      # 홈 화면 표시 이름 "HTM-STG" + 아이콘에 STG 배지.
+      # manifest/index.html 은 정적 파일이라 --dart-define 으로 못 바꾼다 — 빌드 후에 찍는다.
+      # prod 워크플로에는 이 단계가 없다(무라벨로 나가야 하므로).
+      # --require-badge: 폰트/Pillow 가 없으면 실패시킨다. 배지 없이 배포되면
+      # 폰에서 staging 과 prod 아이콘이 똑같아져 잘못된 환경을 테스트하게 된다.
+      - run: pip install --quiet Pillow
+      - run: ./tool/stamp-web-name.sh STG build/web --require-badge
+
       - uses: aws-actions/configure-aws-credentials@v5
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}

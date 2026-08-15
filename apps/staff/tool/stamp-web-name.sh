@@ -1,9 +1,13 @@
 #!/bin/bash
 # stamp-web-name.sh — 웹 빌드 산출물의 PWA 표시 이름에 접미사를 붙인다.
 #
-# 사용법: ./tool/stamp-web-name.sh <suffix> [build-dir]
+# 사용법: ./tool/stamp-web-name.sh <suffix> [build-dir] [--require-badge]
 # 예시:   ./tool/stamp-web-name.sh w5        → 홈 화면 아이콘 이름 "HTM-w5"
-#         ./tool/stamp-web-name.sh stg       → "HTM-stg"
+#         ./tool/stamp-web-name.sh STG       → "HTM-STG"
+#
+# --require-badge: 아이콘 배지를 못 찍으면 실패로 끝낸다(exit 1).
+#   CI 에서 쓴다 — 러너에 Pillow/폰트가 없으면 배지 없는 빌드가 조용히 배포되어
+#   staging 이 prod 와 구분 안 되는 상태로 나간다. 그건 경고가 아니라 실패다.
 #
 # 왜 필요한가:
 #   홈 화면 아이콘 이름은 manifest.json 과 apple-mobile-web-app-title 에서 온다.
@@ -17,11 +21,25 @@
 #       "HTM" 그대로 두어야 prod 빌드가 접미사 없이 나간다.
 set -euo pipefail
 
-SUFFIX="${1:-}"
-BUILD_DIR="${2:-build/web}"
+SUFFIX=""
+BUILD_DIR=""
+REQUIRE_BADGE=0
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --require-badge) REQUIRE_BADGE=1 ;;
+        -*) echo "Unknown flag: $1"; exit 1 ;;
+        *)
+            if [ -z "$SUFFIX" ]; then SUFFIX="$1"
+            elif [ -z "$BUILD_DIR" ]; then BUILD_DIR="$1"
+            else echo "Unexpected arg: $1"; exit 1; fi
+            ;;
+    esac
+    shift
+done
+BUILD_DIR="${BUILD_DIR:-build/web}"
 
 if [ -z "$SUFFIX" ]; then
-    sed -n '2,20p' "$0"
+    sed -n '2,24p' "$0"
     exit 1
 fi
 
@@ -87,6 +105,11 @@ find_python_with_pil() {
 
 if PY="$(find_python_with_pil)"; then
     "$PY" "$BADGE_SCRIPT" "$SUFFIX" "$BUILD_DIR"
+elif [ "$REQUIRE_BADGE" -eq 1 ]; then
+    echo "ERROR: Pillow 가 있는 python 을 못 찾았다 — --require-badge 이므로 중단한다."
+    echo "       배지 없는 빌드가 나가면 staging 을 prod 와 구분할 수 없다."
+    echo "       CI 라면 'pip install Pillow' 단계를 확인할 것."
+    exit 1
 else
     echo "WARN: Pillow 가 있는 python 을 못 찾아 아이콘 배지는 건너뛴다."
     echo "      (이름 변경은 적용됨. PYTHON=/path/to/python 으로 지정 가능)"

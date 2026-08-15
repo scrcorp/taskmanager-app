@@ -17,10 +17,17 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
+# macOS(로컬 빌드) 와 Linux(GitHub Actions ubuntu 러너) 양쪽을 커버해야 한다.
+# CI 에서 폰트를 못 찾으면 배지 없이 배포되므로 Linux 경로를 반드시 포함할 것.
 FONT_CANDIDATES = [
+    # macOS
     "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
     "/System/Library/Fonts/Supplemental/Verdana Bold.ttf",
     "/System/Library/Fonts/Helvetica.ttc",
+    # Linux (ubuntu-latest 는 fonts-dejavu-core 가 기본 포함)
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+    "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
 ]
 
 # 배지를 새길 대상. inset = 아이콘 크기 대비 안쪽 여백 비율
@@ -40,12 +47,27 @@ TEXT_WIDTH_RATIO = 0.86      # 바 너비 대비 글자 폭 목표
 
 
 def load_font(size: int) -> ImageFont.FreeTypeFont:
-    for path in FONT_CANDIDATES:
+    for path in _font_paths():
         try:
             return ImageFont.truetype(path, size)
         except Exception:
             continue
-    raise RuntimeError(f"사용 가능한 폰트를 찾지 못했다: {FONT_CANDIDATES}")
+    raise RuntimeError(
+        "사용 가능한 볼드 폰트를 찾지 못했다. 후보: " + ", ".join(FONT_CANDIDATES)
+    )
+
+
+def _font_paths() -> list[str]:
+    """고정 후보 → 시스템 폰트 디렉토리 탐색 순.
+
+    배포 러너 이미지가 바뀌어도 배지가 조용히 빠지지 않도록 마지막에 훑는다.
+    """
+    paths = list(FONT_CANDIDATES)
+    for root in ("/usr/share/fonts", "/usr/local/share/fonts"):
+        base = Path(root)
+        if base.is_dir():
+            paths.extend(sorted(str(p) for p in base.rglob("*Bold*.ttf")))
+    return paths
 
 
 def fit_font(text: str, max_w: int, max_h: int) -> ImageFont.FreeTypeFont:
