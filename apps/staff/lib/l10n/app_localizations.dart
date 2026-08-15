@@ -1531,6 +1531,18 @@ abstract class AppL10n {
   /// **'Couldn\'t send the test notification.'**
   String get pushTestFailed;
 
+  /// Toast when the test push succeeded as a request but the server had no push subscription for this user
+  ///
+  /// In en, this message translates to:
+  /// **'No device is registered. Turn push off and on again, then retry.'**
+  String get pushTestNoDevice;
+
+  /// Toast when the push relay refused every registered device
+  ///
+  /// In en, this message translates to:
+  /// **'The notification service rejected the delivery. Turn push off and on again, then retry.'**
+  String get pushTestRejected;
+
   /// No description provided for @fieldCurrentPassword.
   ///
   /// In en, this message translates to:

@@ -390,6 +390,14 @@
   "@pushTestFailed": {
     "description": "Toast when the test push request fails"
   },
+  "pushTestNoDevice": "No device is registered. Turn push off and on again, then retry.",
+  "@pushTestNoDevice": {
+    "description": "Toast when the test push succeeded as a request but the server had no push subscription for this user"
+  },
+  "pushTestRejected": "The notification service rejected the delivery. Turn push off and on again, then retry.",
+  "@pushTestRejected": {
+    "description": "Toast when the push relay refused every registered device"
+  },
 
   "fieldCurrentPassword": "Current Password",
   "fieldConfirmNewPassword": "Confirm New Password",

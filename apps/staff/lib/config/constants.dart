@@ -28,4 +28,13 @@ class AppConstants {
 
   /// 홈페이지 공개 changelog(What's New) 전체 URL.
   static String get changelogUrl => '$siteBaseUrl/changelog';
+
+  /// 배포 환경 — 빌드 환경변수 `APP_ENV` ('production' | 'staging' | 미지정=로컬).
+  static const String appEnv = String.fromEnvironment('APP_ENV');
+
+  /// 운영 환경인가. 진단용 UI(테스트 푸시 발송 등)를 숨기는 기준이다.
+  ///
+  /// 서버도 같은 기준으로 진단 엔드포인트를 등록하지 않는다. 클라이언트에서만
+  /// 숨기면 버튼은 사라져도 API 는 열려 있게 되므로 양쪽 다 막아야 한다.
+  static const bool isProduction = appEnv == 'production';
 }

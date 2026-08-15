@@ -85,9 +85,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Future<void> _onSendTestPush() async {
     final t = AppL10n.of(context);
     try {
-      await ref.read(pushServiceProvider).sendTest();
+      final result = await ref.read(pushServiceProvider).sendTest();
       if (!mounted) return;
-      ToastManager().success(context, t.pushTestSent);
+      // 요청이 성공한 것과 알림이 나간 것은 다르다. 등록된 기기가 없으면
+      // 200 에 sent=0 이 오는데, 이걸 성공으로 표시하면 "보냈다는데 안 온다" 가 된다.
+      if (result.delivered) {
+        ToastManager().success(context, t.pushTestSent);
+      } else if (!result.hasDevice) {
+        ToastManager().error(context, t.pushTestNoDevice);
+      } else {
+        ToastManager().error(context, t.pushTestRejected);
+      }
     } catch (_) {
       if (!mounted) return;
       ToastManager().error(context, t.pushTestFailed);
@@ -344,7 +352,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             busy: _pushBusy,
                             onChanged: _onTogglePush,
                           ),
-                          if (_pushState == PushState.enabled) ...[
+                          // 테스트 발송은 진단 도구다. prod 에는 서버 엔드포인트
+                          // 자체가 없으므로 행을 띄우면 눌러도 실패만 한다.
+                          if (_pushState == PushState.enabled &&
+                              !AppConstants.isProduction) ...[
                             const Divider(height: 1, color: AppColors.border),
                             _SettingsItem(
                               label: t.pushSendTest,

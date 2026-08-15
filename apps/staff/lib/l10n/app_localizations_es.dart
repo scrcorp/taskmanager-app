@@ -820,6 +820,14 @@ class AppL10nEs extends AppL10n {
   String get pushTestFailed => 'No se pudo enviar la notificación de prueba.';
 
   @override
+  String get pushTestNoDevice =>
+      'No hay ningún dispositivo registrado. Desactiva y vuelve a activar las notificaciones, luego inténtalo de nuevo.';
+
+  @override
+  String get pushTestRejected =>
+      'El servicio de notificaciones rechazó el envío. Desactiva y vuelve a activar las notificaciones, luego inténtalo de nuevo.';
+
+  @override
   String get fieldCurrentPassword => 'Contraseña actual';
 
   @override

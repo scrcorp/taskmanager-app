@@ -806,6 +806,14 @@ class AppL10nEn extends AppL10n {
   String get pushTestFailed => 'Couldn\'t send the test notification.';
 
   @override
+  String get pushTestNoDevice =>
+      'No device is registered. Turn push off and on again, then retry.';
+
+  @override
+  String get pushTestRejected =>
+      'The notification service rejected the delivery. Turn push off and on again, then retry.';
+
+  @override
   String get fieldCurrentPassword => 'Current Password';
 
   @override

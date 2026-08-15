@@ -31,6 +31,26 @@ final pushServiceProvider = Provider<PushService>((ref) {
   return PushService(ref.read(dioProvider));
 });
 
+/// 테스트 발송 결과 — 서버가 실제로 몇 건을 중계망에 넘겼는지.
+///
+/// [sent] 는 "중계 서버가 받아줬다" 까지다. 폰 화면에 떴는지는 알 수 없다
+/// (OS 알림 설정이 꺼져 있으면 sent=1 이어도 안 보인다).
+class PushTestResult {
+  const PushTestResult({
+    required this.attempted,
+    required this.sent,
+    required this.failed,
+  });
+
+  /// 이 사용자에게 등록된 기기 수 — 0 이면 구독 자체가 없다는 뜻이다.
+  final int attempted;
+  final int sent;
+  final int failed;
+
+  bool get hasDevice => attempted > 0;
+  bool get delivered => sent > 0;
+}
+
 /// 화면이 보고 판단할 푸시 상태.
 enum PushState {
   /// 이 브라우저/플랫폼이 웹 푸시를 지원하지 않는다 — 항목 자체를 숨긴다.
@@ -131,7 +151,9 @@ class PushService {
     final subscription = await helper.subscribe(vapidKey);
     if (subscription.isEmpty || subscription.startsWith('ERROR:')) return false;
 
-    await _postSubscription(subscription);
+    // 서버 등록까지 성공해야 켜진 것이다. 여기서 실패했는데 true 를 주면
+    // 토글만 켜지고 알림은 안 오는 상태로 굳는다.
+    if (!await _postSubscription(subscription)) return false;
     await _writeIntent(true);
     return true;
   }
@@ -149,22 +171,37 @@ class PushService {
     }
   }
 
-  /// 개발용 — 본인에게 테스트 푸시를 쏜다. prod 에서는 서버가 404 로 막는다.
-  Future<Map<String, dynamic>> sendTest() async {
+  /// 진단용 — 본인에게 테스트 푸시를 쏜다. prod 에는 이 엔드포인트가 없다.
+  ///
+  /// 응답의 숫자를 그대로 돌려준다. 호출이 성공했다는 것과 알림이 나갔다는 것은
+  /// 다르다 — 등록된 기기가 없으면 200 에 sent=0 이 온다.
+  Future<PushTestResult> sendTest() async {
     final res = await _dio.post('/app/my/push/test', data: {
       'title': 'HTM',
       'body': 'Push notifications are working.',
     });
-    return Map<String, dynamic>.from(res.data as Map);
+    final data = Map<String, dynamic>.from(res.data as Map);
+    return PushTestResult(
+      attempted: (data['attempted'] as num?)?.toInt() ?? 0,
+      sent: (data['sent'] as num?)?.toInt() ?? 0,
+      failed: (data['failed'] as num?)?.toInt() ?? 0,
+    );
   }
 
   /// 브리지가 준 구독 JSON 을 그대로 서버에 올린다.
-  Future<void> _postSubscription(String subscriptionJson) async {
+  ///
+  /// Returns: 서버에 등록됐으면 true.
+  ///
+  /// 실패를 삼키면 안 된다 — 브라우저 구독은 살아있는데 서버엔 없는 상태가 되어
+  /// 토글은 켜진 것처럼 보이지만 알림은 영영 오지 않는다. 호출 측이 결과를 보고
+  /// 사용자에게 알릴지 판단한다.
+  Future<bool> _postSubscription(String subscriptionJson) async {
     try {
       final body = jsonDecode(subscriptionJson) as Map<String, dynamic>;
       await _dio.post('/app/my/push/subscribe', data: body);
+      return true;
     } catch (_) {
-      // 구독 등록 실패가 앱 시작을 막으면 안 된다. 다음 reconcile 때 다시 시도된다.
+      return false;
     }
   }
 

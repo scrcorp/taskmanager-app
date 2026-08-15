@@ -330,6 +330,8 @@
   "pushSendTest": "Enviar notificación de prueba",
   "pushTestSent": "Notificación de prueba enviada.",
   "pushTestFailed": "No se pudo enviar la notificación de prueba.",
+  "pushTestNoDevice": "No hay ningún dispositivo registrado. Desactiva y vuelve a activar las notificaciones, luego inténtalo de nuevo.",
+  "pushTestRejected": "El servicio de notificaciones rechazó el envío. Desactiva y vuelve a activar las notificaciones, luego inténtalo de nuevo.",
 
   "fieldCurrentPassword": "Contraseña actual",
   "fieldConfirmNewPassword": "Confirmar nueva contraseña",
