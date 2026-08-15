@@ -5203,6 +5203,252 @@ abstract class AppL10n {
   /// **'Saturday'**
   String get weekdaySaturday;
 
+  /// No description provided for @roleOwner.
+  ///
+  /// In en, this message translates to:
+  /// **'Owner'**
+  String get roleOwner;
+
+  /// No description provided for @roleGeneralManager.
+  ///
+  /// In en, this message translates to:
+  /// **'General Manager'**
+  String get roleGeneralManager;
+
+  /// No description provided for @roleSupervisor.
+  ///
+  /// In en, this message translates to:
+  /// **'Supervisor'**
+  String get roleSupervisor;
+
+  /// No description provided for @roleStaff.
+  ///
+  /// In en, this message translates to:
+  /// **'Staff'**
+  String get roleStaff;
+
+  /// No description provided for @issueVisibilitySectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Who can see this'**
+  String get issueVisibilitySectionTitle;
+
+  /// No description provided for @issueVisibilityHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'You can only widen who sees this report — it can never be narrowed. Widening does not notify anyone.'**
+  String get issueVisibilityHelp;
+
+  /// No description provided for @issueVisibilityDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Default — you and this store\'s managers'**
+  String get issueVisibilityDefault;
+
+  /// No description provided for @issueVisibilityManagers.
+  ///
+  /// In en, this message translates to:
+  /// **'All managers at this store'**
+  String get issueVisibilityManagers;
+
+  /// No description provided for @issueVisibilityStoreAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone assigned to this store'**
+  String get issueVisibilityStoreAll;
+
+  /// No description provided for @issueVisibilityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Visible to'**
+  String get issueVisibilityLabel;
+
+  /// No description provided for @issueViewersPreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Who will see this'**
+  String get issueViewersPreviewTitle;
+
+  /// No description provided for @issueViewersPreviewStoreAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Everyone assigned to this store. The list is too long to show here.'**
+  String get issueViewersPreviewStoreAll;
+
+  /// No description provided for @issueViewersPreviewCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No one else yet} =1{1 person} other{{count} people}}'**
+  String issueViewersPreviewCount(int count);
+
+  /// No description provided for @issueViewersPreviewEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No one else can see this yet. Add people below if someone should.'**
+  String get issueViewersPreviewEmpty;
+
+  /// No description provided for @issueViewersPreviewLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the preview. You can still submit — store managers always get access.'**
+  String get issueViewersPreviewLoadFailed;
+
+  /// No description provided for @issueViewersShowLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Show less'**
+  String get issueViewersShowLess;
+
+  /// No description provided for @issueViewersMore.
+  ///
+  /// In en, this message translates to:
+  /// **'and {count} more'**
+  String issueViewersMore(int count);
+
+  /// No description provided for @issueViewerReasonManager.
+  ///
+  /// In en, this message translates to:
+  /// **'manager of this store'**
+  String get issueViewerReasonManager;
+
+  /// No description provided for @issueViewerReasonGmOrAbove.
+  ///
+  /// In en, this message translates to:
+  /// **'GM or above at this store'**
+  String get issueViewerReasonGmOrAbove;
+
+  /// No description provided for @issueViewerReasonAuthor.
+  ///
+  /// In en, this message translates to:
+  /// **'you — the author'**
+  String get issueViewerReasonAuthor;
+
+  /// No description provided for @issueViewerReasonAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'added'**
+  String get issueViewerReasonAdded;
+
+  /// No description provided for @issueViewerReasonStore.
+  ///
+  /// In en, this message translates to:
+  /// **'assigned to this store'**
+  String get issueViewerReasonStore;
+
+  /// No description provided for @issueRecipientsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Who gets notified'**
+  String get issueRecipientsTitle;
+
+  /// No description provided for @issueRecipientsHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Managers at this store are always notified and can\'t be removed. People you add get access and a notification too. Widening who can see this notifies no one.'**
+  String get issueRecipientsHelp;
+
+  /// No description provided for @issueRecipientsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No managers are assigned to this store yet. Add people below if someone should know.'**
+  String get issueRecipientsEmpty;
+
+  /// No description provided for @issueRecipientsLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load who gets notified. Tap Retry, or submit anyway — this store\'s managers are always notified.'**
+  String get issueRecipientsLoadFailed;
+
+  /// No description provided for @issueRecipientsAlwaysBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Always notified'**
+  String get issueRecipientsAlwaysBadge;
+
+  /// No description provided for @issueRecipientsAddPeople.
+  ///
+  /// In en, this message translates to:
+  /// **'Add people'**
+  String get issueRecipientsAddPeople;
+
+  /// No description provided for @issueRecipientsAddedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Added'**
+  String get issueRecipientsAddedBadge;
+
+  /// No description provided for @issueRecipientsSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by name or role'**
+  String get issueRecipientsSearchHint;
+
+  /// No description provided for @issueRecipientsNoOneToAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'No one else at this store can be added.'**
+  String get issueRecipientsNoOneToAdd;
+
+  /// No description provided for @issueRecipientsPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add recipients'**
+  String get issueRecipientsPickerTitle;
+
+  /// No description provided for @issueRecipientsPickerLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the people at this store. Close this and try again.'**
+  String get issueRecipientsPickerLoadFailed;
+
+  /// No description provided for @issueNotifiedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notified'**
+  String get issueNotifiedTitle;
+
+  /// No description provided for @issueNotifiedNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No one was notified for this report.'**
+  String get issueNotifiedNone;
+
+  /// No description provided for @issueNotifiedLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load who was notified. Reopen this report to try again.'**
+  String get issueNotifiedLoadFailed;
+
+  /// No description provided for @issueSubmitFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Submission failed'**
+  String get issueSubmitFailedTitle;
+
+  /// No description provided for @issueSubmitFailedFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'The report wasn\'t saved. Check the fields above and try again.'**
+  String get issueSubmitFailedFallback;
+
+  /// No description provided for @issueLinkOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the link. Copy it instead.'**
+  String get issueLinkOpenFailed;
+
+  /// No description provided for @issueLinkCopyAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get issueLinkCopyAction;
+
+  /// No description provided for @issueLinkCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied.'**
+  String get issueLinkCopied;
+
   /// No description provided for @errNetworkTimeout.
   ///
   /// In en, this message translates to:

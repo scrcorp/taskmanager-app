@@ -2848,6 +2848,154 @@ class AppL10nEs extends AppL10n {
   String get weekdaySaturday => 'Sábado';
 
   @override
+  String get roleOwner => 'Propietario';
+
+  @override
+  String get roleGeneralManager => 'Gerente General';
+
+  @override
+  String get roleSupervisor => 'Supervisor';
+
+  @override
+  String get roleStaff => 'Personal';
+
+  @override
+  String get issueVisibilitySectionTitle => 'Quién puede ver esto';
+
+  @override
+  String get issueVisibilityHelp =>
+      'Solo puedes ampliar quién ve este reporte; nunca reducirlo. Ampliarlo no notifica a nadie.';
+
+  @override
+  String get issueVisibilityDefault =>
+      'Predeterminado: tú y los gerentes de esta tienda';
+
+  @override
+  String get issueVisibilityManagers => 'Todos los gerentes de esta tienda';
+
+  @override
+  String get issueVisibilityStoreAll =>
+      'Todo el personal asignado a esta tienda';
+
+  @override
+  String get issueVisibilityLabel => 'Visible para';
+
+  @override
+  String get issueViewersPreviewTitle => 'Quién lo verá';
+
+  @override
+  String get issueViewersPreviewStoreAll =>
+      'Todo el personal asignado a esta tienda. La lista es demasiado larga para mostrarla aquí.';
+
+  @override
+  String issueViewersPreviewCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count personas',
+      one: '1 persona',
+      zero: 'Nadie más por ahora',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get issueViewersPreviewEmpty =>
+      'Nadie más puede verlo por ahora. Agrega personas abajo si alguien debe verlo.';
+
+  @override
+  String get issueViewersPreviewLoadFailed =>
+      'No se pudo cargar la vista previa. Puedes enviarlo igual: los gerentes de la tienda siempre tienen acceso.';
+
+  @override
+  String get issueViewersShowLess => 'Ver menos';
+
+  @override
+  String issueViewersMore(int count) {
+    return 'y $count más';
+  }
+
+  @override
+  String get issueViewerReasonManager => 'gerente de esta tienda';
+
+  @override
+  String get issueViewerReasonGmOrAbove => 'GM o superior en esta tienda';
+
+  @override
+  String get issueViewerReasonAuthor => 'tú, el autor';
+
+  @override
+  String get issueViewerReasonAdded => 'agregado';
+
+  @override
+  String get issueViewerReasonStore => 'asignado a esta tienda';
+
+  @override
+  String get issueRecipientsTitle => 'Quién recibe aviso';
+
+  @override
+  String get issueRecipientsHelp =>
+      'Los gerentes de esta tienda siempre reciben aviso y no se pueden quitar. Las personas que agregues obtienen acceso y aviso. Ampliar quién puede verlo no avisa a nadie.';
+
+  @override
+  String get issueRecipientsEmpty =>
+      'Esta tienda aún no tiene gerentes asignados. Agrega personas abajo si alguien debe enterarse.';
+
+  @override
+  String get issueRecipientsLoadFailed =>
+      'No se pudo cargar quién recibe aviso. Toca Reintentar o envía igual: los gerentes de esta tienda siempre reciben aviso.';
+
+  @override
+  String get issueRecipientsAlwaysBadge => 'Siempre avisado';
+
+  @override
+  String get issueRecipientsAddPeople => 'Agregar personas';
+
+  @override
+  String get issueRecipientsAddedBadge => 'Agregado';
+
+  @override
+  String get issueRecipientsSearchHint => 'Buscar por nombre o puesto';
+
+  @override
+  String get issueRecipientsNoOneToAdd =>
+      'No hay nadie más en esta tienda para agregar.';
+
+  @override
+  String get issueRecipientsPickerTitle => 'Agregar destinatarios';
+
+  @override
+  String get issueRecipientsPickerLoadFailed =>
+      'No se pudo cargar el personal de esta tienda. Cierra e inténtalo de nuevo.';
+
+  @override
+  String get issueNotifiedTitle => 'Avisados';
+
+  @override
+  String get issueNotifiedNone => 'Nadie recibió aviso de este reporte.';
+
+  @override
+  String get issueNotifiedLoadFailed =>
+      'No se pudo cargar quién recibió aviso. Vuelve a abrir el reporte para reintentar.';
+
+  @override
+  String get issueSubmitFailedTitle => 'No se pudo enviar';
+
+  @override
+  String get issueSubmitFailedFallback =>
+      'El reporte no se guardó. Revisa los campos de arriba e inténtalo de nuevo.';
+
+  @override
+  String get issueLinkOpenFailed =>
+      'No se pudo abrir el enlace. Cópialo en su lugar.';
+
+  @override
+  String get issueLinkCopyAction => 'Copiar';
+
+  @override
+  String get issueLinkCopied => 'Enlace copiado.';
+
+  @override
   String get errNetworkTimeout =>
       'El servidor no responde. Revisa la conexión e inténtalo de nuevo.';
 

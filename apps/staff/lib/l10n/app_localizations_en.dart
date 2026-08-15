@@ -2820,6 +2820,152 @@ class AppL10nEn extends AppL10n {
   String get weekdaySaturday => 'Saturday';
 
   @override
+  String get roleOwner => 'Owner';
+
+  @override
+  String get roleGeneralManager => 'General Manager';
+
+  @override
+  String get roleSupervisor => 'Supervisor';
+
+  @override
+  String get roleStaff => 'Staff';
+
+  @override
+  String get issueVisibilitySectionTitle => 'Who can see this';
+
+  @override
+  String get issueVisibilityHelp =>
+      'You can only widen who sees this report — it can never be narrowed. Widening does not notify anyone.';
+
+  @override
+  String get issueVisibilityDefault =>
+      'Default — you and this store\'s managers';
+
+  @override
+  String get issueVisibilityManagers => 'All managers at this store';
+
+  @override
+  String get issueVisibilityStoreAll => 'Everyone assigned to this store';
+
+  @override
+  String get issueVisibilityLabel => 'Visible to';
+
+  @override
+  String get issueViewersPreviewTitle => 'Who will see this';
+
+  @override
+  String get issueViewersPreviewStoreAll =>
+      'Everyone assigned to this store. The list is too long to show here.';
+
+  @override
+  String issueViewersPreviewCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count people',
+      one: '1 person',
+      zero: 'No one else yet',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get issueViewersPreviewEmpty =>
+      'No one else can see this yet. Add people below if someone should.';
+
+  @override
+  String get issueViewersPreviewLoadFailed =>
+      'Couldn\'t load the preview. You can still submit — store managers always get access.';
+
+  @override
+  String get issueViewersShowLess => 'Show less';
+
+  @override
+  String issueViewersMore(int count) {
+    return 'and $count more';
+  }
+
+  @override
+  String get issueViewerReasonManager => 'manager of this store';
+
+  @override
+  String get issueViewerReasonGmOrAbove => 'GM or above at this store';
+
+  @override
+  String get issueViewerReasonAuthor => 'you — the author';
+
+  @override
+  String get issueViewerReasonAdded => 'added';
+
+  @override
+  String get issueViewerReasonStore => 'assigned to this store';
+
+  @override
+  String get issueRecipientsTitle => 'Who gets notified';
+
+  @override
+  String get issueRecipientsHelp =>
+      'Managers at this store are always notified and can\'t be removed. People you add get access and a notification too. Widening who can see this notifies no one.';
+
+  @override
+  String get issueRecipientsEmpty =>
+      'No managers are assigned to this store yet. Add people below if someone should know.';
+
+  @override
+  String get issueRecipientsLoadFailed =>
+      'Couldn\'t load who gets notified. Tap Retry, or submit anyway — this store\'s managers are always notified.';
+
+  @override
+  String get issueRecipientsAlwaysBadge => 'Always notified';
+
+  @override
+  String get issueRecipientsAddPeople => 'Add people';
+
+  @override
+  String get issueRecipientsAddedBadge => 'Added';
+
+  @override
+  String get issueRecipientsSearchHint => 'Search by name or role';
+
+  @override
+  String get issueRecipientsNoOneToAdd =>
+      'No one else at this store can be added.';
+
+  @override
+  String get issueRecipientsPickerTitle => 'Add recipients';
+
+  @override
+  String get issueRecipientsPickerLoadFailed =>
+      'Couldn\'t load the people at this store. Close this and try again.';
+
+  @override
+  String get issueNotifiedTitle => 'Notified';
+
+  @override
+  String get issueNotifiedNone => 'No one was notified for this report.';
+
+  @override
+  String get issueNotifiedLoadFailed =>
+      'Couldn\'t load who was notified. Reopen this report to try again.';
+
+  @override
+  String get issueSubmitFailedTitle => 'Submission failed';
+
+  @override
+  String get issueSubmitFailedFallback =>
+      'The report wasn\'t saved. Check the fields above and try again.';
+
+  @override
+  String get issueLinkOpenFailed => 'Couldn\'t open the link. Copy it instead.';
+
+  @override
+  String get issueLinkCopyAction => 'Copy';
+
+  @override
+  String get issueLinkCopied => 'Link copied.';
+
+  @override
   String get errNetworkTimeout =>
       'The server is not responding. Check the connection and try again.';
 
