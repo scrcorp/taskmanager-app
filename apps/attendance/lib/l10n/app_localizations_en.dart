@@ -995,6 +995,107 @@ class AppL10nEn extends AppL10n {
   String get pfEarlyInSubmit => 'Submit & Clock In';
 
   @override
+  String get pfEarlyInWhoAsked => 'Who asked you to come in early?';
+
+  @override
+  String get pfEarlyInManual => 'Someone else';
+
+  @override
+  String get pfEarlyInManualHint => 'Name of the person who asked';
+
+  @override
+  String get pfEarlyInManagersLoading => 'Loading managers...';
+
+  @override
+  String get pfEarlyInManagersEmpty =>
+      'No managers listed for this store. Enter the name below.';
+
+  @override
+  String get pfEarlyInManagersFailed =>
+      'Could not load the manager list. Enter the name below.';
+
+  @override
+  String get pfEarlyInRequesterDropped =>
+      'We could not match that person, so only the name was saved.';
+
+  @override
+  String get pfShiftCardHeader => 'YOUR SHIFT';
+
+  @override
+  String pfShiftTimeRange(String start, String end) {
+    return '$start – $end';
+  }
+
+  @override
+  String get pfShiftTimeUnknown => 'Time not set';
+
+  @override
+  String get pfShiftNotThisOne => 'Not this one';
+
+  @override
+  String get pfShiftPickerTitle => 'Which shift are you clocking in for?';
+
+  @override
+  String get pfShiftPickerBody =>
+      'Pick the shift you are starting now. What you pick is what gets recorded.';
+
+  @override
+  String get pfShiftPickerCancel => 'Cancel';
+
+  @override
+  String get pfShiftOnTime => 'On time';
+
+  @override
+  String pfShiftLate(String duration) {
+    return '$duration late';
+  }
+
+  @override
+  String pfShiftEarly(String duration) {
+    return '$duration early';
+  }
+
+  @override
+  String get pfShiftReasonRequired => 'Reason required';
+
+  @override
+  String get pfShiftAlreadyDone => 'Already done';
+
+  @override
+  String get pfShiftClockedIn => 'Clocked in';
+
+  @override
+  String get pfShiftYesterday => 'Yesterday';
+
+  @override
+  String get pfShiftNotAvailable =>
+      'That shift is no longer available. Pick another one.';
+
+  @override
+  String get pfOverlapConfirmTitle => 'You are still clocked in';
+
+  @override
+  String get pfOverlapConfirmBody =>
+      'You have not clocked out of another shift yet. Clock in to this one anyway?';
+
+  @override
+  String pfOverlapConfirmShift(String start, String end) {
+    return 'Still open: $start – $end';
+  }
+
+  @override
+  String get pfOverlapConfirmYes => 'Clock in anyway';
+
+  @override
+  String get pfOverlapConfirmNo => 'Cancel';
+
+  @override
+  String get pfOverlapNoticeTitle => 'You are clocked in to two shifts.';
+
+  @override
+  String get pfOverlapNoticeBody => 'Tell your manager to fix one of them.';
+
+  @override
   String get pfTipHeader => 'TIP ENTRY';
 
   @override

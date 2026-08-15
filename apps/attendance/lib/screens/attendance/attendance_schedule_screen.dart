@@ -30,7 +30,9 @@ class AttendanceScheduleScreen extends ConsumerStatefulWidget {
 }
 
 class _AttendanceScheduleScreenState extends ConsumerState<AttendanceScheduleScreen> {
-  String? _selectedUserId;
+  /// 선택 상태는 **shift 단위**(TodayStaffRow.shiftKey). userId 로 잡으면 하루 2 shift 인
+  /// 사람의 두 카드가 동시에 선택되고 상세 패널엔 앞 shift 만 나온다.
+  String? _selectedShiftKey;
   late Timer _clockTimer;
   DateTime _now = DateTime.now();
   /// 초 단위 raw clock — 헤더의 초 단위 시계만 이걸 구독 (전체 rebuild 방지, Task 1).
@@ -80,9 +82,9 @@ class _AttendanceScheduleScreenState extends ConsumerState<AttendanceScheduleScr
     final completed =
         staff.where((r) => classifySection(r.status) == StaffSection.completed).toList();
 
-    final selected = _selectedUserId == null
+    final selected = _selectedShiftKey == null
         ? null
-        : staff.where((r) => r.userId == _selectedUserId).firstOrNull;
+        : staff.where((r) => r.shiftKey == _selectedShiftKey).firstOrNull;
 
     // 헤더 시계/날짜는 매장 현지 시간.
     final storeNow = toStoreClock(_now, device?.storeTimezoneOffsetMinutes);
@@ -114,8 +116,8 @@ class _AttendanceScheduleScreenState extends ConsumerState<AttendanceScheduleScr
                               title: AppL10n.of(context).scheduleSectionWorking,
                               accent: AppColors.success,
                               staff: clockedIn,
-                              selectedUserId: _selectedUserId,
-                              onSelect: (id) => setState(() => _selectedUserId = id),
+                              selectedShiftKey: _selectedShiftKey,
+                              onSelect: (key) => setState(() => _selectedShiftKey = key),
                               emptyText: AppL10n.of(context).scheduleSectionWorkingEmpty,
                               now: _now,
                             ),
@@ -126,8 +128,8 @@ class _AttendanceScheduleScreenState extends ConsumerState<AttendanceScheduleScr
                               title: AppL10n.of(context).scheduleSectionUpcoming,
                               accent: AppColors.warning,
                               staff: notClockedIn,
-                              selectedUserId: _selectedUserId,
-                              onSelect: (id) => setState(() => _selectedUserId = id),
+                              selectedShiftKey: _selectedShiftKey,
+                              onSelect: (key) => setState(() => _selectedShiftKey = key),
                               emptyText: AppL10n.of(context).scheduleSectionUpcomingEmpty,
                               now: _now,
                             ),
@@ -138,8 +140,8 @@ class _AttendanceScheduleScreenState extends ConsumerState<AttendanceScheduleScr
                               title: AppL10n.of(context).scheduleSectionDone,
                               accent: AppColors.textSecondary,
                               staff: completed,
-                              selectedUserId: _selectedUserId,
-                              onSelect: (id) => setState(() => _selectedUserId = id),
+                              selectedShiftKey: _selectedShiftKey,
+                              onSelect: (key) => setState(() => _selectedShiftKey = key),
                               emptyText: AppL10n.of(context).scheduleSectionDoneEmpty,
                               now: _now,
                             ),
@@ -285,7 +287,7 @@ class _Section extends StatelessWidget {
   final String title;
   final Color accent;
   final List<TodayStaffRow> staff;
-  final String? selectedUserId;
+  final String? selectedShiftKey;
   final ValueChanged<String> onSelect;
   final String emptyText;
   final DateTime now;
@@ -294,7 +296,7 @@ class _Section extends StatelessWidget {
     required this.title,
     required this.accent,
     required this.staff,
-    required this.selectedUserId,
+    required this.selectedShiftKey,
     required this.onSelect,
     required this.emptyText,
     required this.now,
@@ -371,9 +373,9 @@ class _Section extends StatelessWidget {
                     itemCount: staff.length,
                     itemBuilder: (_, i) => ScheduleStaffCard(
                       view: staff[i].toView(),
-                      selected: selectedUserId == staff[i].userId,
+                      selected: selectedShiftKey == staff[i].shiftKey,
                       now: now,
-                      onTap: () => onSelect(staff[i].userId),
+                      onTap: () => onSelect(staff[i].shiftKey),
                     ),
                   ),
           ),

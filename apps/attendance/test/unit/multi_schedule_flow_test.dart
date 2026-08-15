@@ -1,4 +1,8 @@
 /// Issue 8 — 다중 schedule flow transitions + IdentifyResponse 재구성 unit test.
+///
+/// ⚠️ 2026-08-13 이후 기본 shift 는 서버 `default_schedule_id` 가 정한다(계약 §1.7).
+/// 여기 케이스들은 그 필드가 없는 응답(구버전 서버)의 폴백 경로를 지킨다 —
+/// 새 규칙 자체는 `shift_pick_logic_test.dart` / `shift_flow_transitions_test.dart`.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:attendance/models/identify_response.dart';

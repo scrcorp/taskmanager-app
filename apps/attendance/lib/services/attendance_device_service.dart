@@ -93,6 +93,12 @@ class AttendanceDeviceService {
     _manageToken = token;
   }
 
+  /// 테스트 전용 — 요청 body 를 인터셉터로 가로채 **전선에 실제로 무엇이 실리는지**
+  /// 검증하기 위한 통로. `schedule_id` 같은 계약 필드는 "코드에 있다" 가 아니라
+  /// "요청에 실렸다" 로만 확인할 수 있다(중간 래퍼가 조용히 떨어뜨린 적이 있다).
+  @visibleForTesting
+  Dio get debugDio => _dio;
+
   /// Access code로 기기 등록 — 성공 시 토큰 발급
   ///
   /// [accessCode]: 관리자가 발급한 6자 code (영숫자, 대문자 자동변환)
@@ -148,12 +154,19 @@ class AttendanceDeviceService {
   /// Clock In — user_id + PIN(4~6) 으로 출근 기록.
   /// (Issue 8) scheduleId 지정 시 그 schedule 에 출근 (다중 schedule picker).
   /// [walkIn] true 이면 스케줄 없이 워크인 클락인 — 서버가 자동 스케줄 생성.
+  /// [earlyClockInRequestedBy] 는 조기 출근을 요청한 사람의 user_id (계약 §2.1).
+  /// 서버는 early override 가 성립할 때만 쓰고 그 외엔 조용히 무시한다.
+  /// [allowOverlap] 은 "다른 shift 가 열려 있는 걸 알면서 또 찍는다" (계약 §3.1) —
+  /// 사용자가 경고를 보고 확인했을 때만 true. 무조건 true 로 보내면 확인 절차가
+  /// 통째로 없어지고 키오스크 더블탭까지 함께 통과한다.
   Future<Map<String, dynamic>> clockIn({
     required String userId,
     required String pin,
     String? scheduleId,
     bool walkIn = false,
     String? reason,
+    String? earlyClockInRequestedBy,
+    bool allowOverlap = false,
   }) async {
     // reason 은 조기 출근 사유 — 예정 시작보다 이르면 서버가 필수로 요구한다
     // (code=early_clock_in_reason_required). 그 외엔 서버가 무시한다.
@@ -161,6 +174,9 @@ class AttendanceDeviceService {
       if (scheduleId != null) 'schedule_id': scheduleId,
       if (walkIn) 'walk_in': true,
       if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+      if (earlyClockInRequestedBy != null && earlyClockInRequestedBy.isNotEmpty)
+        'early_clock_in_requested_by': earlyClockInRequestedBy,
+      if (allowOverlap) 'allow_overlap': true,
     };
     return _postAction(
       '/attendance/clock-in',
@@ -172,34 +188,47 @@ class AttendanceDeviceService {
 
   /// Clock Out — user_id + 6자리 PIN으로 퇴근 기록.
   /// [reason] 은 schedule end 의 early-leave threshold 이전 clock-out 시 필수.
+  ///
+  /// [scheduleId] 는 **어느 shift 를 닫는지** 서버에 지목한다 (계약 §3.9).
+  /// 겹침(D15)을 허용한 뒤로는 열린 row 가 둘일 수 있고, 안 보내면 서버가
+  /// `_active_row()` fallback 으로 아무 쪽이나 닫아 화면이 가리킨 shift 와
+  /// 실제로 닫힌 shift 가 갈린다.
   Future<Map<String, dynamic>> clockOut({
     required String userId,
     required String pin,
     String? reason,
+    String? scheduleId,
   }) async {
+    final extra = <String, dynamic>{
+      if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+      if (scheduleId != null && scheduleId.isNotEmpty) 'schedule_id': scheduleId,
+    };
     return _postAction(
       '/attendance/clock-out',
       userId: userId,
       pin: pin,
-      extra: (reason != null && reason.trim().isNotEmpty)
-          ? {'reason': reason.trim()}
-          : null,
+      extra: extra.isEmpty ? null : extra,
     );
   }
 
   /// Break Start — user_id + 6자리 PIN으로 휴식 시작
   ///
   /// [breakType] — 'paid_10min' (10분 유급) 또는 'unpaid_meal' (무급 식사)
+  /// [scheduleId] — 대상 shift 지목 (clockOut 주석 참조).
   Future<Map<String, dynamic>> breakStart({
     required String userId,
     required String pin,
     required String breakType,
+    String? scheduleId,
   }) async {
     return _postAction(
       '/attendance/break-start',
       userId: userId,
       pin: pin,
-      extra: {'break_type': breakType},
+      extra: {
+        'break_type': breakType,
+        if (scheduleId != null && scheduleId.isNotEmpty) 'schedule_id': scheduleId,
+      },
     );
   }
 
@@ -207,18 +236,22 @@ class AttendanceDeviceService {
   ///
   /// [reason] 은 break 가 허용 시간을 넘겼을 때의 사유. unpaid_meal 35분 이상이면
   /// 서버가 필수로 요구하며, 없으면 400 이라 휴식을 끝낼 수 없다.
+  /// [scheduleId] — 대상 shift 지목 (clockOut 주석 참조).
   Future<Map<String, dynamic>> breakEnd({
     required String userId,
     required String pin,
     String? reason,
+    String? scheduleId,
   }) async {
+    final extra = <String, dynamic>{
+      if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+      if (scheduleId != null && scheduleId.isNotEmpty) 'schedule_id': scheduleId,
+    };
     return _postAction(
       '/attendance/break-end',
       userId: userId,
       pin: pin,
-      extra: (reason != null && reason.trim().isNotEmpty)
-          ? {'reason': reason.trim()}
-          : null,
+      extra: extra.isEmpty ? null : extra,
     );
   }
 
@@ -281,6 +314,26 @@ class AttendanceDeviceService {
     );
     final list = response.data as List;
     return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  /// 매장 Manager/SV 목록 — early clock-in "누가 불렀나" 선택지 (계약 §4).
+  ///
+  /// **POST + PIN 게이트**다(GET 아님). 매니저 명단은 사회공학 표적 정보라
+  /// `tip-entry/eligible-receivers` 와 같이 "식별된 직원" 에게만 연다.
+  /// 상시 프리페치·세션 캐시 금지 — 사유 단계에 들어갈 때마다 새로 부른다.
+  Future<List<Map<String, dynamic>>> getStoreManagers({
+    required String userId,
+    required String pin,
+  }) async {
+    final response = await _dio.post(
+      '/attendance/store-managers',
+      data: {'user_id': userId, 'pin': pin},
+    );
+    final data = response.data;
+    if (data is List) {
+      return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    }
+    return const [];
   }
 
   /// 매장 전체 active 직원 — manual tip receiver 추가용 (L5).
@@ -537,17 +590,23 @@ class AttendanceDeviceService {
 
   /// 관리자가 임의 사용자 attendance 를 PIN 없이 처리.
   /// actions: clock_in | clock_out | break_start | break_end | cancel_clock_in | cancel_clock_out
+  ///
+  /// [scheduleId] 는 매니저가 화면에서 고른 **그 행(shift)** 을 지목한다 (계약 §3.9).
+  /// 한 사람이 하루 두 shift 를 갖거나 겹쳐서 둘 다 열려 있을 때, 안 보내면 서버가
+  /// 임의의 열린 row 를 건드린다 — 매니저가 A 행을 눌렀는데 B 행이 바뀐다.
   Future<Map<String, dynamic>> manageClockAction({
     required String userId,
     required String action,
     String? breakType,
     String? reason,
+    String? scheduleId,
   }) async {
     final response = await _dio.post('/attendance/manage/clock', data: {
       'user_id': userId,
       'action': action,
       if (breakType != null) 'break_type': breakType,
       if (reason != null) 'reason': reason,
+      if (scheduleId != null && scheduleId.isNotEmpty) 'schedule_id': scheduleId,
     });
     return Map<String, dynamic>.from(response.data as Map);
   }

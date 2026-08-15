@@ -1002,6 +1002,107 @@ class AppL10nEs extends AppL10n {
   String get pfEarlyInSubmit => 'Enviar y fichar';
 
   @override
+  String get pfEarlyInWhoAsked => '¿Quién te pidió llegar antes?';
+
+  @override
+  String get pfEarlyInManual => 'Otra persona';
+
+  @override
+  String get pfEarlyInManualHint => 'Nombre de quien te lo pidió';
+
+  @override
+  String get pfEarlyInManagersLoading => 'Cargando gerentes...';
+
+  @override
+  String get pfEarlyInManagersEmpty =>
+      'No hay gerentes en esta tienda. Escribe el nombre abajo.';
+
+  @override
+  String get pfEarlyInManagersFailed =>
+      'No se pudo cargar la lista de gerentes. Escribe el nombre abajo.';
+
+  @override
+  String get pfEarlyInRequesterDropped =>
+      'No pudimos identificar a esa persona; solo se guardó el nombre.';
+
+  @override
+  String get pfShiftCardHeader => 'TU TURNO';
+
+  @override
+  String pfShiftTimeRange(String start, String end) {
+    return '$start – $end';
+  }
+
+  @override
+  String get pfShiftTimeUnknown => 'Horario no definido';
+
+  @override
+  String get pfShiftNotThisOne => 'No es este';
+
+  @override
+  String get pfShiftPickerTitle => '¿Para qué turno estás fichando?';
+
+  @override
+  String get pfShiftPickerBody =>
+      'Elige el turno que empiezas ahora. Lo que elijas es lo que se registra.';
+
+  @override
+  String get pfShiftPickerCancel => 'Cancelar';
+
+  @override
+  String get pfShiftOnTime => 'A tiempo';
+
+  @override
+  String pfShiftLate(String duration) {
+    return '$duration tarde';
+  }
+
+  @override
+  String pfShiftEarly(String duration) {
+    return '$duration antes';
+  }
+
+  @override
+  String get pfShiftReasonRequired => 'Se requiere motivo';
+
+  @override
+  String get pfShiftAlreadyDone => 'Ya terminado';
+
+  @override
+  String get pfShiftClockedIn => 'Ya fichado';
+
+  @override
+  String get pfShiftYesterday => 'Ayer';
+
+  @override
+  String get pfShiftNotAvailable =>
+      'Ese turno ya no está disponible. Elige otro.';
+
+  @override
+  String get pfOverlapConfirmTitle => 'Sigues fichado';
+
+  @override
+  String get pfOverlapConfirmBody =>
+      'Todavía no has fichado la salida de otro turno. ¿Fichar entrada en este de todos modos?';
+
+  @override
+  String pfOverlapConfirmShift(String start, String end) {
+    return 'Sigue abierto: $start – $end';
+  }
+
+  @override
+  String get pfOverlapConfirmYes => 'Fichar de todos modos';
+
+  @override
+  String get pfOverlapConfirmNo => 'Cancelar';
+
+  @override
+  String get pfOverlapNoticeTitle => 'Estás fichado en dos turnos.';
+
+  @override
+  String get pfOverlapNoticeBody => 'Avisa a tu gerente para que corrija uno.';
+
+  @override
   String get pfTipHeader => 'PROPINAS';
 
   @override
