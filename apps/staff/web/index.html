@@ -18,6 +18,18 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <!--
+    모바일 필수. 없으면 iOS Safari 가 화면 폭을 980px 로 가정하고 페이지를 축소해
+    레이아웃과 **탭 좌표가 어긋난다**(눌러도 안 눌리고 상단이 상태바에 물린다).
+    이 앱에는 이 태그가 처음부터 없었다.
+
+    viewport-fit=cover 가 있어야 Flutter 가 MediaQuery.padding 으로 안전영역
+    (노치·다이내믹 아일랜드) 을 받는다. 없으면 그 값이 0 이라 헤더의 SafeArea 가
+    비켜줄 여백을 계산하지 못한다.
+
+    user-scalable 은 막지 않는다 — 확대를 봉인하면 저시력 사용자가 쓸 수 없다.
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="description" content="HTM staff app — schedules, checklists, and daily reports.">
 
   <!-- iOS meta tags & icons -->
@@ -42,6 +54,26 @@
 
   <title>HTM</title>
   <link rel="manifest" href="manifest.json">
+
+  <!--
+    레거시 해시 URL 호환.
+
+    이 앱은 오랫동안 해시 라우팅('/#/schedule')이었다. path 전략으로 바꾸면서
+    기존 북마크·공유링크·홈화면 아이콘이 전부 홈으로 떨어지게 되므로, 부팅 전에
+    한 번 경로로 바꿔 준다.
+
+    Flutter 가 초기 경로를 읽기 전에 실행돼야 해서 인라인이다. replace 를 쓰는 건
+    뒤로가기를 눌렀을 때 다시 해시 URL 로 돌아와 무한 왕복하는 걸 막기 위함이다.
+  -->
+  <script>
+    (function () {
+      var h = window.location.hash;
+      if (h.indexOf('#/') !== 0) return;          // '#/...' 형태만 대상
+      var route = h.slice(1);                     // '#/schedule' → '/schedule'
+      if (route.charAt(1) === '/') return;        // '#//host' 같은 건 무시
+      window.location.replace(route + window.location.search);
+    })();
+  </script>
 
   <!-- 웹 푸시 브리지 — Dart 가 window.htmPush 로 호출한다. Flutter 부팅 전에 정의돼야 한다. -->
   <script src="push_bridge.js"></script>

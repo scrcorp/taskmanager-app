@@ -64,7 +64,10 @@ class IssueReportNotifier extends StateNotifier<IssueReportListState> {
     }
   }
 
-  Future<IssueReport?> createReport({
+  /// 이슈 생성. 실패는 **삼키지 않고 그대로 throw** 한다 —
+  /// 화면이 서버 사유(잘못된 visibility_scope, 타 org user_id 등)를 인라인으로
+  /// 보여줘야 하는데, null 로 뭉개면 "다시 시도" 밖에 못 알려준다.
+  Future<IssueReport> createReport({
     required String storeId,
     required String title,
     required String category,
@@ -73,26 +76,23 @@ class IssueReportNotifier extends StateNotifier<IssueReportListState> {
     List<IssueAttachment> attachments = const [],
     Map<String, dynamic> customFieldValues = const {},
     List<String> extraViewerUserIds = const [],
+    String visibilityScope = IssueVisibilityScope.defaultScope,
     Map<String, List<String>> links = const {},
   }) async {
-    try {
-      final created = await _service.createReport(
-        storeId: storeId,
-        title: title,
-        category: category,
-        severity: severity,
-        description: description,
-        attachments: attachments,
-        customFieldValues: customFieldValues,
-        extraViewerUserIds: extraViewerUserIds,
-        links: links,
-      );
-      await load(storeId: state.storeFilter, status: state.statusFilter);
-      return created;
-    } catch (e) {
-      state = state.copyWith(error: e.toString());
-      return null;
-    }
+    final created = await _service.createReport(
+      storeId: storeId,
+      title: title,
+      category: category,
+      severity: severity,
+      description: description,
+      attachments: attachments,
+      customFieldValues: customFieldValues,
+      extraViewerUserIds: extraViewerUserIds,
+      visibilityScope: visibilityScope,
+      links: links,
+    );
+    await load(storeId: state.storeFilter, status: state.statusFilter);
+    return created;
   }
 }
 

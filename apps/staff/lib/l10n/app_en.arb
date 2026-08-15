@@ -390,6 +390,14 @@
   "@pushTestFailed": {
     "description": "Toast when the test push request fails"
   },
+  "pushTestNoDevice": "No device is registered. Turn push off and on again, then retry.",
+  "@pushTestNoDevice": {
+    "description": "Toast when the test push succeeded as a request but the server had no push subscription for this user"
+  },
+  "pushTestRejected": "The notification service rejected the delivery. Turn push off and on again, then retry.",
+  "@pushTestRejected": {
+    "description": "Toast when the push relay refused every registered device"
+  },
 
   "fieldCurrentPassword": "Current Password",
   "fieldConfirmNewPassword": "Confirm New Password",
@@ -1302,6 +1310,63 @@
   "weekdayThursday": "Thursday",
   "weekdayFriday": "Friday",
   "weekdaySaturday": "Saturday",
+
+  "roleOwner": "Owner",
+  "roleGeneralManager": "General Manager",
+  "roleSupervisor": "Supervisor",
+  "roleStaff": "Staff",
+
+  "issueVisibilitySectionTitle": "Who can see this",
+  "issueVisibilityHelp": "You can only widen who sees this report — it can never be narrowed. Widening does not notify anyone.",
+  "issueVisibilityDefault": "Default — you and this store's managers",
+  "issueVisibilityManagers": "All managers at this store",
+  "issueVisibilityStoreAll": "Everyone assigned to this store",
+  "issueVisibilityLabel": "Visible to",
+
+  "issueViewersPreviewTitle": "Who will see this",
+  "issueViewersPreviewStoreAll": "Everyone assigned to this store. The list is too long to show here.",
+  "issueViewersPreviewCount": "{count, plural, =0{No one else yet} =1{1 person} other{{count} people}}",
+  "@issueViewersPreviewCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "issueViewersPreviewEmpty": "No one else can see this yet. Add people below if someone should.",
+  "issueViewersPreviewLoadFailed": "Couldn't load the preview. You can still submit — store managers always get access.",
+  "issueViewersShowLess": "Show less",
+  "issueViewersMore": "and {count} more",
+  "@issueViewersMore": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "issueViewerReasonManager": "manager of this store",
+  "issueViewerReasonGmOrAbove": "GM or above at this store",
+  "issueViewerReasonAuthor": "you — the author",
+  "issueViewerReasonAdded": "added",
+  "issueViewerReasonStore": "assigned to this store",
+
+  "issueRecipientsTitle": "Who gets notified",
+  "issueRecipientsHelp": "Managers at this store are always notified and can't be removed. People you add get access and a notification too. Widening who can see this notifies no one.",
+  "issueRecipientsEmpty": "No managers are assigned to this store yet. Add people below if someone should know.",
+  "issueRecipientsLoadFailed": "Couldn't load who gets notified. Tap Retry, or submit anyway — this store's managers are always notified.",
+  "issueRecipientsAlwaysBadge": "Always notified",
+  "issueRecipientsAddPeople": "Add people",
+  "issueRecipientsAddedBadge": "Added",
+  "issueRecipientsSearchHint": "Search by name or role",
+  "issueRecipientsNoOneToAdd": "No one else at this store can be added.",
+  "issueRecipientsPickerTitle": "Add recipients",
+  "issueRecipientsPickerLoadFailed": "Couldn't load the people at this store. Close this and try again.",
+  "issueNotifiedTitle": "Notified",
+  "issueNotifiedNone": "No one was notified for this report.",
+  "issueNotifiedLoadFailed": "Couldn't load who was notified. Reopen this report to try again.",
+
+  "issueSubmitFailedTitle": "Submission failed",
+  "issueSubmitFailedFallback": "The report wasn't saved. Check the fields above and try again.",
+
+  "issueLinkOpenFailed": "Couldn't open the link. Copy it instead.",
+  "issueLinkCopyAction": "Copy",
+  "issueLinkCopied": "Link copied.",
 
   "errNetworkTimeout": "The server is not responding. Check the connection and try again.",
   "errNetworkUnreachable": "Can't reach the server. Check the network connection and try again.",

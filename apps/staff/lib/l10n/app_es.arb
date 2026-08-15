@@ -330,6 +330,8 @@
   "pushSendTest": "Enviar notificación de prueba",
   "pushTestSent": "Notificación de prueba enviada.",
   "pushTestFailed": "No se pudo enviar la notificación de prueba.",
+  "pushTestNoDevice": "No hay ningún dispositivo registrado. Desactiva y vuelve a activar las notificaciones, luego inténtalo de nuevo.",
+  "pushTestRejected": "El servicio de notificaciones rechazó el envío. Desactiva y vuelve a activar las notificaciones, luego inténtalo de nuevo.",
 
   "fieldCurrentPassword": "Contraseña actual",
   "fieldConfirmNewPassword": "Confirmar nueva contraseña",
@@ -1124,6 +1126,63 @@
   "weekdayThursday": "Jueves",
   "weekdayFriday": "Viernes",
   "weekdaySaturday": "Sábado",
+
+  "roleOwner": "Propietario",
+  "roleGeneralManager": "Gerente General",
+  "roleSupervisor": "Supervisor",
+  "roleStaff": "Personal",
+
+  "issueVisibilitySectionTitle": "Quién puede ver esto",
+  "issueVisibilityHelp": "Solo puedes ampliar quién ve este reporte; nunca reducirlo. Ampliarlo no notifica a nadie.",
+  "issueVisibilityDefault": "Predeterminado: tú y los gerentes de esta tienda",
+  "issueVisibilityManagers": "Todos los gerentes de esta tienda",
+  "issueVisibilityStoreAll": "Todo el personal asignado a esta tienda",
+  "issueVisibilityLabel": "Visible para",
+
+  "issueViewersPreviewTitle": "Quién lo verá",
+  "issueViewersPreviewStoreAll": "Todo el personal asignado a esta tienda. La lista es demasiado larga para mostrarla aquí.",
+  "issueViewersPreviewCount": "{count, plural, =0{Nadie más por ahora} =1{1 persona} other{{count} personas}}",
+  "@issueViewersPreviewCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "issueViewersPreviewEmpty": "Nadie más puede verlo por ahora. Agrega personas abajo si alguien debe verlo.",
+  "issueViewersPreviewLoadFailed": "No se pudo cargar la vista previa. Puedes enviarlo igual: los gerentes de la tienda siempre tienen acceso.",
+  "issueViewersShowLess": "Ver menos",
+  "issueViewersMore": "y {count} más",
+  "@issueViewersMore": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "issueViewerReasonManager": "gerente de esta tienda",
+  "issueViewerReasonGmOrAbove": "GM o superior en esta tienda",
+  "issueViewerReasonAuthor": "tú, el autor",
+  "issueViewerReasonAdded": "agregado",
+  "issueViewerReasonStore": "asignado a esta tienda",
+
+  "issueRecipientsTitle": "Quién recibe aviso",
+  "issueRecipientsHelp": "Los gerentes de esta tienda siempre reciben aviso y no se pueden quitar. Las personas que agregues obtienen acceso y aviso. Ampliar quién puede verlo no avisa a nadie.",
+  "issueRecipientsEmpty": "Esta tienda aún no tiene gerentes asignados. Agrega personas abajo si alguien debe enterarse.",
+  "issueRecipientsLoadFailed": "No se pudo cargar quién recibe aviso. Toca Reintentar o envía igual: los gerentes de esta tienda siempre reciben aviso.",
+  "issueRecipientsAlwaysBadge": "Siempre avisado",
+  "issueRecipientsAddPeople": "Agregar personas",
+  "issueRecipientsAddedBadge": "Agregado",
+  "issueRecipientsSearchHint": "Buscar por nombre o puesto",
+  "issueRecipientsNoOneToAdd": "No hay nadie más en esta tienda para agregar.",
+  "issueRecipientsPickerTitle": "Agregar destinatarios",
+  "issueRecipientsPickerLoadFailed": "No se pudo cargar el personal de esta tienda. Cierra e inténtalo de nuevo.",
+  "issueNotifiedTitle": "Avisados",
+  "issueNotifiedNone": "Nadie recibió aviso de este reporte.",
+  "issueNotifiedLoadFailed": "No se pudo cargar quién recibió aviso. Vuelve a abrir el reporte para reintentar.",
+
+  "issueSubmitFailedTitle": "No se pudo enviar",
+  "issueSubmitFailedFallback": "El reporte no se guardó. Revisa los campos de arriba e inténtalo de nuevo.",
+
+  "issueLinkOpenFailed": "No se pudo abrir el enlace. Cópialo en su lugar.",
+  "issueLinkCopyAction": "Copiar",
+  "issueLinkCopied": "Enlace copiado.",
 
   "errNetworkTimeout": "El servidor no responde. Revisa la conexión e inténtalo de nuevo.",
   "errNetworkUnreachable": "No se puede conectar con el servidor. Revisa la red e inténtalo de nuevo.",

@@ -4,12 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:htm_core/htm_core.dart';
 
+import '../../l10n/app_localizations.dart';
 import '../../models/issue_report.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/issue_report_provider.dart';
 import '../../services/issue_report_service.dart';
 import '../../widgets/app_header.dart';
+import '../../widgets/linkified_text.dart';
+import '../../utils/api_error_display.dart';
 import '../../utils/date_utils.dart';
+import 'issue_report_recipients_picker.dart' show roleDisplayLabel;
 
 class IssueReportDetailScreen extends ConsumerStatefulWidget {
   final String id;
@@ -24,6 +28,10 @@ class _IssueReportDetailScreenState
     extends ConsumerState<IssueReportDetailScreen> {
   IssueReport? _report;
   Map<String, dynamic>? _linkOptions;
+
+  /// 이 리포트 기준 최종 수신자 (자동 − 제외 + 추가). 서버가 매번 재계산해서 준다.
+  List<IssueRecipient> _recipients = [];
+  String? _recipientsError;
   bool _loading = true;
   bool _busy = false;
   final _commentCtrl = TextEditingController();
@@ -56,10 +64,27 @@ class _IssueReportDetailScreenState
           // 권한 부족/네트워크 실패 시 ID fallback
         }
       }
+      // 수신자 조회 실패는 본문 렌더를 막지 않는다 — 해당 섹션에만 사유를 남긴다.
+      List<IssueRecipient> recipients = const [];
+      String? recipientsError;
+      try {
+        final res = await ref
+            .read(issueReportServiceProvider)
+            .getIssueRecipients(reportId: widget.id);
+        recipients = res.items.where((x) => x.isRecipient).toList();
+      } catch (e) {
+        if (mounted) {
+          final t = AppL10n.of(context);
+          recipientsError =
+              apiErrorTextOf(t, e, fallback: t.issueNotifiedLoadFailed);
+        }
+      }
       if (!mounted) return;
       setState(() {
         _report = r;
         _linkOptions = options;
+        _recipients = recipients;
+        _recipientsError = recipientsError;
         _loading = false;
       });
     } catch (_) {
@@ -243,16 +268,12 @@ class _IssueReportDetailScreenState
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(color: AppColors.border),
                         ),
-                        child: Text(
-                          r.description!,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: AppColors.text,
-                            height: 1.5,
-                          ),
-                        ),
+                        // 본문 안의 http/https URL 은 탭하면 외부 브라우저로 연다.
+                        child: LinkifiedText(r.description!),
                       ),
                     ],
+                    const SizedBox(height: 20),
+                    _audienceSection(r),
                     if (_hasAnyLinks(r.links)) ...[
                       const SizedBox(height: 20),
                       _relatedResourcesSection(r.links),
@@ -376,6 +397,124 @@ class _IssueReportDetailScreenState
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  String _scopeLabel(AppL10n t, String scope) {
+    switch (scope) {
+      case IssueVisibilityScope.managers:
+        return t.issueVisibilityManagers;
+      case IssueVisibilityScope.storeAll:
+        return t.issueVisibilityStoreAll;
+      default:
+        return t.issueVisibilityDefault;
+    }
+  }
+
+  /// "볼 수 있는 범위" + "알림 받는 사람".
+  Widget _audienceSection(IssueReport r) {
+    final t = AppL10n.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            t.issueVisibilityLabel,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _scopeLabel(t, r.visibilityScope),
+            style: const TextStyle(fontSize: 13, color: AppColors.text),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            t.issueNotifiedTitle,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+              letterSpacing: 1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          if (_recipientsError != null)
+            Text(
+              _recipientsError!,
+              style: const TextStyle(fontSize: 12, color: AppColors.danger),
+            )
+          else if (_recipients.isEmpty)
+            Text(
+              t.issueNotifiedNone,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            )
+          else
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: _recipients.map((x) {
+                final role = x.roleLabel.isEmpty
+                    ? ''
+                    : ' · ${roleDisplayLabel(t, x.roleLabel)}';
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.bg,
+                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${x.fullName}$role',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.text,
+                        ),
+                      ),
+                      if (x.isAdded) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            t.issueRecipientsAddedBadge,
+                            style: const TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.accent,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+        ],
       ),
     );
   }

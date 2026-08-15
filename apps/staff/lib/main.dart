@@ -11,6 +11,7 @@ import 'config/router.dart';
 import 'l10n/app_localizations.dart';
 import 'providers/auth_provider.dart';
 import 'providers/locale_provider.dart';
+import 'utils/url_strategy.dart';
 import 'utils/web_title.dart';
 
 // 환경별 브라우저 탭 타이틀
@@ -23,6 +24,10 @@ const appTitle = _appEnv == 'production'
 
 void main() {
   setWebTitle(appTitle);
+
+  // 주소창에서 '#' 제거(path 전략). **GoRouter 생성 전에** 불러야 한다 —
+  // 라우터가 초기 경로를 읽는 시점보다 늦으면 소용이 없다.
+  configureUrlStrategy();
 
   // Flutter 엔진 바인딩 초기화 (runApp 전에 플러그인 사용 시 필요)
   WidgetsFlutterBinding.ensureInitialized();
