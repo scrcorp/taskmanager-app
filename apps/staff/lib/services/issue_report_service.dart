@@ -70,6 +70,7 @@ class IssueReportService {
     List<IssueAttachment> attachments = const [],
     Map<String, dynamic> customFieldValues = const {},
     List<String> extraViewerUserIds = const [],
+    String visibilityScope = IssueVisibilityScope.defaultScope,
     Map<String, List<String>> links = const {},
   }) async {
     final res = await _dio.post('/app/my/reports', data: {
@@ -82,6 +83,10 @@ class IssueReportService {
         if (description != null) 'description': description,
         'attachments': attachments.map((a) => a.toJson()).toList(),
         'extra_viewers': {'user_ids': extraViewerUserIds},
+        // 확대 전용 조회 범위. legacy share_with_store_all 은 더 이상 보내지 않는다.
+        'visibility_scope': visibilityScope,
+        // notify_excluded_user_ids 는 보내지 않는다 — 자동 수신자(매장 GM+)는
+        // 해제 불가라 서버가 이 키를 무시한다(하위호환으로 받기만 함).
         'custom_field_values': customFieldValues,
         'links': {
           'schedule_ids': links['schedule_ids'] ?? const <String>[],
@@ -111,6 +116,57 @@ class IssueReportService {
 
   Future<void> deleteReport(String id) async {
     await _dio.delete('/app/my/reports/$id');
+  }
+
+  /// 알림 수신자 조회.
+  ///
+  /// - [storeId] 만 주면 그 매장 자동 후보(source=auto, is_recipient=true).
+  /// - [reportId] 를 주면 그 리포트 기준 최종 수신자(자동 − 제외 + 추가).
+  ///   이 경우 [storeId] 는 생략 가능하며, 둘 다 주고 서로 다르면 서버가 400.
+  Future<IssueRecipientsResponse> getIssueRecipients({
+    String? storeId,
+    String? reportId,
+  }) async {
+    final params = <String, dynamic>{};
+    if (storeId != null) params['store_id'] = storeId;
+    if (reportId != null) params['report_id'] = reportId;
+    final res = await _dio.get(
+      '/app/my/reports/issue-recipients',
+      queryParameters: params,
+    );
+    return IssueRecipientsResponse.fromJson((res.data as Map).cast<String, dynamic>());
+  }
+
+  /// 조회 범위(scope) 별 "실제로 보게 될 사람" 예상 목록.
+  ///
+  /// 계약(server 와 공유, console 과 동일 응답):
+  ///   GET /app/my/reports/issue-viewers?store_id=&scope=[&report_id=]
+  ///   → { store_id, report_id, scope, mode: "list"|"summary",
+  ///       summary: {label, count},
+  ///       items: [{user_id, full_name, role_label, role_priority,
+  ///                reason, reason_label, is_notified}] }
+  ///   store_all 은 인원이 많아 mode="summary" + summary.count 만 온다.
+  ///
+  /// NOTE: 실패 시 issue-recipients 로 되짚지 않는다. 그쪽은 **알림 수신자**라
+  /// scope 를 무시하므로, 조용히 다른 의미의 목록을 "예상 조회자"로 보여주게 된다.
+  Future<IssueViewersPreview> getIssueViewers({
+    required String storeId,
+    required String scope,
+    String? reportId,
+  }) async {
+    final params = <String, dynamic>{'store_id': storeId, 'scope': scope};
+    if (reportId != null) params['report_id'] = reportId;
+
+    final res = await _dio.get(
+      '/app/my/reports/issue-viewers',
+      queryParameters: params,
+    );
+    final data = res.data;
+    if (data is! Map) return IssueViewersPreview(scope: scope);
+    return IssueViewersPreview.fromJson(
+      data.cast<String, dynamic>(),
+      requestedScope: scope,
+    );
   }
 
   /// LinkPicker용 매장별 5종 옵션 (schedules / checklist_instances /

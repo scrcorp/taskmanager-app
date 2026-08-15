@@ -45,12 +45,17 @@ class IssueCategoryDef {
   final int sortOrder;
   final bool isActive;
 
+  /// 카테고리를 고르면 description 에 프리필할 제목 줄 원문.
+  /// 키가 없거나 null 이면 프리셋 없음 (기존 템플릿 하위호환).
+  final String? descriptionTemplate;
+
   const IssueCategoryDef({
     required this.code,
     required this.label,
     this.color,
     this.sortOrder = 0,
     this.isActive = true,
+    this.descriptionTemplate,
   });
 
   factory IssueCategoryDef.fromJson(Map<String, dynamic> j) => IssueCategoryDef(
@@ -59,7 +64,182 @@ class IssueCategoryDef {
         color: j['color'],
         sortOrder: j['sort_order'] ?? 0,
         isActive: j['is_active'] ?? true,
+        descriptionTemplate: j['description_template'] as String?,
       );
+}
+
+/// issue payload.visibility_scope — 확대 전용 조회 범위.
+class IssueVisibilityScope {
+  static const String defaultScope = 'default';
+  static const String managers = 'managers';
+  static const String storeAll = 'store_all';
+
+  static const List<String> all = [defaultScope, managers, storeAll];
+
+  /// 서버 payload 정규화. 알 수 없는 값/누락은 default,
+  /// legacy share_with_store_all=true 는 store_all 로 읽는다.
+  static String fromPayload(Map<String, dynamic> payload) {
+    final raw = payload['visibility_scope'];
+    if (raw is String && all.contains(raw)) return raw;
+    final legacy = payload['share_with_store_all'];
+    if (legacy == true || legacy == 'true') return storeAll;
+    return defaultScope;
+  }
+}
+
+/// GET /app/my/reports/issue-recipients 응답 항목.
+class IssueRecipient {
+  final String userId;
+  final String fullName;
+
+  /// DB 의 role name 원문(owner / general_manager / supervisor / staff / 커스텀).
+  final String roleLabel;
+  final int rolePriority;
+
+  /// "auto" (자동 후보) | "added" (extra_viewers 로 지목)
+  final String source;
+
+  /// 현재 알림을 받는지. 자동 수신자는 해제 불가라 항상 true 다
+  /// (과거 리포트에서만 false 가 올 수 있다).
+  final bool isRecipient;
+
+  const IssueRecipient({
+    required this.userId,
+    required this.fullName,
+    required this.roleLabel,
+    required this.rolePriority,
+    required this.source,
+    required this.isRecipient,
+  });
+
+  bool get isAdded => source == 'added';
+
+  factory IssueRecipient.fromJson(Map<String, dynamic> j) => IssueRecipient(
+        userId: j['user_id'] ?? '',
+        fullName: (j['full_name'] as String?) ?? '',
+        roleLabel: (j['role_label'] as String?) ?? '',
+        rolePriority: j['role_priority'] ?? 0,
+        source: (j['source'] as String?) ?? 'auto',
+        isRecipient: j['is_recipient'] ?? true,
+      );
+}
+
+class IssueRecipientsResponse {
+  final String? storeId;
+  final String? reportId;
+  final List<IssueRecipient> items;
+
+  const IssueRecipientsResponse({
+    this.storeId,
+    this.reportId,
+    this.items = const [],
+  });
+
+  factory IssueRecipientsResponse.fromJson(Map<String, dynamic> j) =>
+      IssueRecipientsResponse(
+        storeId: j['store_id'] as String?,
+        reportId: j['report_id'] as String?,
+        items: ((j['items'] as List?) ?? const [])
+            .map((e) => IssueRecipient.fromJson((e as Map).cast<String, dynamic>()))
+            .toList(),
+      );
+}
+
+/// 조회 범위(scope) 별 "이 리포트를 보게 될 사람" 예상 목록의 한 항목.
+///
+/// 서버 계약(IssueExpectedViewerItem):
+///   { user_id, full_name, role_label, role_priority,
+///     reason, reason_label, is_notified }
+///
+/// [reason] 은 왜 포함됐는지의 **코드**다:
+///   "author" | "gm_or_above" | "store_manager" | "added".
+/// [reasonLabel] 은 서버가 만들어 준 영어 문구로, 클라가 모르는 새 reason 코드가
+/// 와도 아무 말이나 찍지 않도록 하는 fallback 이다 (모르는 코드를 "manager" 로
+/// 뭉개면 작성자 본인/추가 지목까지 매니저라고 거짓 표시된다).
+class IssueViewer {
+  final String userId;
+  final String fullName;
+  final String roleLabel;
+  final int rolePriority;
+  final String reason;
+  final String reasonLabel;
+
+  /// 조회권만이 아니라 알림까지 받는가.
+  final bool isNotified;
+
+  const IssueViewer({
+    required this.userId,
+    required this.fullName,
+    this.roleLabel = '',
+    this.rolePriority = 0,
+    this.reason = '',
+    this.reasonLabel = '',
+    this.isNotified = false,
+  });
+
+  factory IssueViewer.fromJson(Map<String, dynamic> j) => IssueViewer(
+        userId: (j['user_id'] as String?) ?? '',
+        fullName: (j['full_name'] as String?) ?? '',
+        roleLabel: (j['role_label'] as String?) ?? '',
+        rolePriority: (j['role_priority'] as num?)?.toInt() ?? 0,
+        reason: (j['reason'] as String?) ?? '',
+        reasonLabel: (j['reason_label'] as String?) ?? '',
+        isNotified: j['is_notified'] == true,
+      );
+}
+
+/// scope 별 예상 조회자 응답.
+///
+/// 서버 계약(IssueExpectedViewersResponse):
+///   { store_id, report_id, scope, mode: "list"|"summary",
+///     summary: { label, count }, items: [...] }
+///
+/// store_all 처럼 인원이 많은 범위는 mode="summary" 로 목록 없이 개수만 온다.
+/// 그 경우 [listed] 가 false 이고 [totalCount] 만 의미가 있다.
+class IssueViewersPreview {
+  final String scope;
+  final List<IssueViewer> items;
+
+  /// 목록을 그릴 수 있는 응답인지(mode=="list"). false 면 요약 문구만 보여준다.
+  final bool listed;
+
+  /// 서버가 알려준 총 인원(summary.count).
+  final int? totalCount;
+
+  const IssueViewersPreview({
+    this.scope = IssueVisibilityScope.defaultScope,
+    this.items = const [],
+    this.listed = true,
+    this.totalCount,
+  });
+
+  factory IssueViewersPreview.fromJson(
+    Map<String, dynamic> j, {
+    String? requestedScope,
+  }) {
+    final items = ((j['items'] as List?) ?? const [])
+        .whereType<Map>()
+        .map((e) => IssueViewer.fromJson(e.cast<String, dynamic>()))
+        .where((v) => v.userId.isNotEmpty)
+        .toList();
+
+    final scope = (j['scope'] as String?) ??
+        requestedScope ??
+        IssueVisibilityScope.defaultScope;
+
+    final summary = (j['summary'] as Map?)?.cast<String, dynamic>();
+    final count = (summary?['count'] as num?)?.toInt();
+
+    // mode 가 없으면(구버전 서버) 목록 응답으로 본다.
+    final listed = (j['mode'] as String?) != 'summary';
+
+    return IssueViewersPreview(
+      scope: scope,
+      items: items,
+      listed: listed,
+      totalCount: count ?? (listed ? items.length : null),
+    );
+  }
 }
 
 class IssueCustomFieldDef {
@@ -188,6 +368,13 @@ class IssueReport {
   final List<IssueAttachment> attachments;
   final Map<String, dynamic> customFieldValues;
   final List<String> extraViewerUserIds;
+
+  /// "default" | "managers" | "store_all". 키가 없으면 "default".
+  final String visibilityScope;
+
+  /// @deprecated 자동 수신자(매장 GM+)는 해제 불가로 바뀌어 이 값은 더 이상
+  /// 적용되지 않는다. 과거 리포트 payload 하위호환용으로 읽기만 한다.
+  final List<String> notifyExcludedUserIds;
   final String? linkedIssueId;
   /// 관련 리소스 ID 묶음. key: schedule_ids / checklist_instance_ids /
   /// position_ids / work_role_ids / related_user_ids. console에서 입력된 값을
@@ -217,6 +404,8 @@ class IssueReport {
     this.attachments = const [],
     this.customFieldValues = const {},
     this.extraViewerUserIds = const [],
+    this.visibilityScope = IssueVisibilityScope.defaultScope,
+    this.notifyExcludedUserIds = const [],
     this.linkedIssueId,
     this.links = const {},
     this.commentCount = 0,
@@ -255,6 +444,11 @@ class IssueReport {
           (payload['custom_field_values'] as Map?)?.cast<String, dynamic>() ?? {},
       extraViewerUserIds:
           ((extraViewers['user_ids'] as List?) ?? []).cast<String>(),
+      visibilityScope: IssueVisibilityScope.fromPayload(payload),
+      notifyExcludedUserIds:
+          ((payload['notify_excluded_user_ids'] as List?) ?? const [])
+              .whereType<String>()
+              .toList(),
       linkedIssueId: payload['linked_issue_id'],
       links: _parseLinks(payload['links']),
       commentCount: j['comment_count'] ?? 0,
