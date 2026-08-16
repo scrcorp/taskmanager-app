@@ -49,6 +49,9 @@ class IssueCategoryDef {
   /// 키가 없거나 null 이면 프리셋 없음 (기존 템플릿 하위호환).
   final String? descriptionTemplate;
 
+  /// 이 카테고리에서만 뜨는 필드. 전역 customFields 와 함께 표시된다.
+  final List<IssueCustomFieldDef> fields;
+
   const IssueCategoryDef({
     required this.code,
     required this.label,
@@ -56,6 +59,7 @@ class IssueCategoryDef {
     this.sortOrder = 0,
     this.isActive = true,
     this.descriptionTemplate,
+    this.fields = const [],
   });
 
   factory IssueCategoryDef.fromJson(Map<String, dynamic> j) => IssueCategoryDef(
@@ -65,6 +69,9 @@ class IssueCategoryDef {
         sortOrder: j['sort_order'] ?? 0,
         isActive: j['is_active'] ?? true,
         descriptionTemplate: j['description_template'] as String?,
+        fields: ((j['fields'] as List?) ?? [])
+            .map((e) => IssueCustomFieldDef.fromJson(e))
+            .toList(),
       );
 }
 
@@ -242,14 +249,24 @@ class IssueViewersPreview {
   }
 }
 
+/// 이슈 폼 필드 정의. 서버 `IssueCustomFieldDef`(app/schemas/report.py) 와 같은 모양.
+/// `checkbox` 는 폐기(2026-08-15) — 2상태라 "아니오"와 "미응답"을 구분할 수 없다.
 class IssueCustomFieldDef {
   final String type; // short_text | long_text | number | single_choice | multi_choice
   final String id;
   final String label;
   final bool required;
   final String? placeholder;
+  final String? helperText;
   final List<String>? options;
   final int? maxLength;
+
+  /// number 전용 — 허용 범위
+  final num? min;
+  final num? max;
+
+  /// number 전용 — 0(기본)이면 정수만, 1/2면 그 자릿수까지 소수 허용
+  final int? decimals;
   final int sortOrder;
 
   const IssueCustomFieldDef({
@@ -258,8 +275,12 @@ class IssueCustomFieldDef {
     required this.label,
     this.required = false,
     this.placeholder,
+    this.helperText,
     this.options,
     this.maxLength,
+    this.min,
+    this.max,
+    this.decimals,
     this.sortOrder = 0,
   });
 
@@ -269,8 +290,12 @@ class IssueCustomFieldDef {
         label: j['label'] ?? '',
         required: j['required'] ?? false,
         placeholder: j['placeholder'],
+        helperText: j['helper_text'] as String?,
         options: (j['options'] as List?)?.cast<String>(),
         maxLength: j['max_length'],
+        min: j['min'] as num?,
+        max: j['max'] as num?,
+        decimals: j['decimals'] as int?,
         sortOrder: j['sort_order'] ?? 0,
       );
 }
@@ -279,14 +304,57 @@ class IssueReportTemplate {
   final String id;
   final String name;
   final List<IssueCategoryDef> categories;
+
+  /// 카테고리 무관 전역 필드.
   final List<IssueCustomFieldDef> customFields;
+
+  /// 표준 필드(`__title` 등)와 커스텀 필드를 한 줄에 세운 표시 순서.
+  final List<String> fieldOrder;
 
   const IssueReportTemplate({
     required this.id,
     required this.name,
     this.categories = const [],
     this.customFields = const [],
+    this.fieldOrder = const [],
   });
+
+  /// 이 카테고리에서 실제로 보여줄 필드를 순서대로.
+  ///
+  /// 서버 `app/core/issue_fields.py` 의 `resolve_issue_fields` 와 **같은 규칙**이어야 한다:
+  /// 표시 대상 = 전역 + 카테고리 필드, 순서는 fieldOrder, 목록에 없으면 sortOrder 순으로 뒤에.
+  /// 어긋나면 화면에 없는 필드가 서버에서 required 로 걸린다.
+  List<IssueCustomFieldDef> resolveFields(String? categoryCode) {
+    final merged = <String, IssueCustomFieldDef>{};
+    for (final f in customFields) {
+      if (f.id.isNotEmpty) merged[f.id] = f;
+    }
+    if (categoryCode != null && categoryCode.isNotEmpty) {
+      for (final c in categories) {
+        if (c.code == categoryCode) {
+          // id 중복 시 카테고리 필드가 전역을 덮는다 (서버와 동일).
+          for (final f in c.fields) {
+            if (f.id.isNotEmpty) merged[f.id] = f;
+          }
+          break;
+        }
+      }
+    }
+
+    final out = <IssueCustomFieldDef>[];
+    final seen = <String>{};
+    for (final key in fieldOrder) {
+      if (key.startsWith('__')) continue; // 표준 필드 자리표시자
+      final f = merged[key];
+      if (f != null && seen.add(key)) out.add(f);
+    }
+    final rest = merged.entries
+        .where((e) => !seen.contains(e.key))
+        .map((e) => e.value)
+        .toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    return [...out, ...rest];
+  }
 
   factory IssueReportTemplate.fromJson(Map<String, dynamic> j) {
     final payload = (j['payload'] ?? {}) as Map<String, dynamic>;
@@ -299,6 +367,8 @@ class IssueReportTemplate {
       customFields: ((payload['custom_fields'] as List?) ?? [])
           .map((e) => IssueCustomFieldDef.fromJson(e))
           .toList(),
+      fieldOrder:
+          ((payload['field_order'] as List?) ?? []).cast<String>().toList(),
     );
   }
 }
@@ -367,6 +437,10 @@ class IssueReport {
   final String? description;
   final List<IssueAttachment> attachments;
   final Map<String, dynamic> customFieldValues;
+
+  /// 작성 당시 물어본 필드 정의 (서버가 박아준다).
+  /// 라벨·순서의 출처 — 템플릿이 나중에 바뀌어도 그때 문구 그대로 보여야 한다.
+  final List<IssueCustomFieldDef> fieldsSnapshot;
   final List<String> extraViewerUserIds;
 
   /// "default" | "managers" | "store_all". 키가 없으면 "default".
@@ -403,6 +477,7 @@ class IssueReport {
     this.description,
     this.attachments = const [],
     this.customFieldValues = const {},
+    this.fieldsSnapshot = const [],
     this.extraViewerUserIds = const [],
     this.visibilityScope = IssueVisibilityScope.defaultScope,
     this.notifyExcludedUserIds = const [],
@@ -442,6 +517,9 @@ class IssueReport {
       attachments: atts.map((e) => IssueAttachment.fromJson(e)).toList(),
       customFieldValues:
           (payload['custom_field_values'] as Map?)?.cast<String, dynamic>() ?? {},
+      fieldsSnapshot: ((payload['fields_snapshot'] as List?) ?? [])
+          .map((e) => IssueCustomFieldDef.fromJson(e))
+          .toList(),
       extraViewerUserIds:
           ((extraViewers['user_ids'] as List?) ?? []).cast<String>(),
       visibilityScope: IssueVisibilityScope.fromPayload(payload),

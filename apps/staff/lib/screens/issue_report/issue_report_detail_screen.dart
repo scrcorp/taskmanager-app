@@ -258,6 +258,7 @@ class _IssueReportDetailScreenState
                         ],
                       ),
                     ],
+                    ..._fieldAnswers(r),
                     if (r.description != null && r.description!.isNotEmpty) ...[
                       const SizedBox(height: 20),
                       Container(
@@ -413,6 +414,71 @@ class _IssueReportDetailScreenState
   }
 
   /// "볼 수 있는 범위" + "알림 받는 사람".
+  /// 커스텀 필드 답변.
+  ///
+  /// 라벨은 리포트에 박힌 fieldsSnapshot(작성 당시 정의)에서 가져온다 — 템플릿이 바뀌어도
+  /// 그때 물어본 문구 그대로 보여야 한다.
+  ///
+  /// 값이 null 이면 **"물어봤지만 답하지 않았다"** 는 뜻이라 항목은 남기고 "Not answered"
+  /// 로 표시한다. 감춰버리면 "안 물어본 것"과 구분이 사라진다.
+  List<Widget> _fieldAnswers(IssueReport r) {
+    if (r.fieldsSnapshot.isEmpty) return const [];
+    return [
+      const SizedBox(height: 20),
+      Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: AppColors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final f in r.fieldsSnapshot)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 120,
+                      child: Text(
+                        f.label.isNotEmpty ? f.label : f.id,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(child: _answerText(r.customFieldValues[f.id])),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+    ];
+  }
+
+  Widget _answerText(dynamic v) {
+    final blank = v == null || v == '' || (v is List && v.isEmpty);
+    if (blank) {
+      return const Text(
+        'Not answered',
+        style: TextStyle(
+          fontSize: 14,
+          fontStyle: FontStyle.italic,
+          color: AppColors.textSecondary,
+        ),
+      );
+    }
+    final text = v is List ? v.join(', ') : v.toString();
+    return LinkifiedText(text);
+  }
+
   Widget _audienceSection(IssueReport r) {
     final t = AppL10n.of(context);
     return Container(
