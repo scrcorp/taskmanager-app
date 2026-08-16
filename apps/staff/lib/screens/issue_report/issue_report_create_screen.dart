@@ -30,6 +30,23 @@ class _IssueReportCreateScreenState
   final _descCtrl = TextEditingController();
   final Map<String, dynamic> _customValues = {};
 
+  /// 지금 화면에 떠 있는 커스텀 필드 = 전역 + 선택된 카테고리 필드.
+  /// 해석 규칙은 모델의 resolveFields 하나로 모아둔다(서버와 같은 규칙).
+  List<IssueCustomFieldDef> get _activeFields =>
+      _template?.resolveFields(_category) ?? const [];
+
+  /// 제출용 값 — **물어본 필드는 전부 키를 만들고 미응답은 null 로 보낸다.**
+  /// 키를 아예 빼면 서버·조회 화면에서 "안 물어봄"과 구분이 사라진다.
+  Map<String, dynamic> _normalizedCustomValues() {
+    final out = <String, dynamic>{};
+    for (final f in _activeFields) {
+      final v = _customValues[f.id];
+      final blank = v == null || v == '' || (v is List && v.isEmpty);
+      out[f.id] = blank ? null : v;
+    }
+    return out;
+  }
+
   String? _storeId;
   IssueReportTemplate? _template;
   String? _category;
@@ -257,7 +274,7 @@ class _IssueReportCreateScreenState
             severity: _severity,
             description:
                 _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
-            customFieldValues: _customValues,
+            customFieldValues: _normalizedCustomValues(),
             extraViewerUserIds: _addedPeople.map((p) => p.id).toList(),
             visibilityScope: _visibilityScope,
             links: _links.toJson(),
@@ -330,14 +347,14 @@ class _IssueReportCreateScreenState
                           _severityDropdown(),
                           const SizedBox(height: 16),
                           _label('Description'),
+                          // dev(자동 확장) + 이 브랜치(카테고리별 필드) 둘 다 유지.
                           _textField(
-                      _descCtrl,
-                      hint: 'Details',
-                      minLines: 5,
-                      maxLines: null,
-                    ),
-                          if (_template != null &&
-                              _template!.customFields.isNotEmpty) ...[
+                            _descCtrl,
+                            hint: 'Details',
+                            minLines: 5,
+                            maxLines: null,
+                          ),
+                          if (_activeFields.isNotEmpty) ...[
                             const SizedBox(height: 16),
                             const Divider(),
                             const SizedBox(height: 8),
@@ -350,7 +367,7 @@ class _IssueReportCreateScreenState
                               ),
                             ),
                             const SizedBox(height: 8),
-                            ..._template!.customFields.map(_customFieldWidget),
+                            ..._activeFields.map(_customFieldWidget),
                           ],
                           const SizedBox(height: 16),
                           const Divider(),
@@ -1024,6 +1041,10 @@ class _IssueReportCreateScreenState
     );
   }
 
+  /// 정수는 소수점 없이 (1.0 → "1"). 범위 힌트에 쓴다.
+  String _numText(num v) =>
+      v == v.roundToDouble() ? v.toInt().toString() : v.toString();
+
   Widget _customFieldWidget(IssueCustomFieldDef f) {
     final current = _customValues[f.id];
     return Padding(
@@ -1068,9 +1089,16 @@ class _IssueReportCreateScreenState
             )
           else if (f.type == 'number')
             TextField(
-              keyboardType: TextInputType.number,
+              // decimals=0(기본)이면 정수 키패드, 1 이상이면 소수점 입력 허용.
+              keyboardType: TextInputType.numberWithOptions(
+                decimal: (f.decimals ?? 0) > 0,
+              ),
               decoration: InputDecoration(
-                hintText: f.placeholder,
+                // 범위가 있으면 힌트로 알려준다 — 제출하고 나서 400 을 보는 것보다 낫다.
+                hintText: f.placeholder ??
+                    (f.min != null && f.max != null
+                        ? '${_numText(f.min!)}–${_numText(f.max!)}'
+                        : null),
                 filled: true,
                 fillColor: AppColors.white,
                 contentPadding: const EdgeInsets.symmetric(
@@ -1125,6 +1153,17 @@ class _IssueReportCreateScreenState
                   },
                 );
               }).toList(),
+            ),
+          if (f.helperText != null && f.helperText!.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                f.helperText!,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
             ),
         ],
       ),
