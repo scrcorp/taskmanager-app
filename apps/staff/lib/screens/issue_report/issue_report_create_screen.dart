@@ -330,7 +330,12 @@ class _IssueReportCreateScreenState
                           _severityDropdown(),
                           const SizedBox(height: 16),
                           _label('Description'),
-                          _textField(_descCtrl, hint: 'Details', maxLines: 5),
+                          _textField(
+                      _descCtrl,
+                      hint: 'Details',
+                      minLines: 5,
+                      maxLines: null,
+                    ),
                           if (_template != null &&
                               _template!.customFields.isNotEmpty) ...[
                             const SizedBox(height: 16),
@@ -495,10 +500,20 @@ class _IssueReportCreateScreenState
     );
   }
 
-  Widget _textField(TextEditingController c, {String? hint, int maxLines = 1}) {
+  /// [maxLines] 를 null 로 주면 내용에 맞춰 칸이 통째로 늘어난다(내부 스크롤 없음).
+  /// 여러 줄 입력에는 이 형태를 쓸 것 — 고정 maxLines 는 작은 창 안에 자체 스크롤을
+  /// 만들고, 그게 바깥 페이지 스크롤과 겹쳐 모바일 웹에서 줄 선택/커서 이동을 먹는다.
+  Widget _textField(
+    TextEditingController c, {
+    String? hint,
+    int? maxLines = 1,
+    int? minLines,
+  }) {
     return TextField(
       controller: c,
       maxLines: maxLines,
+      minLines: minLines,
+      keyboardType: maxLines == 1 ? null : TextInputType.multiline,
       decoration: InputDecoration(
         hintText: hint,
         filled: true,
@@ -1044,7 +1059,10 @@ class _IssueReportCreateScreenState
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              maxLines: 3,
+              // 내용에 맞춰 자라게 — 고정 maxLines 는 내부 스크롤을 만든다(_textField 주석 참조).
+              minLines: 3,
+              maxLines: null,
+              keyboardType: TextInputType.multiline,
               maxLength: f.maxLength,
               onChanged: (v) => _customValues[f.id] = v,
             )
