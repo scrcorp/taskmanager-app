@@ -1072,6 +1072,10 @@ class AppL10nEs extends AppL10n {
   String get pfShiftClockedIn => 'Ya fichado';
 
   @override
+  String get pfShiftOutsideWindow =>
+      'No se puede fichar: este turno está fuera de su día operativo. Pide a tu gerente que lo corrija.';
+
+  @override
   String get pfShiftYesterday => 'Ayer';
 
   @override
@@ -1318,6 +1322,114 @@ class AppL10nEs extends AppL10n {
   @override
   String get mgPinErrorGeneric =>
       'No se pudo guardar el PIN. Inténtalo de nuevo.';
+
+  @override
+  String get mgSchedOperatingDay => 'DÍA OPERATIVO';
+
+  @override
+  String mgSchedDayStarts(String time) {
+    return 'El día empieza a las $time';
+  }
+
+  @override
+  String get mgSchedTime => 'HORARIO';
+
+  @override
+  String get mgSchedLength => 'DURACIÓN';
+
+  @override
+  String get mgSchedStartDate => 'FECHA DE INICIO';
+
+  @override
+  String get mgSchedEndDate => 'FECHA DE FIN';
+
+  @override
+  String get mgSchedBreakStartDate => 'INICIO DEL DESCANSO';
+
+  @override
+  String get mgSchedBreakEndDate => 'FIN DEL DESCANSO';
+
+  @override
+  String get mgSchedNextDay => 'DÍA SIGUIENTE';
+
+  @override
+  String get mgSchedPickStartDate => 'Fecha de inicio';
+
+  @override
+  String get mgSchedPickEndDate => 'Fecha de fin';
+
+  @override
+  String get mgSchedPickBreakStartDate => 'Fecha de inicio del descanso';
+
+  @override
+  String get mgSchedPickBreakEndDate => 'Fecha de fin del descanso';
+
+  @override
+  String mgSchedPickStartSub(String time, String day) {
+    return '¿En qué día del calendario cae $time para el día operativo $day?';
+  }
+
+  @override
+  String get mgSchedPickEndSub =>
+      '¿En qué día del calendario termina este turno?';
+
+  @override
+  String get mgSchedPickBreakSub =>
+      'El descanso se mueve con el turno, así que su fecha sigue al inicio del turno.';
+
+  @override
+  String mgSchedBoundaryNote(String time) {
+    return 'El día de la tienda empieza a las $time. Elige la otra opción solo si el turno ocurre realmente en el día operativo.';
+  }
+
+  @override
+  String get mgSchedOptOperatingDay => 'El día operativo · misma fecha';
+
+  @override
+  String get mgSchedOptNextDay =>
+      'Día siguiente del calendario · +1 del día operativo';
+
+  @override
+  String get mgSchedOptShiftStartDay => 'El mismo día que el inicio del turno';
+
+  @override
+  String get mgSchedOptDayAfterStart => 'El día siguiente al inicio del turno';
+
+  @override
+  String get mgSchedSuggested => 'SUGERIDO';
+
+  @override
+  String mgSchedOptLength(String length) {
+    return 'Duración $length';
+  }
+
+  @override
+  String get mgSchedOptTooLong => 'Más de 24 horas: no es un turno válido.';
+
+  @override
+  String get mgSchedOptNegative => 'El turno terminaría antes de empezar.';
+
+  @override
+  String get mgSchedOptBreakLocked =>
+      'El descanso debe quedar dentro del turno.';
+
+  @override
+  String mgSchedOptOutsideBefore(String time, String boundary) {
+    return '$time es antes del inicio del día ($boundary), así que cae en el día siguiente del calendario. Esta fecha queda fuera del día operativo, así que nadie podría fichar en el turno. Cambia el día operativo.';
+  }
+
+  @override
+  String mgSchedOptOutsideAfter(String time, String boundary) {
+    return '$time es igual o posterior al inicio del día ($boundary), así que cae en el día operativo mismo. Esta fecha queda fuera del día operativo, así que nadie podría fichar en el turno. Cambia el día operativo.';
+  }
+
+  @override
+  String mgSchedManualDate(String date) {
+    return 'Fecha elegida manualmente. El resultado automático es $date.';
+  }
+
+  @override
+  String get mgSchedCancel => 'Cancelar';
 
   @override
   String get attBatteryCharging => 'Cargando';

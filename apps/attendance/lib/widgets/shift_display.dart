@@ -61,6 +61,9 @@ String? shiftIneligibleText(AppL10n t, TodayAttendanceItem item) {
       return t.pfShiftClockedIn;
     case kIneligibleAlreadyCompleted:
       return t.pfShiftAlreadyDone;
+    case kIneligibleOutsideOperatingWindow:
+      // 직원이 스스로 고칠 수 없다 — 영업일을 바꿔야 하는 일이라 매니저를 가리킨다.
+      return t.pfShiftOutsideWindow;
     default:
       // 서버가 새 이유를 추가했는데 앱이 모르는 경우. 문구를 지어내지 않고
       // "고를 수 없다" 만 알린다 — 완료 표시가 가장 가까운 의미다.

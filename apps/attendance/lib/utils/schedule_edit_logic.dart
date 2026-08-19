@@ -192,8 +192,12 @@ class ShiftTimes {
 
   int get endMinutes => wrapMinutes(startMinutes + durationMinutes);
 
-  /// 종료가 시작의 며칠 뒤인가 (표시 마커 `+1` 용).
-  int get endDayOffset => (startMinutes + durationMinutes) ~/ minutesPerDay;
+  /// 종료가 **시작 날짜**의 며칠 뒤인가.
+  ///
+  /// ⚠️ 기준은 시작 날짜이지 영업일이 아니다. 달력 날짜(`+1` 배지 포함)는 반드시
+  /// `shift_date_logic.dart` 의 [ShiftDates] 를 거쳐라 — 경계 이전 시작이라
+  /// **시작**이 영업일+1 인 상태를 이 값 혼자서는 표현할 수 없다(2026-08 오탐의 원인).
+  int get endOffsetFromStartDate => (startMinutes + durationMinutes) ~/ minutesPerDay;
 
   bool get isValid => durationMinutes > 0;
 
@@ -209,16 +213,17 @@ class ShiftTimes {
       : wrapMinutes(
           startMinutes + breakWindow!.startOffsetMinutes + breakWindow!.durationMinutes);
 
-  /// 휴게 시각의 날짜 오프셋 (`02:00 +1` 표기용). 음수 오프셋은 0 으로 본다 —
+  /// 휴게 시각이 **시작 날짜**의 며칠 뒤인가. 음수 오프셋은 0 으로 본다 —
   /// 그런 상태는 [breakInsideShift] 가 false 라 이미 화면에서 막힌다.
-  int get breakStartDayOffset {
+  /// 달력 날짜는 [endOffsetFromStartDate] 주석과 같은 이유로 [ShiftDates] 를 쓴다.
+  int get breakStartOffsetFromStartDate {
     final w = breakWindow;
     if (w == null) return 0;
     final abs = startMinutes + w.startOffsetMinutes;
     return abs < 0 ? 0 : abs ~/ minutesPerDay;
   }
 
-  int get breakEndDayOffset {
+  int get breakEndOffsetFromStartDate {
     final w = breakWindow;
     if (w == null) return 0;
     final abs = startMinutes + w.startOffsetMinutes + w.durationMinutes;

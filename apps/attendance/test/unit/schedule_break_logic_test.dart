@@ -35,9 +35,9 @@ void main() {
         breakWindow: BreakWindow(startOffsetMinutes: 240, durationMinutes: 30),
       );
       expect(night.breakStartMinutes, 60); // 01:00
-      expect(night.breakStartDayOffset, 1);
+      expect(night.breakStartOffsetFromStartDate, 1);
       expect(hhmmWithDayMarker(night.breakStartMinutes!,
-          dayOffset: night.breakStartDayOffset), '01:00 +1');
+          dayOffset: night.breakStartOffsetFromStartDate), '01:00 +1');
       expect(night.breakInsideShift, isTrue);
     });
 

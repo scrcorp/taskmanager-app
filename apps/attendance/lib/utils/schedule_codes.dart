@@ -32,6 +32,18 @@ const String kScheduleWarningsUnconfirmed = 'SCHEDULE_WARNINGS_UNCONFIRMED';
 
 const String kZeroDuration = 'ZERO_DURATION';
 const String kStartDateOutOfWindow = 'START_DATE_OUT_OF_WINDOW';
+
+/// 시작 달력일이 자동 판정과 다르다 — **`date_override`/`force` 로도 못 넘는 400**
+/// (2026-08-19). 영업일 구간 `[day_start(D), day_start(D+1))` 은 반열림이라 두 후보
+/// 중 **하나만** 안에 든다. 자동값과 다른 날짜는 예외 없이 구간 밖이고, 그런 행은
+/// 저장돼도 현장에서 못 쓴다(후보 조회에 안 잡히거나 이미 끝난 근무로 보인다).
+///
+/// params: `{auto, chosen, boundary, start_time, operating_day, suggested_operating_day}`.
+/// 고칠 대상은 **날짜가 아니라 영업일** 이므로 문구는 그 안내로 끝나야 한다.
+const String kStartDateMismatch = 'START_DATE_MISMATCH';
+
+/// 근무 구간이 24시간을 넘는다 = 날짜 조립이 틀렸다는 뜻. `SHIFT_TOO_LONG`(경고)과 다르다.
+const String kShiftSpanTooLong = 'SHIFT_SPAN_TOO_LONG';
 const String kUserNotInStore = 'USER_NOT_IN_STORE';
 const String kUserNotMarkedForStore = 'USER_NOT_MARKED_FOR_STORE';
 const String kTimeNotOnGrid = 'TIME_NOT_ON_GRID';
@@ -45,10 +57,54 @@ const String kPayPeriodLocked = 'PAY_PERIOD_LOCKED';
 const String kOverlappingSchedule = 'OVERLAPPING_SCHEDULE';
 const String kShiftTooLong = 'SHIFT_TOO_LONG';
 const String kWeeklyOvertime = 'WEEKLY_OVERTIME';
-const String kStartAfterDayBoundary = 'START_AFTER_DAY_BOUNDARY';
-const String kStartBeforeDayBoundary = 'START_BEFORE_DAY_BOUNDARY';
+
+/// 구 인코딩으로 저장돼 있던 시프트의 시각을 바꾸자 시작 달력일이 이동했다 —
+/// 저장은 되되 무엇이 달라졌는지 사람이 보고 확인해야 한다.
+const String kStartDateRecalculated = 'START_DATE_RECALCULATED';
+/// 종료가 다음 영업일 경계를 넘는다 — 근무 뒷부분이 다음 영업일 창인데 라벨은 하나뿐이다.
+/// 막지 않고 확인만 받는다(대개 영업일 오선택이거나 매장 경계 설정이 근무 패턴과 안 맞는 신호).
+const String kEndAfterNextDayStart = 'END_AFTER_NEXT_DAY_START';
 const String kStoreClosedDay = 'STORE_CLOSED_DAY';
 const String kOperatingDayOverridden = 'OPERATING_DAY_OVERRIDDEN';
+
+/// `START_DATE_MISMATCH` 한 줄 — **원인(경계와 시각의 관계) + 결과(출근 불가) +
+/// 다음 행동(영업일 변경)**.
+///
+/// 방향은 `auto` 와 `operating_day` 로 가른다. 자동값이 영업일 당일이면 시작 시각이
+/// 경계 이후라는 뜻이고, 영업일+1 이면 경계 이전이라는 뜻이다. 시각 문자열을 다시
+/// 파싱하지 않는다 — 파싱 규칙이 하나 더 생기면 서버와 갈릴 자리가 늘어난다.
+///
+/// 400 이라 "그래도 저장" 이 없다. 그래서 이 문구의 일은 **고칠 방법을 알려주는 것**이다.
+String _startDateMismatchText(Map<String, dynamic> params) {
+  String? str(String key) {
+    final v = params[key];
+    final s = v?.toString();
+    return (s == null || s.isEmpty) ? null : s;
+  }
+
+  final auto = str('auto');
+  final chosen = str('chosen');
+  final boundary = str('boundary');
+  final start = str('start_time');
+  final operatingDay = str('operating_day');
+  final suggested = str('suggested_operating_day');
+
+  // params 가 없거나 모양이 다르면 문구를 지어내지 않고 공통 안내만 준다.
+  if (auto == null || chosen == null || boundary == null || start == null) {
+    return 'This start date is outside its operating day, so nobody could clock in. '
+        'Change the operating day instead of the start date.';
+  }
+
+  final afterBoundary = operatingDay != null && auto == operatingDay;
+  final relation = afterBoundary
+      ? '$start is on or after the $boundary day start, so it belongs to $auto'
+      : '$start is before the $boundary day start, so it belongs to $auto';
+  final fix = suggested == null
+      ? 'To work on $chosen, change the operating day instead.'
+      : 'To work on $chosen, change the operating day to $suggested.';
+  return '$relation — not $chosen. A shift starting on $chosen sits outside its '
+      'operating day, so nobody can clock in on it. $fix';
+}
 
 /// 검증 항목 하나 (`{"code": ..., "params": {...}}`).
 class ScheduleIssue {
@@ -78,6 +134,10 @@ class ScheduleIssue {
         return 'The shift length is 0. Set an end time after the start time.';
       case kStartDateOutOfWindow:
         return 'The start date is outside this operating day. Pick a time inside the day.';
+      case kStartDateMismatch:
+        return _startDateMismatchText(params);
+      case kShiftSpanTooLong:
+        return 'This shift spans more than 24 hours. Check the start and end dates.';
       case kUserNotInStore:
       case kUserNotMarkedForStore:
         return 'This employee is not assigned to this store. Pick another employee.';
@@ -101,10 +161,19 @@ class ScheduleIssue {
             : 'This shift is longer than the ${limit}h store limit.';
       case kWeeklyOvertime:
         return 'This puts the employee over the weekly hour limit.';
-      case kStartAfterDayBoundary:
-        return 'The start is after the day boundary — it may belong to the next operating day.';
-      case kStartBeforeDayBoundary:
-        return 'The start is before the day boundary — it may belong to the previous operating day.';
+      case kEndAfterNextDayStart:
+        final b = params['boundary'];
+        final nd = params['next_operating_day'];
+        return b == null
+            ? 'This shift runs into the next business day. Its hours still count on this operating day.'
+            : 'This shift runs past $b, when the next business day'
+                '${nd == null ? '' : ' ($nd)'} starts. '
+                'Its hours will still count on this operating day.';
+      case kStartDateRecalculated:
+        final d = params['start_date'];
+        return d == null
+            ? 'The calendar date moved to match the store day boundary. Check the dates before saving.'
+            : 'The calendar date moved to $d to match the store day boundary. Check it before saving.';
       case kStoreClosedDay:
         return 'The store is closed on this day.';
       case kOperatingDayOverridden:
