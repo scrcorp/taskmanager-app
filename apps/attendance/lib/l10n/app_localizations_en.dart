@@ -1065,6 +1065,10 @@ class AppL10nEn extends AppL10n {
   String get pfShiftClockedIn => 'Clocked in';
 
   @override
+  String get pfShiftOutsideWindow =>
+      'Can\'t clock in — this shift is outside its business day. Ask your manager to fix it.';
+
+  @override
   String get pfShiftYesterday => 'Yesterday';
 
   @override
@@ -1311,6 +1315,111 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get mgPinErrorGeneric => 'Couldn\'t save the PIN. Please try again.';
+
+  @override
+  String get mgSchedOperatingDay => 'OPERATING DAY';
+
+  @override
+  String mgSchedDayStarts(String time) {
+    return 'Day starts $time';
+  }
+
+  @override
+  String get mgSchedTime => 'TIME';
+
+  @override
+  String get mgSchedLength => 'LENGTH';
+
+  @override
+  String get mgSchedStartDate => 'START DATE';
+
+  @override
+  String get mgSchedEndDate => 'END DATE';
+
+  @override
+  String get mgSchedBreakStartDate => 'BREAK START';
+
+  @override
+  String get mgSchedBreakEndDate => 'BREAK END';
+
+  @override
+  String get mgSchedNextDay => 'NEXT DAY';
+
+  @override
+  String get mgSchedPickStartDate => 'Start date';
+
+  @override
+  String get mgSchedPickEndDate => 'End date';
+
+  @override
+  String get mgSchedPickBreakStartDate => 'Break start date';
+
+  @override
+  String get mgSchedPickBreakEndDate => 'Break end date';
+
+  @override
+  String mgSchedPickStartSub(String time, String day) {
+    return 'Which calendar day does $time fall on for operating day $day?';
+  }
+
+  @override
+  String get mgSchedPickEndSub => 'Which calendar day does this shift end on?';
+
+  @override
+  String get mgSchedPickBreakSub =>
+      'The break moves with the shift, so its date follows the shift start.';
+
+  @override
+  String mgSchedBoundaryNote(String time) {
+    return 'The store day starts at $time. Pick the other option only for a shift that really runs on the operating day itself.';
+  }
+
+  @override
+  String get mgSchedOptOperatingDay => 'Operating day itself · same date';
+
+  @override
+  String get mgSchedOptNextDay => 'Next calendar day · +1 from operating day';
+
+  @override
+  String get mgSchedOptShiftStartDay => 'Same day as the shift start';
+
+  @override
+  String get mgSchedOptDayAfterStart => 'Day after the shift start';
+
+  @override
+  String get mgSchedSuggested => 'SUGGESTED';
+
+  @override
+  String mgSchedOptLength(String length) {
+    return 'Length $length';
+  }
+
+  @override
+  String get mgSchedOptTooLong => 'Over 24 hours — not a valid shift.';
+
+  @override
+  String get mgSchedOptNegative => 'The shift would end before it starts.';
+
+  @override
+  String get mgSchedOptBreakLocked => 'The break must stay inside the shift.';
+
+  @override
+  String mgSchedOptOutsideBefore(String time, String boundary) {
+    return '$time is before the $boundary day start, so it lands on the next calendar day. This date sits outside the operating day, so nobody could clock in on the shift. Change the operating day instead.';
+  }
+
+  @override
+  String mgSchedOptOutsideAfter(String time, String boundary) {
+    return '$time is on or after the $boundary day start, so it lands on the operating day itself. This date sits outside the operating day, so nobody could clock in on the shift. Change the operating day instead.';
+  }
+
+  @override
+  String mgSchedManualDate(String date) {
+    return 'Manually picked date. The automatic result is $date.';
+  }
+
+  @override
+  String get mgSchedCancel => 'Cancel';
 
   @override
   String get attBatteryCharging => 'Charging';

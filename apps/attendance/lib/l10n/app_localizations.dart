@@ -1933,6 +1933,12 @@ abstract class AppL10n {
   /// **'Clocked in'**
   String get pfShiftClockedIn;
 
+  /// No description provided for @pfShiftOutsideWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t clock in — this shift is outside its business day. Ask your manager to fix it.'**
+  String get pfShiftOutsideWindow;
+
   /// No description provided for @pfShiftYesterday.
   ///
   /// In en, this message translates to:
@@ -2352,6 +2358,186 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Couldn\'t save the PIN. Please try again.'**
   String get mgPinErrorGeneric;
+
+  /// No description provided for @mgSchedOperatingDay.
+  ///
+  /// In en, this message translates to:
+  /// **'OPERATING DAY'**
+  String get mgSchedOperatingDay;
+
+  /// No description provided for @mgSchedDayStarts.
+  ///
+  /// In en, this message translates to:
+  /// **'Day starts {time}'**
+  String mgSchedDayStarts(String time);
+
+  /// No description provided for @mgSchedTime.
+  ///
+  /// In en, this message translates to:
+  /// **'TIME'**
+  String get mgSchedTime;
+
+  /// No description provided for @mgSchedLength.
+  ///
+  /// In en, this message translates to:
+  /// **'LENGTH'**
+  String get mgSchedLength;
+
+  /// No description provided for @mgSchedStartDate.
+  ///
+  /// In en, this message translates to:
+  /// **'START DATE'**
+  String get mgSchedStartDate;
+
+  /// No description provided for @mgSchedEndDate.
+  ///
+  /// In en, this message translates to:
+  /// **'END DATE'**
+  String get mgSchedEndDate;
+
+  /// No description provided for @mgSchedBreakStartDate.
+  ///
+  /// In en, this message translates to:
+  /// **'BREAK START'**
+  String get mgSchedBreakStartDate;
+
+  /// No description provided for @mgSchedBreakEndDate.
+  ///
+  /// In en, this message translates to:
+  /// **'BREAK END'**
+  String get mgSchedBreakEndDate;
+
+  /// No description provided for @mgSchedNextDay.
+  ///
+  /// In en, this message translates to:
+  /// **'NEXT DAY'**
+  String get mgSchedNextDay;
+
+  /// No description provided for @mgSchedPickStartDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Start date'**
+  String get mgSchedPickStartDate;
+
+  /// No description provided for @mgSchedPickEndDate.
+  ///
+  /// In en, this message translates to:
+  /// **'End date'**
+  String get mgSchedPickEndDate;
+
+  /// No description provided for @mgSchedPickBreakStartDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Break start date'**
+  String get mgSchedPickBreakStartDate;
+
+  /// No description provided for @mgSchedPickBreakEndDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Break end date'**
+  String get mgSchedPickBreakEndDate;
+
+  /// No description provided for @mgSchedPickStartSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Which calendar day does {time} fall on for operating day {day}?'**
+  String mgSchedPickStartSub(String time, String day);
+
+  /// No description provided for @mgSchedPickEndSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Which calendar day does this shift end on?'**
+  String get mgSchedPickEndSub;
+
+  /// No description provided for @mgSchedPickBreakSub.
+  ///
+  /// In en, this message translates to:
+  /// **'The break moves with the shift, so its date follows the shift start.'**
+  String get mgSchedPickBreakSub;
+
+  /// No description provided for @mgSchedBoundaryNote.
+  ///
+  /// In en, this message translates to:
+  /// **'The store day starts at {time}. Pick the other option only for a shift that really runs on the operating day itself.'**
+  String mgSchedBoundaryNote(String time);
+
+  /// No description provided for @mgSchedOptOperatingDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Operating day itself · same date'**
+  String get mgSchedOptOperatingDay;
+
+  /// No description provided for @mgSchedOptNextDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Next calendar day · +1 from operating day'**
+  String get mgSchedOptNextDay;
+
+  /// No description provided for @mgSchedOptShiftStartDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Same day as the shift start'**
+  String get mgSchedOptShiftStartDay;
+
+  /// No description provided for @mgSchedOptDayAfterStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Day after the shift start'**
+  String get mgSchedOptDayAfterStart;
+
+  /// No description provided for @mgSchedSuggested.
+  ///
+  /// In en, this message translates to:
+  /// **'SUGGESTED'**
+  String get mgSchedSuggested;
+
+  /// No description provided for @mgSchedOptLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Length {length}'**
+  String mgSchedOptLength(String length);
+
+  /// No description provided for @mgSchedOptTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Over 24 hours — not a valid shift.'**
+  String get mgSchedOptTooLong;
+
+  /// No description provided for @mgSchedOptNegative.
+  ///
+  /// In en, this message translates to:
+  /// **'The shift would end before it starts.'**
+  String get mgSchedOptNegative;
+
+  /// No description provided for @mgSchedOptBreakLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'The break must stay inside the shift.'**
+  String get mgSchedOptBreakLocked;
+
+  /// No description provided for @mgSchedOptOutsideBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} is before the {boundary} day start, so it lands on the next calendar day. This date sits outside the operating day, so nobody could clock in on the shift. Change the operating day instead.'**
+  String mgSchedOptOutsideBefore(String time, String boundary);
+
+  /// No description provided for @mgSchedOptOutsideAfter.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} is on or after the {boundary} day start, so it lands on the operating day itself. This date sits outside the operating day, so nobody could clock in on the shift. Change the operating day instead.'**
+  String mgSchedOptOutsideAfter(String time, String boundary);
+
+  /// No description provided for @mgSchedManualDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Manually picked date. The automatic result is {date}.'**
+  String mgSchedManualDate(String date);
+
+  /// No description provided for @mgSchedCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get mgSchedCancel;
 
   /// No description provided for @attBatteryCharging.
   ///

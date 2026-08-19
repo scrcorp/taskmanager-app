@@ -228,6 +228,36 @@ void main() {
       expect(picked, isNull);
     });
 
+    testWidgets('영업일 구간 밖 shift — 목록에 남되 선택 불가 + 매니저 안내 (2026-08-19)',
+        (tester) async {
+      await _surface(tester);
+      TodayAttendanceItem? picked;
+      await tester.pumpWidget(wrapForTest(ShiftPickerDialog(
+        userName: 'Alice',
+        items: [
+          _item(
+            's1',
+            eligible: false,
+            ineligibleReason: kIneligibleOutsideOperatingWindow,
+          ),
+          _item('s2', start: '17:00', end: '21:00'),
+        ],
+        onPick: (i) => picked = i,
+        onCancel: () {},
+      )));
+
+      // 지우지 않는다 — 기다리던 shift 가 사라지면 "없다"로 읽힌다.
+      expect(find.text('09:00 – 13:00'), findsOneWidget);
+      expect(
+          find.textContaining('outside its business day'), findsOneWidget);
+      // 직원이 고칠 수 없는 일이라 다음 행동은 매니저다.
+      expect(find.textContaining('Ask your manager'), findsOneWidget);
+
+      await tester.tap(find.text('09:00 – 13:00'), warnIfMissed: false);
+      await tester.pump();
+      expect(picked, isNull);
+    });
+
     testWidgets('시각을 모르는 shift 도 목록에서 사라지지 않는다', (tester) async {
       await _surface(tester);
       await tester.pumpWidget(wrapForTest(ShiftPickerDialog(

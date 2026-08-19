@@ -71,7 +71,8 @@ class TodayAttendanceItem {
   /// 이 shift 를 clock-in 대상으로 고를 수 있는가 (계약 §1.5).
   final bool clockInEligible;
 
-  /// 못 고르는 이유 — "already_completed" | "already_clocked_in".
+  /// 못 고르는 이유 — "already_completed" | "already_clocked_in" |
+  /// "outside_operating_window"(시작이 자기 영업일 구간 밖 = 고쳐야 할 스케줄).
   final String? ineligibleReason;
 
   /// 서버가 정한 기본 shift 인가 (default_schedule_id 와 같은 항목).

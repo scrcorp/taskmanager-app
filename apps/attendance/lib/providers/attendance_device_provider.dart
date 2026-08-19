@@ -13,6 +13,7 @@ import '../models/store_manager_option.dart';
 import '../models/tip_models.dart';
 import '../services/attendance_device_service.dart';
 import '../utils/attendance_device_storage.dart';
+import '../utils/shift_date_logic.dart';
 import 'package:htm_core/htm_core.dart';
 
 /// 기기 상태 phase
@@ -60,6 +61,16 @@ class DeviceInfo {
   /// 응답에 이 필드가 없으면(구버전 서버) 앱 폴백 [fallbackShiftMinutes] 로 떨어진다.
   final int? defaultScheduleDurationMinutes;
 
+  /// 매장 영업일 경계(`day_start`) — 요일별 "HH:mm".
+  ///
+  /// **판정이 아니라 설정값이다.** 이 값이 있어야 키오스크가 콘솔·서버와 같은 식으로
+  /// 시프트의 달력 날짜를 즉시 계산해 보여줄 수 있다(서버 왕복 프리뷰 없음).
+  /// 저장 시 조립은 여전히 서버가 정본이다.
+  ///
+  /// 서버가 아직 이 필드를 안 내려주는 동안엔 **null** 이고, 그때 화면은 날짜를
+  /// 짐작하지 않는다 — 경계를 모르는 채로 계산한 날짜는 틀린 날짜다.
+  final DayStartConfig? dayStart;
+
   const DeviceInfo({
     required this.deviceId,
     required this.deviceName,
@@ -74,6 +85,7 @@ class DeviceInfo {
     this.walkInAllowed = false,
     this.tipEntryEnabled = false,
     this.defaultScheduleDurationMinutes,
+    this.dayStart,
   });
 
   factory DeviceInfo.fromJson(Map<String, dynamic> json) {
@@ -103,6 +115,13 @@ class DeviceInfo {
         final v = (json['default_schedule_duration_minutes'] as num?)?.toInt();
         return (v == null || v <= 0) ? null : v;
       }(),
+      // 서버 계약: `store_day_start_times` — 요일 7키를 전부 채운 맵
+      // (server `app/utils/timezone.day_start_map`). 뒤의 두 이름은 계약 확정 전
+      // 형태를 읽던 폴백으로, 서버가 그 이름을 보낸 적은 없다.
+      // 셋 다 못 읽으면 null 이고, 그러면 날짜 UI 가 꺼진다(안전 폴백).
+      dayStart: DayStartConfig.tryParse(json['store_day_start_times']) ??
+          DayStartConfig.tryParse(json['day_start']) ??
+          DayStartConfig.tryParse(json['day_start_time']),
     );
   }
 }

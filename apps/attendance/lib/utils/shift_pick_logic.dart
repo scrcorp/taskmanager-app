@@ -30,6 +30,10 @@ const Duration kPreviewFreshness = Duration(minutes: 3);
 const String kIneligibleAlreadyCompleted = 'already_completed';
 const String kIneligibleAlreadyClockedIn = 'already_clocked_in';
 
+/// 시작이 자기 영업일 구간 밖인 스케줄 (2026-08-19). 목록에서 **지우지 않는다** —
+/// 그 shift 를 기다리던 사람에게 "없다" 가 아니라 "이건 고쳐야 한다" 를 보여야 한다.
+const String kIneligibleOutsideOperatingWindow = 'outside_operating_window';
+
 /// 프리뷰 표시 종류. 서버 `kind` 문자열을 화면이 다루기 쉬운 형태로만 옮긴다.
 enum ShiftPreviewKind { early, onTime, late, unknown }
 
