@@ -72,7 +72,7 @@ void main() {
 
     test('종료는 시작 + 길이', () {
       expect(base.endMinutes, 14 * 60 + 30);
-      expect(base.endDayOffset, 0);
+      expect(base.endOffsetFromStartDate, 0);
       expect(base.isValid, isTrue);
     });
 
@@ -80,7 +80,7 @@ void main() {
       final moved = base.withStart(20 * 60);
       expect(moved.durationMinutes, 330);
       expect(moved.endMinutes, 60 + 30); // 01:30
-      expect(moved.endDayOffset, 1); // "+1"
+      expect(moved.endOffsetFromStartDate, 1); // "+1"
     });
 
     test('종료 변경 → 시작 유지, 길이가 따라 움직인다', () {
@@ -93,7 +93,7 @@ void main() {
       final overnight = base.withEnd(2 * 60);
       expect(overnight.startMinutes, 9 * 60);
       expect(overnight.durationMinutes, 17 * 60);
-      expect(overnight.endDayOffset, 1);
+      expect(overnight.endOffsetFromStartDate, 1);
     });
 
     test('길이 변경 → 시작 유지, 종료가 따라 움직인다', () {
@@ -125,7 +125,7 @@ void main() {
       expect(t.startMinutes, 22 * 60);
       expect(t.durationMinutes, 28 * 60);
       expect(t.endMinutes, 2 * 60);
-      expect(t.endDayOffset, 2); // +2일
+      expect(t.endOffsetFromStartDate, 2); // +2일
     });
 
     test('fromStartEnd 는 종료 ≤ 시작을 자정 넘김으로 본다', () {

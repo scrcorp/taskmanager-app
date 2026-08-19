@@ -7,15 +7,21 @@
 ///   2. 409 `SCHEDULE_WARNINGS_UNCONFIRMED` → 경고를 보여주고, 확인해야 `force:true` 재요청.
 ///      메시지 문자열이 아니라 **최상위 code** 로만 분기한다.
 ///   3. 자정을 넘겨도 종료가 23:59 로 잘리지 않는다.
+///   4. 날짜(2026-08-18 트랙): 경계를 받으면 시작·종료 **달력 날짜가 값으로 보인다**.
+///      기본 저장은 HH:mm 만, 사람이 다른 후보를 직접 고른 경우에만 명시 날짜 +
+///      `date_override:true`.
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:attendance/l10n/app_localizations.dart';
+import 'package:attendance/providers/attendance_device_provider.dart';
 import 'package:attendance/providers/attendance_manage_provider.dart';
 import 'package:attendance/services/attendance_device_service.dart';
 import 'package:attendance/utils/schedule_codes.dart';
+import 'package:attendance/utils/shift_date_logic.dart';
 import 'package:attendance/widgets/manage_schedule_edit_modal.dart';
 
 import '_test_helpers.dart';
@@ -69,6 +75,9 @@ class _FakeService extends AttendanceDeviceService {
     String? operatingDay,
     String? startAt,
     String? endAt,
+    String? breakStartAt,
+    String? breakEndAt,
+    bool dateOverride = false,
     bool force = false,
   }) async {
     _calls++;
@@ -77,6 +86,9 @@ class _FakeService extends AttendanceDeviceService {
       'user_id': userId,
       'start_time': startHHmm,
       'end_time': endHHmm,
+      'start_at': startAt,
+      'end_at': endAt,
+      'date_override': dateOverride,
       // 휴게는 **키가 항상 실려야** 한다. null 이면 '삭제'라는 뜻이라, 키 자체가
       // 빠지는 것(=구버전 호환 '유지')과 구분해서 기록한다.
       'break_start_time': breakStartHHmm,
@@ -99,6 +111,9 @@ class _FakeService extends AttendanceDeviceService {
     String? operatingDay,
     String? startAt,
     String? endAt,
+    String? breakStartAt,
+    String? breakEndAt,
+    bool dateOverride = false,
     bool force = false,
   }) async {
     _calls++;
@@ -106,6 +121,9 @@ class _FakeService extends AttendanceDeviceService {
       'user_id': userId,
       'start_time': startHHmm,
       'end_time': endHHmm,
+      'start_at': startAt,
+      'end_at': endAt,
+      'date_override': dateOverride,
       'break_start_time': breakStartHHmm,
       'break_end_time': breakEndHHmm,
       'operating_day': operatingDay,
@@ -179,17 +197,45 @@ final _rowWithBreak = AdminScheduleRow(
   clockOutDisplay: null,
 );
 
+/// 기기 상태 고정 — `day_start` 를 줄 때만 날짜 UI 가 켜진다(안 주면 안전 폴백).
+class _FakeDeviceNotifier extends AttendanceDeviceNotifier {
+  _FakeDeviceNotifier(super.service, DeviceInfo device) {
+    state = AttendanceDeviceState(
+      status: AttendanceDeviceStatus.ready,
+      device: device,
+    );
+  }
+}
+
+/// 경계 11:00 매장 — 이번 사고의 재현 조건이다.
+DeviceInfo _device({Map<String, String>? dayStart}) => DeviceInfo(
+      deviceId: 'd-1',
+      deviceName: 'Kiosk',
+      organizationId: 'o-1',
+      storeId: 's-1',
+      storeName: 'Store',
+      workDate: '2026-08-10',
+      dayStart: dayStart == null ? null : DayStartConfig.tryParse(dayStart),
+    );
+
 Future<void> _openModal(
   WidgetTester tester,
   _FakeService service, {
   AdminScheduleRow? existing,
   DateTime? operatingDay,
+  DeviceInfo? device,
 }) async {
   await useTabletSurface(tester);
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [attendanceDeviceServiceProvider.overrideWithValue(service)],
+      overrides: [
+        attendanceDeviceServiceProvider.overrideWithValue(service),
+        attendanceDeviceProvider.overrideWith(
+            (ref) => _FakeDeviceNotifier(service, device ?? _device())),
+      ],
       child: MaterialApp(
+        localizationsDelegates: AppL10n.localizationsDelegates,
+        supportedLocales: AppL10n.supportedLocales,
         home: Scaffold(
           body: ManageScheduleEditModal(
             existing: existing,
@@ -218,12 +264,84 @@ void main() {
     expect(service.updates.single['force'], isFalse);
   });
 
-  testWidgets('자정 넘김 표기 — 종료에 +1 마커가 붙는다', (tester) async {
+  testWidgets('경계 미수신 — 날짜를 짐작하지 않고 +1 마커로만 표기(폴백)', (tester) async {
     final service = _FakeService();
     await _openModal(tester, service, existing: _walkInRow);
 
+    // day_start 가 없으면 달력 날짜를 만들지 않는다 — 서버 조립 결과만 믿는다.
     expect(find.text('+1'), findsOneWidget);
-    expect(find.textContaining('21:07 → 02:37 +1'), findsOneWidget);
+    expect(find.text('END'), findsOneWidget);
+    expect(find.text('END DATE'), findsNothing);
+  });
+
+  testWidgets('경계 수신 — 두 끝점의 달력 날짜가 값으로 보인다', (tester) async {
+    final service = _FakeService();
+    await _openModal(tester, service,
+        existing: _walkInRow, device: _device(dayStart: {'all': '11:00'}));
+
+    // 21:07 은 경계 11:00 이후 → 시작은 영업일 당일, 종료는 자정을 넘어 +1.
+    expect(find.text('Mon, Aug 10'), findsWidgets); // 상단 바 + 시작 날짜 버튼
+    expect(find.text('Tue, Aug 11'), findsOneWidget);
+    expect(find.text('Day starts 11:00'), findsOneWidget);
+    expect(find.text('END DATE · NEXT DAY'), findsOneWidget);
+  });
+
+  testWidgets('경계 이전 시작 — 시작 날짜가 영업일+1 로 보인다(이번 사고의 형태)', (tester) async {
+    final service = _FakeService();
+    await _openModal(tester, service,
+        existing: _rowWithBreak, // 09:00 시작
+        device: _device(dayStart: {'all': '11:00'}));
+
+    // 09:00 < 11:00 → 두 끝점 모두 달력상 하루 뒤. 예전엔 이 사실이 화면 어디에도 없었다.
+    expect(find.text('START DATE · NEXT DAY'), findsOneWidget);
+    expect(find.text('Tue, Aug 11'), findsWidgets);
+  });
+
+  testWidgets('자동값이 아닌 시작 날짜 후보는 보이되 비활성 — 이유가 붙는다 (2026-08-19)',
+      (tester) async {
+    final service = _FakeService();
+    await _openModal(tester, service,
+        existing: _rowWithBreak, device: _device(dayStart: {'all': '11:00'}));
+
+    // 09:00 시작 + 경계 11:00 → 자동값은 영업일+1(Tue). 영업일 당일(Mon)은 구간 밖이다.
+    await tester.tap(find.text('START DATE · NEXT DAY'));
+    await tester.pumpAndSettle();
+    expect(find.text('SUGGESTED'), findsOneWidget);
+
+    // ① 경계와 시각의 관계 ② 고르면 출근이 안 된다 ③ 영업일을 바꿔라
+    expect(find.textContaining('09:00 is before the 11:00 day start'),
+        findsOneWidget);
+    expect(find.textContaining('nobody could clock in'), findsOneWidget);
+    expect(find.textContaining('Change the operating day'), findsOneWidget);
+
+    // 후보는 지워지지 않았지만 눌러도 아무 일이 없다 — 시트도 그대로 열려 있다.
+    await tester.tap(find.text('Mon, Aug 10').last, warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(find.text('SUGGESTED'), findsOneWidget);
+
+    // 저장은 자동값 그대로 — 명시 날짜도 override 도 실리지 않는다.
+    await tester.tap(find.text('Cancel').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save Changes'));
+    await tester.pumpAndSettle();
+
+    final body = service.updates.single;
+    expect(body['date_override'], isFalse);
+    expect(body['start_at'], isNull);
+  });
+
+  testWidgets('날짜를 안 고르면 명시 날짜를 보내지 않는다 (서버 조립이 정본)', (tester) async {
+    final service = _FakeService();
+    await _openModal(tester, service,
+        existing: _rowWithBreak, device: _device(dayStart: {'all': '11:00'}));
+
+    await tester.tap(find.text('Save Changes'));
+    await tester.pumpAndSettle();
+
+    final body = service.updates.single;
+    expect(body['date_override'], isFalse);
+    expect(body['start_at'], isNull);
+    expect(body['end_at'], isNull);
   });
 
   testWidgets('길이 버튼 — 시작 고정, 종료가 따라 움직인다', (tester) async {
@@ -274,8 +392,6 @@ void main() {
   testWidgets('휴게가 있는 스케줄 — 손대지 않아도 휴게가 그대로 실린다', (tester) async {
     final service = _FakeService();
     await _openModal(tester, service, existing: _rowWithBreak);
-
-    expect(find.textContaining('12:00 → 12:30'), findsOneWidget);
 
     await tester.tap(find.text('Save Changes'));
     await tester.pumpAndSettle();

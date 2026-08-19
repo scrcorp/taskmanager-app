@@ -94,5 +94,39 @@ void main() {
       expect(const ScheduleIssue(kUserNotInStore).text, contains('another employee'));
       expect(const ScheduleIssue(kBreakOutsideShift).text, contains('remove'));
     });
+
+    test('START_DATE_MISMATCH — 경계 이후 시작(자동값=영업일 당일)', () {
+      final text = const ScheduleIssue(kStartDateMismatch, {
+        'auto': '2026-08-10',
+        'chosen': '2026-08-11',
+        'boundary': '11:00',
+        'start_time': '21:00',
+        'operating_day': '2026-08-10',
+        'suggested_operating_day': '2026-08-11',
+      }).text;
+      expect(text, contains('21:00 is on or after the 11:00 day start'));
+      expect(text, contains('nobody can clock in'));
+      // 400 이라 넘길 수 없다 — 고칠 대상은 날짜가 아니라 영업일이다.
+      expect(text, contains('change the operating day to 2026-08-11'));
+    });
+
+    test('START_DATE_MISMATCH — 경계 이전 시작(자동값=영업일+1)', () {
+      final text = const ScheduleIssue(kStartDateMismatch, {
+        'auto': '2026-08-11',
+        'chosen': '2026-08-10',
+        'boundary': '11:00',
+        'start_time': '09:00',
+        'operating_day': '2026-08-10',
+        'suggested_operating_day': '2026-08-09',
+      }).text;
+      expect(text, contains('09:00 is before the 11:00 day start'));
+      expect(text, contains('change the operating day to 2026-08-09'));
+    });
+
+    test('START_DATE_MISMATCH — params 가 없으면 문구를 지어내지 않는다', () {
+      final text = const ScheduleIssue(kStartDateMismatch).text;
+      expect(text, contains('outside its operating day'));
+      expect(text, contains('Change the operating day'));
+    });
   });
 }

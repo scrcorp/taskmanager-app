@@ -521,6 +521,16 @@ class AttendanceDeviceService {
     String? operatingDay,
     String? startAt,
     String? endAt,
+    String? breakStartAt,
+    String? breakEndAt,
+    /// 시작 달력일을 **사람이 화면에서 직접 골랐다**는 의사표시.
+    ///
+    /// 2026-08-19 이후 이 표시로도 자동값과 다른 시작 달력일은 통과하지 못한다 —
+    /// 서버가 400 `START_DATE_MISMATCH` 로 **예외 없이** 거부한다(구간이 반열림이라
+    /// 다른 날짜는 언제나 영업일 구간 밖이고, 그런 행은 현장에서 출근이 안 된다).
+    /// 그래서 화면도 자동값 아닌 후보를 비활성으로 둔다. 필드는 서버 계약이 남아
+    /// 있는 동안 유지하되 **항상 false 로 보낸다** — 켤 이유가 없다.
+    bool dateOverride = false,
     // 경고를 사용자에게 보여주고 확인받았을 때만 true (D9-1). 무조건 true 로 보내면
     // 확인 절차가 통째로 없어진다 — 예전 키오스크가 그래서 겹침을 조용히 저장했다.
     bool force = false,
@@ -535,6 +545,9 @@ class AttendanceDeviceService {
       if (operatingDay != null) 'operating_day': operatingDay,
       if (startAt != null) 'start_at': startAt,
       if (endAt != null) 'end_at': endAt,
+      if (breakStartAt != null) 'break_start_at': breakStartAt,
+      if (breakEndAt != null) 'break_end_at': breakEndAt,
+      if (dateOverride) 'date_override': true,
       if (force) 'force': true,
     });
     return Map<String, dynamic>.from(response.data as Map);
@@ -558,6 +571,10 @@ class AttendanceDeviceService {
     String? operatingDay,
     String? startAt,
     String? endAt,
+    String? breakStartAt,
+    String? breakEndAt,
+    /// create 와 같은 의미 — 사람이 시작 달력일을 직접 골랐을 때만 true.
+    bool dateOverride = false,
     bool force = false,
   }) async {
     // 시각은 **항상 둘 다** 실어 보낸다 (D7-3). 서버가 "보낸 필드"가 아니라
@@ -575,6 +592,9 @@ class AttendanceDeviceService {
       if (operatingDay != null) 'operating_day': operatingDay,
       if (startAt != null) 'start_at': startAt,
       if (endAt != null) 'end_at': endAt,
+      if (breakStartAt != null) 'break_start_at': breakStartAt,
+      if (breakEndAt != null) 'break_end_at': breakEndAt,
+      if (dateOverride) 'date_override': true,
       if (force) 'force': true,
     };
     final response = await _dio.patch(
