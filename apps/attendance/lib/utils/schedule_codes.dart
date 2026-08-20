@@ -46,6 +46,10 @@ const String kStartDateMismatch = 'START_DATE_MISMATCH';
 const String kShiftSpanTooLong = 'SHIFT_SPAN_TOO_LONG';
 const String kUserNotInStore = 'USER_NOT_IN_STORE';
 const String kUserNotMarkedForStore = 'USER_NOT_MARKED_FOR_STORE';
+/// 재직 중이 아닌 직원 — 어떤 날짜로도 배정 불가.
+const String kUserNotEmployed = 'USER_NOT_EMPLOYED';
+/// 퇴사일 **이후** 날짜로 배정 시도. 퇴사일 당일까지는 가능하다.
+const String kUserTerminatedBeforeDate = 'USER_TERMINATED_BEFORE_DATE';
 const String kTimeNotOnGrid = 'TIME_NOT_ON_GRID';
 const String kBreakPairIncomplete = 'BREAK_PAIR_INCOMPLETE';
 const String kBreakReversed = 'BREAK_REVERSED';
@@ -141,6 +145,11 @@ class ScheduleIssue {
       case kUserNotInStore:
       case kUserNotMarkedForStore:
         return 'This employee is not assigned to this store. Pick another employee.';
+      case kUserNotEmployed:
+        return 'This employee is no longer active. Pick another employee.';
+      case kUserTerminatedBeforeDate:
+        final last = params['termination_date'] ?? '';
+        return 'This employee left on $last. Pick another employee.';
       case kTimeNotOnGrid:
         final step = params['step_minutes'] ?? 5;
         return 'Times must be in $step-minute steps. Adjust the time wheel.';
